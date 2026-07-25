@@ -1,0 +1,13 @@
+# Unity geçici ve önbellek klasörleri
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Mm]emoryCaptures/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+
+# İşletim sistemi kalıntıları
+.DS_Store
+Thumbs.db
