@@ -1,22 +1,24 @@
 using Fusion;
 using UnityEngine;
 
-public class TemelBaglanti : MonoBehaviour
+// 1. NEÞTER: Sýnýf adý dosya adýyla eþleþecek þekilde NetworkManager olarak düzeltildi.
+public class NetworkManager : MonoBehaviour
 {
     private NetworkRunner _runner;
 
     async void Start()
     {
-        // 1. Objenin içine Fusion'ýn að yöneticisini ekliyoruz
         _runner = gameObject.AddComponent<NetworkRunner>();
-        _runner.ProvideInput = true; // Karakteri hareket ettirebilmek için girdi yetkisi veriyoruz
+        _runner.ProvideInput = true;
 
-        // 2. Odaya baðlanma iþlemini baþlatýyoruz
+        // 2. NEÞTER: Fusion 2'nin sahne senkronizasyonu için zorunlu bileþen
+        gameObject.AddComponent<NetworkSceneManagerDefault>();
+
         await _runner.StartGame(new StartGameArgs()
         {
-            GameMode = GameMode.AutoHostOrClient, // Ýlk giren odayý kurar, sonrakiler katýlýr
-            SessionName = "SavasOdasi",           // Odanýn adý
-            Scene = 1                             // Yüklenecek sahne numarasý (Build Settings'den ayarlanmalý)
+            GameMode = GameMode.AutoHostOrClient,
+            SessionName = "SavasOdasi",
+            // Scene = 1 parametresi silindi. Oyun doðrudan aktif sahnede (SampleScene) baþlayacak.
         });
 
         Debug.Log("Odaya baþarýyla baðlanýldý!");

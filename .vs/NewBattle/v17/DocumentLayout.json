@@ -3,6 +3,30 @@
   "WorkspaceRootPath": "D:\\emir\\Game\\NewBattle\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\BasicSpawner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\BasicSpawner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobilePlayerController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\MobilePlayerController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobileInputPoller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\MobileInputPoller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\VirtualJoystick.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\VirtualJoystick.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Library\\PackageCache\\com.unity.render-pipelines.universal@40f8b5b9939e\\Shaders\\Lit.shader||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Library\\PackageCache\\com.unity.render-pipelines.universal@40f8b5b9939e\\Shaders\\Lit.shader||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobileMaterialOptimizer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\MobileMaterialOptimizer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkManager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\NetworkManager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -19,15 +43,89 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "BasicSpawner.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\BasicSpawner.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\BasicSpawner.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\BasicSpawner.cs",
+              "RelativeToolTip": "Assets\\Scripts\\BasicSpawner.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-30T11:36:03.275Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "MobilePlayerController.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobilePlayerController.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\MobilePlayerController.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobilePlayerController.cs",
+              "RelativeToolTip": "Assets\\Scripts\\MobilePlayerController.cs",
+              "ViewState": "AgIAAAoAAAAAAAAAAAAYwBwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-30T11:19:11.719Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MobileInputPoller.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobileInputPoller.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\MobileInputPoller.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobileInputPoller.cs",
+              "RelativeToolTip": "Assets\\Scripts\\MobileInputPoller.cs",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAYwBwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-29T23:09:58.379Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "VirtualJoystick.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\VirtualJoystick.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\VirtualJoystick.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\VirtualJoystick.cs",
+              "RelativeToolTip": "Assets\\Scripts\\VirtualJoystick.cs",
+              "ViewState": "AgIAABcAAAAAAAAAAAAYwC8AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-29T23:08:07.925Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "MobileMaterialOptimizer.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobileMaterialOptimizer.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\MobileMaterialOptimizer.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MobileMaterialOptimizer.cs",
+              "RelativeToolTip": "Assets\\Scripts\\MobileMaterialOptimizer.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-29T11:03:02.682Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Lit.shader",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Library\\PackageCache\\com.unity.render-pipelines.universal@40f8b5b9939e\\Shaders\\Lit.shader",
+              "RelativeDocumentMoniker": "Library\\PackageCache\\com.unity.render-pipelines.universal@40f8b5b9939e\\Shaders\\Lit.shader",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Library\\PackageCache\\com.unity.render-pipelines.universal@40f8b5b9939e\\Shaders\\Lit.shader",
+              "RelativeToolTip": "Library\\PackageCache\\com.unity.render-pipelines.universal@40f8b5b9939e\\Shaders\\Lit.shader",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-07-29T10:54:50.516Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
               "Title": "NetworkManager.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\NetworkManager.cs",
               "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkManager.cs",
               "RelativeToolTip": "Assets\\Scripts\\NetworkManager.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAABvAAAAAAAAAA==",
+              "ViewState": "AgIAAAEAAAAAAAAAAAAYwBkAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-25T00:20:22.527Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-07-25T00:20:22.527Z"
             }
           ]
         }
