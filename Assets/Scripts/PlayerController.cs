@@ -1,24 +1,21 @@
 using Fusion;
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(NetworkTransform), typeof(PlayerStateMachine))]
 public class PlayerController : NetworkBehaviour
 {
-    [Header("Hareket Ayarlarý")]
-    public float moveSpeed = 5f;
-
-    [Header("Silah ve Animasyon Ayarlarý")]
-    public Animator anim;
+    [Header("Silah Ayarlarý")]
     public GameObject weaponInHand;
 
     [Networked] public NetworkBool hasWeapon { get; set; }
 
-    private Rigidbody rb;
+    private PlayerStateMachine _stateMachine;
     private ChangeDetector _changeDetector;
+    public Animator anim;
 
     void Awake()
     {
-        rb = GetComponent<Rigidbody>();
+        _stateMachine = GetComponent<PlayerStateMachine>();
         if (weaponInHand != null) weaponInHand.SetActive(false);
     }
 
@@ -40,45 +37,8 @@ public class PlayerController : NetworkBehaviour
     {
         if (GetInput<NetworkInputData>(out var input))
         {
-            HareketVeYonHesapla(input);
-            FizikselHareketUygula(input);
-        }
-    }
-
-    void HareketVeYonHesapla(NetworkInputData input)
-    {
-        Vector3 moveVector = new Vector3(input.MoveDirection.x, 0f, input.MoveDirection.y).normalized;
-        Vector3 aimVector = new Vector3(input.RightJoystickVector.x, 0f, input.RightJoystickVector.y);
-
-        if (aimVector.sqrMagnitude > 0.01f)
-            transform.rotation = Quaternion.LookRotation(aimVector);
-        else if (moveVector.sqrMagnitude > 0.01f)
-            transform.rotation = Quaternion.LookRotation(moveVector);
-
-        if (anim != null) anim.SetFloat("Speed", moveVector.magnitude);
-    }
-
-    void FizikselHareketUygula(NetworkInputData input)
-    {
-        Vector3 moveVector = new Vector3(input.MoveDirection.x, 0f, input.MoveDirection.y).normalized;
-        Vector3 finalVelocity = moveVector * moveSpeed;
-
-        rb.linearVelocity = new Vector3(finalVelocity.x, rb.linearVelocity.y, finalVelocity.z);
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (!HasStateAuthority) return;
-
-        if (other.CompareTag("WeaponLoot"))
-        {
-            NetworkObject netObj = other.GetComponent<NetworkObject>();
-            if (netObj != null)
-            {
-                Runner.Despawn(netObj);
-            }
-
-            hasWeapon = true;
+            // Tüm karar mekanizmasý State Machine'e devredildi
+            _stateMachine.ProcessInput(input);
         }
     }
 

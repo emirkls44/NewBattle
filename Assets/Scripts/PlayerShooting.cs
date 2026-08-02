@@ -3,163 +3,85 @@ using UnityEngine;
 
 public class PlayerShooting : NetworkBehaviour
 {
-    [Header("Silah Görseli")]
-    public GameObject silahObjesi; // DÜZELTME: eldekiSilah ve silahObjesi karmaþasý giderildi.
-
-    [Header("Silah ve Efektler")]
+    [Header("Bileþenler")]
     public Transform firePoint;
-    public GameObject bulletPrefab;
-    public GameObject muzzleFlash;
+    public float meleeRange = 1.5f;
+    public LayerMask meleeHitLayerMask;
 
-    [Header("Atýþ Ayarlarý")]
-    public float bulletSpeed = 20f;
-    public float fireRate = 0.2f;
-    public float yumrukMenzili = 1.5f;
-
-    [Header("Cephane (Ammo) Sistemi")]
-    [Networked] public int currentAmmo { get; set; }
-    [Networked] private TickTimer nextFireTimer { get; set; }
-    [Networked] private NetworkBool isFiring { get; set; }
-
-    // PERFORMANS VE AÐ: Sahnede objeleri sürekli aç/kapat yapmak yerine að üzerinden Zero-GC senkronizasyon.
-    [Networked, OnChangedRender(nameof(OnWeaponVisibilityChanged))]
-    public NetworkBool IsWeaponVisible { get; set; }
-
-    private PlayerController playerController;
-    private ChangeDetector _changeDetector;
-
-    // PERFORMANS: Sýk çaðrýlan bileþenler Update/Metot içinden çýkarýlýp önbelleðe (Cache) alýndý.
+    private PlayerController _playerController;
     private Animator _animator;
-
-    // PERFORMANS: Yumruk fiziði için her seferinde array oluþturmayý (GC) engelleyen bellek bloðu.
     private Collider[] _hitColliders = new Collider[10];
+    private IWeapon _activeWeapon;
+
+    private readonly int punchHash = Animator.StringToHash("Punch");
+    private readonly int hasWeaponHash = Animator.StringToHash("HasWeapon");
 
     public override void Spawned()
     {
-        playerController = GetComponent<PlayerController>();
-        _animator = GetComponentInChildren<Animator>(); // DÜZELTME: GC önlendi
-        _changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
-
-        if (HasStateAuthority && EnvanterSistemi.instance != null)
-            EnvanterSistemi.instance.RegisterLocalPlayer(this);
-
-        if (muzzleFlash != null) muzzleFlash.SetActive(false);
+        TryGetComponent(out _playerController);
+        _animator = GetComponentInChildren<Animator>();
+        _activeWeapon = GetComponentInChildren<IWeapon>();
     }
 
-    public override void FixedUpdateNetwork()
+    // MÝMARÝ MÜDAHALE: Update döngüsü çýkarýldý. Sadece State'ler bu metodu çaðýrabilir.
+    public void ProcessShooting(Vector2 aimInput)
     {
-        if (GetInput<NetworkInputData>(out var input))
+        if (_playerController != null && _playerController.hasWeapon && _activeWeapon != null)
         {
-            if (input.RightJoystickVector.sqrMagnitude > 0.01f)
-            {
-                if (nextFireTimer.ExpiredOrNotRunning(Runner))
-                {
-                    if (playerController != null && playerController.hasWeapon && currentAmmo > 0)
-                    {
-                        Shoot(input.RightJoystickVector);
-                        nextFireTimer = TickTimer.CreateFromSeconds(Runner, fireRate);
-                    }
-                    else if (playerController != null && !playerController.hasWeapon)
-                    {
-                        YumrukAt();
-                        nextFireTimer = TickTimer.CreateFromSeconds(Runner, 0.5f);
-                    }
-                }
-            }
-            else
-            {
-                if (HasStateAuthority) isFiring = false;
-            }
+            _activeWeapon.Shoot(firePoint.position, aimInput);
+        }
+        else if (_playerController != null && !_playerController.hasWeapon)
+        {
+            ExecuteMelee();
         }
     }
 
-    void YumrukAt()
+    private void ExecuteMelee()
     {
-        if (_animator != null) _animator.SetTrigger("Punch");
+        if (_animator != null) _animator.SetTrigger(punchHash);
 
-        Vector3 vurusNoktasi = transform.position + transform.forward * 1f;
-
-        // DÜZELTME: OverlapSphere yerine GC oluþturmayan NonAlloc varyantýna geçildi.
-        int hitCount = Physics.OverlapSphereNonAlloc(vurusNoktasi, yumrukMenzili, _hitColliders);
+        Vector3 hitPoint = transform.position + transform.forward * 1f;
+        int hitCount = Physics.OverlapSphereNonAlloc(hitPoint, meleeRange, _hitColliders, meleeHitLayerMask);
 
         for (int i = 0; i < hitCount; i++)
         {
-            if (_hitColliders[i].CompareTag("Enemy"))
+            if (_hitColliders[i].TryGetComponent<HealthController>(out var enemyHealth))
             {
-                EnemyController dusman = _hitColliders[i].GetComponent<EnemyController>();
-                // dusman?.TakeDamage(25); // EnemyController düzenlendiðinde burayý aktif et
-            }
-        }
-    }
-
-    void Shoot(Vector2 aimInput)
-    {
-        if (HasStateAuthority)
-        {
-            currentAmmo--;
-            isFiring = true;
-        }
-
-        if (bulletPrefab != null && firePoint != null)
-        {
-            Vector3 shootDirection = new Vector3(aimInput.x, 0, aimInput.y).normalized;
-            Quaternion shootRotation = Quaternion.LookRotation(shootDirection);
-
-            Runner.Spawn(bulletPrefab, firePoint.position, shootRotation, Object.InputAuthority, (runner, spawnedBullet) =>
-            {
-                Rigidbody rb = spawnedBullet.GetComponent<Rigidbody>();
-                if (rb != null)
+                if (HasStateAuthority)
                 {
-                    rb.linearVelocity = shootDirection * bulletSpeed;
+                    enemyHealth.TakeDamage(25);
                 }
-            });
-        }
-    }
-
-    public override void Render()
-    {
-        foreach (var change in _changeDetector.DetectChanges(this))
-        {
-            switch (change)
-            {
-                case nameof(isFiring):
-                    if (muzzleFlash != null) muzzleFlash.SetActive(isFiring);
-                    break;
             }
         }
     }
 
-    public void AddAmmo(int amount = 30)
+    public void EquipWeapon(IWeapon newWeapon)
     {
-        if (HasStateAuthority) currentAmmo += amount;
+        _activeWeapon = newWeapon;
+        _activeWeapon.SetWeaponVisibility(true);
+        SetAnimatorWeaponState(true);
     }
 
-    // DÜZELTME: Sýnýf yapýsý onarýldý, iç içe geçmiþ metotlar ayrýþtýrýldý.
-    public void SilahiBelindeSakla()
+    public void HolsterWeapon()
     {
-        if (HasStateAuthority)
+        if (_activeWeapon != null)
         {
-            IsWeaponVisible = false;
+            _activeWeapon.SetWeaponVisibility(false);
         }
+        SetAnimatorWeaponState(false);
     }
 
-    public void SilahiElineAl()
+    private void SetAnimatorWeaponState(bool hasWeapon)
     {
-        if (HasStateAuthority)
-        {
-            IsWeaponVisible = true;
-        }
+        if (_animator != null) _animator.SetBool(hasWeaponHash, hasWeapon);
+        if (_playerController != null) _playerController.hasWeapon = hasWeapon;
     }
-
-    private void OnWeaponVisibilityChanged()
+    public void DrawWeapon()
     {
-        if (silahObjesi != null)
+        if (_activeWeapon != null)
         {
-            silahObjesi.SetActive(IsWeaponVisible);
+            _activeWeapon.SetWeaponVisibility(true);
+            SetAnimatorWeaponState(true);
         }
-
-        // MÝMARÝ: Animasyon ve Controller güncellemeleri yalnýzca render/durum deðiþtiðinde çalýþýr.
-        if (_animator != null) _animator.SetBool("HasWeapon", IsWeaponVisible);
-        if (playerController != null) playerController.hasWeapon = IsWeaponVisible;
     }
 }

@@ -1,74 +1,82 @@
 using Fusion;
 using UnityEngine;
 
-public class PlayerHide : NetworkBehaviour
+// MÝMARÝ MÜDAHALE: NetworkBehaviour yerine PlayerStateBase'den türetildi.
+// Artýk baðýmsýz çalýþmayacak, PlayerStateMachine tarafýndan yönetilecek.
+public class PlayerHide : PlayerStateBase
 {
     [Header("Ayarlar")]
     public float revealDistance = 3f;
     public GameObject footprintIcon;
 
-    // AÐ OPTÝMÝZASYONU: Gizlilik durumunu að üzerinden Zero-GC senkronize ediyoruz.
     [Networked, OnChangedRender(nameof(OnHiddenStatusChanged))]
     public NetworkBool isHidden { get; set; }
 
-    private bool inBush = false;
-    private Vector3 lastPosition;
+    [Networked] private TickTimer proximityScanTimer { get; set; }
 
-    // PERFORMANS: Sýk kullanýlan referanslar önbelleðe (Cache) alýndý.
+    private Vector3 lastPosition;
     private Renderer[] _renderers;
     private MaterialPropertyBlock _propBlock;
-    private Collider[] _enemyColliders = new Collider[5]; // NonAlloc için sabit dizi
+    private Collider[] _enemyColliders = new Collider[5];
+    private readonly int baseColorID = Shader.PropertyToID("_BaseColor");
 
-    public override void Spawned()
+    public override void InitState(PlayerStateMachine stateMachine)
     {
+        base.InitState(stateMachine);
         _renderers = GetComponentsInChildren<Renderer>(true);
         _propBlock = new MaterialPropertyBlock();
-        lastPosition = transform.position;
-
         if (footprintIcon != null) footprintIcon.SetActive(false);
     }
 
-    public override void FixedUpdateNetwork()
+    public override void EnterState()
     {
-        // Yalnýzca karakterin sahibi bu mantýðý hesaplar, diðer cihazlar sonucu kopyalar.
-        if (!HasStateAuthority) return;
+        lastPosition = transform.position;
+        isHidden = true; // State'e girildiðinde gizlen
+    }
 
-        if (inBush)
+    public override void UpdateNetworkState(NetworkInputData input)
+    {
+        float speedSq = (transform.position - lastPosition).sqrMagnitude;
+        bool isMoving = speedSq > 0.01f;
+
+        if (proximityScanTimer.ExpiredOrNotRunning(Runner))
         {
-            float speedSq = (transform.position - lastPosition).sqrMagnitude; // Karekök hesaplamadan kaçýnma
-            bool isMoving = speedSq > 0.01f; // (0.1f * 0.1f)
+            isHidden = !CheckEnemyProximity();
+            proximityScanTimer = TickTimer.CreateFromSeconds(Runner, 0.25f);
+        }
 
-            bool enemyTooClose = CheckEnemyProximity();
+        if (footprintIcon != null && footprintIcon.activeSelf != isMoving)
+        {
+            footprintIcon.SetActive(isMoving);
+        }
 
-            if (enemyTooClose)
-            {
-                isHidden = false;
-            }
-            else
-            {
-                isHidden = true;
-                // Ayak izi sadece yerel oyuncuda veya StateAuthority'de iþlenmeli (görsel tercih)
-                if (footprintIcon != null && footprintIcon.activeSelf != isMoving)
-                    footprintIcon.SetActive(isMoving);
-            }
+        // Battlelands Royale'de çalýlýkta hareket %30 daha yavaþtýr. Hareket mantýðý State içinde çözülür.
+        if (input.JoystickInput.sqrMagnitude > 0.01f)
+        {
+            Vector3 moveDirection = new Vector3(input.JoystickInput.x, 0, input.JoystickInput.y).normalized;
+            transform.position += moveDirection * 3.5f * Runner.DeltaTime; // 5f olan hýz 3.5f'e düþtü
         }
         else
         {
-            isHidden = false;
-            if (footprintIcon != null && footprintIcon.activeSelf)
-                footprintIcon.SetActive(false);
+            // Eðer oyuncu çalýlýkta duruyorsa ve etrafýnda düþman yoksa tam Idle durumuna geçilebilir
+            // stateMachine.ChangeState(0); (Gelecek iterasyonda eklenecek)
         }
 
         lastPosition = transform.position;
+    }
+
+    public override void ExitState()
+    {
+        isHidden = false;
+        if (footprintIcon != null) footprintIcon.SetActive(false);
     }
 
     bool CheckEnemyProximity()
     {
-        // PERFORMANS: FindGameObjectsWithTag yerine GC oluþturmayan NonAlloc fizik küresi kullanýldý.
         int hitCount = Physics.OverlapSphereNonAlloc(transform.position, revealDistance, _enemyColliders);
         for (int i = 0; i < hitCount; i++)
         {
-            if (_enemyColliders[i].CompareTag("Enemy"))
+            if (_enemyColliders[i].CompareTag("Enemy") || _enemyColliders[i].CompareTag("Player"))
             {
                 return true;
             }
@@ -89,25 +97,34 @@ public class PlayerHide : NetworkBehaviour
         {
             if (footprintIcon != null && r.gameObject == footprintIcon) continue;
 
-            // PERFORMANS: .material yerine MaterialPropertyBlock kullanarak materyal kopyalanmasý (GC) engellendi.
             r.GetPropertyBlock(_propBlock);
-
-            // Mevcut rengi koruyup sadece Alpha'yý güncellemek istiyorsak:
-            Color baseColor = r.sharedMaterial.HasProperty("_Color") ? r.sharedMaterial.color : Color.white;
+            Color baseColor = r.sharedMaterial.HasProperty(baseColorID) ? r.sharedMaterial.GetColor(baseColorID) : Color.white;
             baseColor.a = targetAlpha;
 
-            _propBlock.SetColor("_Color", baseColor); // URP kullanýyorsan "_BaseColor" olarak deðiþtir
+            _propBlock.SetColor(baseColorID, baseColor);
             r.SetPropertyBlock(_propBlock);
         }
     }
 
     void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Bush")) inBush = true;
+        if (!HasStateAuthority) return;
+
+        // Çalýlýða girildiðinde StateMachine'e Hide State'ine (Örn: Index 2) geçmesini bildir.
+        if (other.CompareTag("Bush"))
+        {
+            stateMachine.ChangeState(2);
+        }
     }
 
     void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Bush")) inBush = false;
+        if (!HasStateAuthority) return;
+
+        // Çalýlýktan çýkýldýðýnda Move (Örn: Index 1) veya Idle (Index 0) State'ine dön.
+        if (other.CompareTag("Bush"))
+        {
+            stateMachine.ChangeState(0);
+        }
     }
 }

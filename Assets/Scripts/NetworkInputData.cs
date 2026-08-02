@@ -1,13 +1,17 @@
 using Fusion;
 using UnityEngine;
 
-// Performans: Struct kullanýmý heap üzerinde bellek tahsisi (GC Alloc) yapmaz. 
+// CS0101 çakýþmasýný önlemek için PlayerInputButtons olarak deðiþtirildi
+public enum PlayerInputButtons
+{
+    Attack = 0,
+    Jump = 1
+}
+
+// Sýnýf (class) deðil struct kullanýldý (Zero-GC tahsisi)
 public struct NetworkInputData : INetworkInput
 {
-    // DEÐÝÞÝKLÝK: Ýsimlendirmeler PlayerController.cs içindeki kullanýmýnla birebir eþleþtirildi.
-    public Vector2 MoveDirection;
+    public Vector2 JoystickInput;
+    public NetworkButtons Buttons;
     public Vector2 RightJoystickVector;
-
-    // Ateþ etme gibi aksiyonlar için GC dostu buton yapýsý.
-    public NetworkButtons buttons;
 }

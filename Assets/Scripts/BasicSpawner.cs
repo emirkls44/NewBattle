@@ -1,45 +1,55 @@
-using UnityEngine;
 using Fusion;
 using Fusion.Sockets;
 using System;
 using System.Collections.Generic;
+using UnityEngine;
+using System.Threading.Tasks;
 
+[RequireComponent(typeof(NetworkRunner), typeof(NetworkSceneManagerDefault))]
 public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
 {
     [Header("Network Prefabs")]
     public NetworkPrefabRef playerPrefab;
 
-    private NetworkRunner _runner;
+    [Header("Input References")]
+    // DÜZELTME: Referanslar kesin olarak VirtualJoystick tipine çekildi.
+    public VirtualJoystick movementJoystick;
+    public VirtualJoystick attackJoystick;
 
-    // GC Alloc engellemek için oyuncu referanslarýný önceden ayrýlmýþ kapasiteyle tutuyoruz
+    private NetworkRunner _runner;
     private Dictionary<PlayerRef, NetworkObject> _spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>(32);
 
-    async void Start()
+    private async void Start()
     {
-        StartGame(GameMode.AutoHostOrClient);
+        _runner = GetComponent<NetworkRunner>();
+        _runner.ProvideInput = true;
+        await StartSimulation();
     }
 
-    async void StartGame(GameMode mode)
+    private async Task StartSimulation()
     {
-        _runner = gameObject.AddComponent<NetworkRunner>();
-        _runner.ProvideInput = true;
-
         await _runner.StartGame(new StartGameArgs()
         {
-            GameMode = mode,
-            SessionName = "TestRoom",
-            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
+            GameMode = GameMode.AutoHostOrClient,
+            SessionName = "SavasOdasi",
+            SceneManager = GetComponent<NetworkSceneManagerDefault>()
         });
+    }
+
+    public void OnInput(NetworkRunner runner, NetworkInput input)
+    {
+        if (InputManager.Instance != null)
+        {
+            input.Set(InputManager.Instance.GetNetworkInput());
+        }
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         if (runner.IsServer)
         {
-            // Oyuncularý üst üste doðurmamak için basit bir offset hesaplamasý
-            Vector3 spawnPosition = new Vector3((player.RawEncoded % 4) * 3, 1, 0);
+            Vector3 spawnPosition = new Vector3((player.RawEncoded % 8) * 2, 1, (player.RawEncoded % 4) * 2);
             NetworkObject networkPlayerObject = runner.Spawn(playerPrefab, spawnPosition, Quaternion.identity, player);
-
             _spawnedCharacters[player] = networkPlayerObject;
         }
     }
@@ -53,8 +63,6 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    // --- FUSION 2 CALLBACKS (Hatasýz tam liste, silinmemelidir) ---
-    public void OnInput(NetworkRunner runner, NetworkInput input) { }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }
