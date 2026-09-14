@@ -9,8 +9,12 @@ public abstract class WeaponBase : NetworkBehaviour, IWeapon
     public int maxAmmo = 90;
     public LayerMask hitLayerMask;
 
-    [Networked] public int currentAmmo { get; set; }
+    // MÝMARÝ MÜDAHALE: Mermi deðiþimi að üzerinden Render döngüsünde dinlenir.
+    [Networked, OnChangedRender(nameof(OnAmmoChanged))]
+    public int currentAmmo { get; set; }
+
     [Networked] protected TickTimer nextFireTimer { get; set; }
+
     [Networked, OnChangedRender(nameof(OnWeaponVisibilityChanged))]
     public NetworkBool isVisible { get; set; }
 
@@ -18,11 +22,10 @@ public abstract class WeaponBase : NetworkBehaviour, IWeapon
     {
         if (HasStateAuthority)
         {
-            currentAmmo = maxAmmo / 3; // Baþlangýç mermisi
+            currentAmmo = maxAmmo / 3;
         }
     }
 
-    // Ortak atýþ kontrolü: Mermi var mý? Süre doldu mu?
     public void Shoot(Vector3 firePoint, Vector2 aimDirection)
     {
         if (!HasStateAuthority || currentAmmo <= 0 || !nextFireTimer.ExpiredOrNotRunning(Runner)) return;
@@ -30,20 +33,16 @@ public abstract class WeaponBase : NetworkBehaviour, IWeapon
         currentAmmo--;
         nextFireTimer = TickTimer.CreateFromSeconds(Runner, fireRate);
 
-        // Polimorfizm: Asýl atýþ mantýðý alt sýnýflarda iþlenir
         ExecuteFire(firePoint, aimDirection);
-
-        InventoryManager.Instance?.UpdateAmmoUI(currentAmmo);
+        // HATA GÝDERÝLDÝ: UI çaðrýsý buradan silindi. Sunucu UI bilmez.
     }
 
-    // Alt sýnýflarýn (Taarruz, Pompalý vb.) ezmek (override) zorunda olduðu metot
     protected abstract void ExecuteFire(Vector3 firePoint, Vector2 aimDirection);
 
     public void AddAmmo(int amount)
     {
         if (!HasStateAuthority) return;
         currentAmmo = Mathf.Min(currentAmmo + amount, maxAmmo);
-        InventoryManager.Instance?.UpdateAmmoUI(currentAmmo);
     }
 
     public int GetCurrentAmmo() => currentAmmo;
@@ -57,5 +56,15 @@ public abstract class WeaponBase : NetworkBehaviour, IWeapon
     private void OnWeaponVisibilityChanged()
     {
         gameObject.SetActive(isVisible);
+    }
+
+    // OBSERVER PATTERN: Deðiþim tüm istemcilere ulaþtýðýnda UI güncellenir.
+    private void OnAmmoChanged()
+    {
+        // Sadece silahý tutan (Girdi yetkisi olan) ve silahý aktif olan kiþinin UI'ý güncellenir.
+        if (HasInputAuthority && isVisible)
+        {
+            InventoryManager.Instance?.UpdateAmmoUI(currentAmmo);
+        }
     }
 }

@@ -8,10 +8,15 @@ public class PlayerStateMachine : NetworkBehaviour
     private PlayerStateBase[] _states;
     private PlayerStateBase _currentState;
 
+    // MÝMARÝ MÜDAHALE: Alt state'lerin eriþebileceði merkezi Animator referansý
+    public Animator Animator { get; private set; }
+
     public override void Spawned()
     {
-        // Sahnede karakterin üzerindeki tüm state scriptlerini topla
         _states = GetComponents<PlayerStateBase>();
+
+        // Karakterin altýndaki Animator bileþenini otomatik bul
+        Animator = GetComponentInChildren<Animator>();
 
         foreach (var state in _states)
         {
@@ -20,7 +25,7 @@ public class PlayerStateMachine : NetworkBehaviour
 
         if (HasStateAuthority && _states.Length > 0)
         {
-            ChangeState(0); // 0. index genellikle Idle(Bekleme) durumu olur
+            ChangeState(0);
         }
     }
 

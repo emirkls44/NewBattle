@@ -8,7 +8,13 @@ public class Shotgun : WeaponBase
     public int pelletCount = 5;
     public float spreadAngle = 15f;
 
-    public TracerPool tracerPool;
+    private TracerPool _tracerPool;
+
+    public override void Spawned()
+    {
+        base.Spawned();
+        _tracerPool = UnityEngine.Object.FindFirstObjectByType<TracerPool>();
+    }
 
     protected override void ExecuteFire(Vector3 firePoint, Vector2 aimDirection)
     {
@@ -16,7 +22,6 @@ public class Shotgun : WeaponBase
 
         for (int i = 0; i < pelletCount; i++)
         {
-            // Saçmalar için rastgele yayýlým açýsý hesaplama
             float randomAngle = Random.Range(-spreadAngle, spreadAngle);
             Quaternion spreadRotation = Quaternion.Euler(0, randomAngle, 0);
             Vector3 shootDirection = spreadRotation * baseDirection;
@@ -50,11 +55,11 @@ public class Shotgun : WeaponBase
     [Rpc(RpcSources.InputAuthority | RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayShootEffects(Vector3 hitPoint, Vector3 firePoint)
     {
-        if (tracerPool != null)
+        if (_tracerPool != null)
         {
             Vector3 direction = (hitPoint - firePoint).normalized;
             Quaternion rotation = direction != Vector3.zero ? Quaternion.LookRotation(direction) : Quaternion.identity;
-            tracerPool.GetTracer(firePoint, rotation);
+            _tracerPool.GetTracer(firePoint, rotation);
         }
     }
 }

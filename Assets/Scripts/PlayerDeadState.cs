@@ -3,37 +3,50 @@ using UnityEngine;
 
 public class PlayerDeadState : PlayerStateBase
 {
-    private Animator _animator;
-    private readonly int deathHash = Animator.StringToHash("Death");
+    [SerializeField] private float despawnDelay = 1.25f;
 
-    public override void InitState(PlayerStateMachine stateMachine)
+    [Networked] private TickTimer DespawnTimer { get; set; }
+
+    private Animator _animator;
+    private Collider _collider;
+    private bool _hasDeathTrigger;
+    private static readonly int DeathHash = Animator.StringToHash("Death");
+
+    public override void InitState(PlayerStateMachine playerStateMachine)
     {
-        base.InitState(stateMachine);
+        base.InitState(playerStateMachine);
         _animator = GetComponentInChildren<Animator>();
+        _collider = GetComponent<Collider>();
+
+        if (_animator != null)
+        {
+            foreach (AnimatorControllerParameter parameter in _animator.parameters)
+            {
+                if (parameter.nameHash == DeathHash && parameter.type == AnimatorControllerParameterType.Trigger)
+                {
+                    _hasDeathTrigger = true;
+                    break;
+                }
+            }
+        }
     }
 
     public override void EnterState()
     {
-        if (_animator != null)
-        {
-            _animator.SetTrigger(deathHash);
-        }
+        if (_animator != null && _hasDeathTrigger)
+            _animator.SetTrigger(DeathHash);
 
-        if (TryGetComponent<Collider>(out var col))
-        {
-            col.enabled = false;
-        }
+        if (_collider != null)
+            _collider.enabled = false;
 
         if (HasStateAuthority)
-        {
-            // Örnek: Ölüm animasyonu veya süresi bittikten sonra objeyi aðdan kaldýr
-            Runner.Despawn(Object);
-        }
+            DespawnTimer = TickTimer.CreateFromSeconds(Runner, despawnDelay);
     }
 
     public override void UpdateNetworkState(NetworkInputData input)
     {
-        // Ölü bir karakter hiçbir girdiyi iþleyemez.
+        if (HasStateAuthority && DespawnTimer.Expired(Runner))
+            Runner.Despawn(Object);
     }
 
     public override void ExitState()

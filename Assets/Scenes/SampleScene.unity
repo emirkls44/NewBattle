@@ -608,9 +608,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BasicSpawner
   playerPrefab:
-    RawGuidValue: f49277fef334f1c429b5716c12296f9c
+    RawGuidValue:
+    - -4255561950337461516
+    - -7174470522272369367
   movementJoystick: {fileID: 0}
   attackJoystick: {fileID: 0}
+  _runner: {fileID: 0}
 --- !u!114 &677027954
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -638,6 +641,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 93cd1bf5fca906b449d7b0059f973ed8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkManager
+  playerPrefab:
+    RawGuidValue: 00000000000000000000000000000000
 --- !u!114 &677027956
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -689,7 +694,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 147, y: 198}
+  m_AnchoredPosition: {x: 146.99994, y: 198}
   m_SizeDelta: {x: 250, y: 250}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &796764241
@@ -755,9 +760,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BasicSpawner
   playerPrefab:
-    RawGuidValue: f49277fef334f1c429b5716c12296f9c
+    RawGuidValue:
+    - -4255561950337461516
+    - -7174470522272369367
   movementJoystick: {fileID: 796764241}
   attackJoystick: {fileID: 1518806788}
+  _runner: {fileID: 0}
 --- !u!114 &796764245
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -946,11 +954,11 @@ RectTransform:
   - {fileID: 920799943}
   m_Father: {fileID: 1532635768}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 1488, y: 198}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
+  m_AnchoredPosition: {x: -182, y: 198}
   m_SizeDelta: {x: 250, y: 250}
-  m_Pivot: {x: 0, y: 0}
+  m_Pivot: {x: 1, y: 0}
 --- !u!114 &1518806785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -964,9 +972,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BasicSpawner
   playerPrefab:
-    RawGuidValue: f49277fef334f1c429b5716c12296f9c
+    RawGuidValue:
+    - -4255561950337461516
+    - -7174470522272369367
   movementJoystick: {fileID: 796764241}
   attackJoystick: {fileID: 1518806788}
+  _runner: {fileID: 0}
 --- !u!114 &1518806786
 MonoBehaviour:
   m_ObjectHideFlags: 0

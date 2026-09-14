@@ -1,20 +1,46 @@
 using Fusion;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
 
 public class LobiManager : MonoBehaviour
 {
     [Header("Að Referanslarý")]
-    [SerializeField] private NetworkRunner runner; // Arama yapmak yerine referans Inspector'dan veya bir baþlatýcýdan verilmeli.
+    [SerializeField] private NetworkRunner runnerPrefab;
+    private NetworkRunner _runnerInstance;
 
-    public void PlayOnlineBasildi()
+    public async void PlayOnlineBasildi()
     {
-        if (runner != null && runner.IsServer)
+        // 1. UI tepkisini engellemek için butonu pasifize etme mantýðý buraya eklenebilir.
+        Debug.Log("Eþleþtirme aranýyor...");
+
+        if (_runnerInstance == null)
         {
-            runner.LoadScene(SceneRef.FromIndex(1));
+            _runnerInstance = Instantiate(runnerPrefab);
+        }
+
+        // 2. Sahne yöneticisini runner'a baðla
+        _runnerInstance.ProvideInput = true;
+        var sceneManager = _runnerInstance.gameObject.AddComponent<NetworkSceneManagerDefault>();
+
+        // 3. Battlelands Royale stili AutoHostOrClient eþleþtirmesi baþlat
+        var result = await _runnerInstance.StartGame(new StartGameArgs()
+        {
+            GameMode = GameMode.AutoHostOrClient,
+            SessionName = "BattlelandsArena", // Ýleride rastgele veya versiyon bazlý yapýlabilir
+            SceneManager = sceneManager,
+            Scene = SceneRef.FromIndex(1) // 1. Index'teki oyun sahnesine geçiþ yap
+        });
+
+        if (result.Ok)
+        {
+            Debug.Log("Odaya baþarýyla baðlanýldý.");
         }
         else
         {
-            Debug.LogWarning("Runner bulunamadý veya bu istemci Server yetkisine sahip deðil.");
+            Debug.LogError($"Baðlantý hatasý: {result.ShutdownReason}");
+            // Baþarýsýz olursa Runner'ý temizle
+            Destroy(_runnerInstance.gameObject);
         }
     }
 }

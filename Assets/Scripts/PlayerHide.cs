@@ -1,8 +1,6 @@
 using Fusion;
 using UnityEngine;
 
-// MÝMARÝ MÜDAHALE: NetworkBehaviour yerine PlayerStateBase'den türetildi.
-// Artýk baðýmsýz çalýþmayacak, PlayerStateMachine tarafýndan yönetilecek.
 public class PlayerHide : PlayerStateBase
 {
     [Header("Ayarlar")]
@@ -31,7 +29,7 @@ public class PlayerHide : PlayerStateBase
     public override void EnterState()
     {
         lastPosition = transform.position;
-        isHidden = true; // State'e girildiðinde gizlen
+        isHidden = true;
     }
 
     public override void UpdateNetworkState(NetworkInputData input)
@@ -50,16 +48,14 @@ public class PlayerHide : PlayerStateBase
             footprintIcon.SetActive(isMoving);
         }
 
-        // Battlelands Royale'de çalýlýkta hareket %30 daha yavaþtýr. Hareket mantýðý State içinde çözülür.
         if (input.JoystickInput.sqrMagnitude > 0.01f)
         {
             Vector3 moveDirection = new Vector3(input.JoystickInput.x, 0, input.JoystickInput.y).normalized;
-            transform.position += moveDirection * 3.5f * Runner.DeltaTime; // 5f olan hýz 3.5f'e düþtü
-        }
-        else
-        {
-            // Eðer oyuncu çalýlýkta duruyorsa ve etrafýnda düþman yoksa tam Idle durumuna geçilebilir
-            // stateMachine.ChangeState(0); (Gelecek iterasyonda eklenecek)
+            transform.position += moveDirection * 3.5f * Runner.DeltaTime;
+
+            // MÝMARÝ DÜZELTME: Karakterin çalý içinde yürüdüðü yöne dönmesini saðlayan rotasyon eklendi
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Runner.DeltaTime * 15f);
         }
 
         lastPosition = transform.position;
@@ -110,7 +106,6 @@ public class PlayerHide : PlayerStateBase
     {
         if (!HasStateAuthority) return;
 
-        // Çalýlýða girildiðinde StateMachine'e Hide State'ine (Örn: Index 2) geçmesini bildir.
         if (other.CompareTag("Bush"))
         {
             stateMachine.ChangeState(2);
@@ -121,10 +116,17 @@ public class PlayerHide : PlayerStateBase
     {
         if (!HasStateAuthority) return;
 
-        // Çalýlýktan çýkýldýðýnda Move (Örn: Index 1) veya Idle (Index 0) State'ine dön.
         if (other.CompareTag("Bush"))
         {
-            stateMachine.ChangeState(0);
+            // MÝMARÝ DÜZELTME: Çýkýþ anýnda joystick durumuna göre doðru State'e yönlendirme yap.
+            if (GetInput<NetworkInputData>(out var input) && input.JoystickInput.sqrMagnitude > 0.01f)
+            {
+                stateMachine.ChangeState(1); // Move
+            }
+            else
+            {
+                stateMachine.ChangeState(0); // Idle
+            }
         }
     }
 }

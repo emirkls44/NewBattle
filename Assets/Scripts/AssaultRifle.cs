@@ -6,8 +6,14 @@ public class AssaultRifle : WeaponBase
     [Header("Assault Rifle Ayarlarý")]
     public int damage = 15;
 
-    // TracerPool referansý Inspector'dan atanmalý veya Object.FindFirstObjectByType ile bulunmalýdýr.
-    public TracerPool tracerPool;
+    private TracerPool _tracerPool;
+
+    public override void Spawned()
+    {
+        base.Spawned();
+        // Mimari Düzeltme: Prefab referans kopmasýný önlemek için dinamik arama
+        _tracerPool = UnityEngine.Object.FindFirstObjectByType<TracerPool>();
+    }
 
     protected override void ExecuteFire(Vector3 firePoint, Vector2 aimDirection)
     {
@@ -40,11 +46,11 @@ public class AssaultRifle : WeaponBase
     [Rpc(RpcSources.InputAuthority | RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayShootEffects(Vector3 hitPoint, Vector3 firePoint)
     {
-        if (tracerPool != null)
+        if (_tracerPool != null)
         {
             Vector3 direction = (hitPoint - firePoint).normalized;
             Quaternion rotation = direction != Vector3.zero ? Quaternion.LookRotation(direction) : Quaternion.identity;
-            tracerPool.GetTracer(firePoint, rotation);
+            _tracerPool.GetTracer(firePoint, rotation);
         }
     }
 }

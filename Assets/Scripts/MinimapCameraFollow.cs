@@ -6,18 +6,22 @@ public class MinimapCameraFollow : MonoBehaviour
     public Transform playerTarget;
     public float mapHeight = 50f;
 
-    private Quaternion _mapRotation = Quaternion.Euler(90f, 0f, 0f);
+    private readonly Quaternion _mapRotation = Quaternion.Euler(90f, 0f, 0f);
     private Vector3 _desiredPosition;
 
     void LateUpdate()
     {
-        if (playerTarget != null)
-        {
-            _desiredPosition.x = playerTarget.position.x;
-            _desiredPosition.y = mapHeight;
-            _desiredPosition.z = playerTarget.position.z;
+        if (playerTarget == null) return;
 
-            transform.SetPositionAndRotation(_desiredPosition, _mapRotation);
-        }
+        _desiredPosition.x = playerTarget.position.x;
+        _desiredPosition.y = mapHeight;
+        _desiredPosition.z = playerTarget.position.z;
+
+        transform.SetPositionAndRotation(_desiredPosition, _mapRotation);
+    }
+
+    public void SetTarget(Transform newTarget)
+    {
+        playerTarget = newTarget;
     }
 }

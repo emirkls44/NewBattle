@@ -2,35 +2,58 @@ using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
-    [Header("Takip Ayarlarý")]
+    [Header("Takip Ayarlari")]
     public Transform target;
-    public float smoothTime = 0.125f;
-    public Vector3 offset = new Vector3(0f, 15f, -10f);
+    public Vector3 offset = new(0f, 15f, -10f);
+    public float followSpeed = 25f;
 
-    private Vector3 _currentVelocity = Vector3.zero;
+    [Header("Harita Kamera Siniri")]
+    public Vector2 mapCenter = Vector2.zero;
+    public float cameraFocusRadius = 25f;
+    public float cameraAngle = 55f;
 
     private void Start()
     {
-        transform.rotation = Quaternion.Euler(55f, 0f, 0f);
+        transform.rotation = Quaternion.Euler(cameraAngle, 0f, 0f);
     }
 
     private void LateUpdate()
     {
-        if (target == null) return;
+        if (target == null)
+            return;
 
-        // Vektör bileþenlerini doðrudan atayarak tahsisten (GC) kaçýnma
-        Vector3 desiredPosition = new Vector3(
-            target.position.x + offset.x,
-            target.position.y + offset.y,
-            target.position.z + offset.z
+        Vector3 desiredPosition = GetDesiredPosition();
+        transform.position = Vector3.Lerp(
+            transform.position,
+            desiredPosition,
+            Time.deltaTime * followSpeed
         );
-
-        // Frame-rate baðýmsýz, matematiksel olarak doðru ve titremeyi önleyen yaklaþým
-        transform.position = Vector3.SmoothDamp(transform.position, desiredPosition, ref _currentVelocity, smoothTime);
     }
 
     public void SetTarget(Transform newTarget)
     {
         target = newTarget;
+
+        if (target != null)
+            transform.position = GetDesiredPosition();
+    }
+
+    private Vector3 GetDesiredPosition()
+    {
+        Vector2 targetFromCenter = new(
+            target.position.x - mapCenter.x,
+            target.position.z - mapCenter.y
+        );
+
+        if (targetFromCenter.sqrMagnitude > cameraFocusRadius * cameraFocusRadius)
+            targetFromCenter = targetFromCenter.normalized * cameraFocusRadius;
+
+        Vector3 focusPosition = new(
+            mapCenter.x + targetFromCenter.x,
+            target.position.y,
+            mapCenter.y + targetFromCenter.y
+        );
+
+        return focusPosition + offset;
     }
 }
