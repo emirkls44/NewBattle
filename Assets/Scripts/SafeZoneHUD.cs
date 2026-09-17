@@ -10,7 +10,7 @@ public class SafeZoneHUD : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
 
     [Header("Gorunum")]
-    [SerializeField] private Color waitingColor = new(0.25f, 0.75f, 1f, 1f);
+    [SerializeField] private Color waitingColor = new(1f, 1f, 1f, 1f);
     [SerializeField] private Color shrinkingColor = new(1f, 0.24f, 0.42f, 1f);
     [SerializeField] private Color finalColor = new(1f, 0.68f, 0.1f, 1f);
     [SerializeField, Min(1f)] private float lastSecondsPulseScale = 1.12f;
@@ -23,17 +23,11 @@ public class SafeZoneHUD : MonoBehaviour
     private void Start()
     {
         ResolveHierarchyReferences();
-
         if (zoneCounterRoot != null)
             _baseScale = zoneCounterRoot.localScale;
 
         if (!ReferencesAreValid())
-        {
-            Debug.LogError(
-                "SafeZoneHUD: ZoneCounter bulunamadi. Play modunu kapatip component menusunden " +
-                "'Create Editable Zone Counter In Hierarchy' calistir."
-            );
-        }
+            Debug.LogError("SafeZoneHUD: ZoneCounter bulunamadi. Component menusunden 'Create Editable Zone Counter In Hierarchy' calistir.");
     }
 
     private void Update()
@@ -53,19 +47,13 @@ public class SafeZoneHUD : MonoBehaviour
         if (!ReferencesAreValid())
             return;
 
-        bool safeZoneIsSpawned = _safeZone != null &&
-                                 _safeZone.Object != null &&
-                                 _safeZone.Runner != null &&
-                                 _safeZone.Runner.IsRunning;
-
-        bool gameplayIsRunning = _dropPhase != null &&
-                                 _dropPhase.Object != null &&
-                                 _dropPhase.Runner != null &&
-                                 _dropPhase.Runner.IsRunning &&
+        bool safeZoneIsSpawned = _safeZone != null && _safeZone.Object != null &&
+                                 _safeZone.Runner != null && _safeZone.Runner.IsRunning;
+        bool gameplayIsRunning = _dropPhase != null && _dropPhase.Object != null &&
+                                 _dropPhase.Runner != null && _dropPhase.Runner.IsRunning &&
                                  _dropPhase.GameplayStarted;
 
         zoneCounterRoot.gameObject.SetActive(safeZoneIsSpawned && gameplayIsRunning);
-
         if (!safeZoneIsSpawned || !gameplayIsRunning)
             return;
 
@@ -80,15 +68,16 @@ public class SafeZoneHUD : MonoBehaviour
 
         float remaining = _safeZone.RemainingPhaseSeconds;
         timerText.text = Mathf.CeilToInt(remaining).ToString();
+        string stage = $"{_safeZone.StageNumber}/{_safeZone.StageCount}";
 
         if (_safeZone.IsWaitingForShrink)
         {
-            statusText.text = "ALAN DARALACAK";
+            statusText.text = $"ALAN {stage} DARALACAK";
             circleOutline.color = waitingColor;
         }
         else
         {
-            statusText.text = "ALAN DARALIYOR";
+            statusText.text = $"ALAN {stage} DARALIYOR";
             circleOutline.color = shrinkingColor;
         }
 
@@ -105,10 +94,7 @@ public class SafeZoneHUD : MonoBehaviour
 
     private void ResolveHierarchyReferences()
     {
-        Transform root = transform.name == "ZoneCounter"
-            ? transform
-            : transform.Find("ZoneCounter");
-
+        Transform root = transform.name == "ZoneCounter" ? transform : transform.Find("ZoneCounter");
         if (root == null)
             return;
 
@@ -120,10 +106,7 @@ public class SafeZoneHUD : MonoBehaviour
 
     private bool ReferencesAreValid()
     {
-        return zoneCounterRoot != null
-            && circleOutline != null
-            && timerText != null
-            && statusText != null;
+        return zoneCounterRoot != null && circleOutline != null && timerText != null && statusText != null;
     }
 
     [ContextMenu("Create Editable Zone Counter In Hierarchy")]
@@ -141,7 +124,6 @@ public class SafeZoneHUD : MonoBehaviour
         {
             ResolveHierarchyReferences();
             UnityEditor.Selection.activeGameObject = existing.gameObject;
-            Debug.Log("ZoneCounter zaten Hierarchy'de bulunuyor.");
             return;
         }
 
@@ -151,7 +133,7 @@ public class SafeZoneHUD : MonoBehaviour
         zoneCounterRoot.anchorMax = new Vector2(0.5f, 1f);
         zoneCounterRoot.pivot = new Vector2(0.5f, 1f);
         zoneCounterRoot.anchoredPosition = new Vector2(0f, -22f);
-        zoneCounterRoot.sizeDelta = new Vector2(190f, 112f);
+        zoneCounterRoot.sizeDelta = new Vector2(220f, 112f);
 
         GameObject circleObject = CreateUiObject("Circle", zoneCounterRoot);
         RectTransform circleRect = circleObject.GetComponent<RectTransform>();
@@ -166,8 +148,8 @@ public class SafeZoneHUD : MonoBehaviour
         circleOutline.SetThickness(9f);
         circleOutline.raycastTarget = false;
 
-        timerText = CreateText(circleRect, "Timer", Vector2.zero, new Vector2(72f, 72f), "20", 32f);
-        statusText = CreateText(zoneCounterRoot, "Status", new Vector2(0f, -88f), new Vector2(190f, 24f), "ALAN DARALACAK", 15f);
+        timerText = CreateText(circleRect, "Timer", Vector2.zero, new Vector2(72f, 72f), "10", 32f);
+        statusText = CreateText(zoneCounterRoot, "Status", new Vector2(0f, -88f), new Vector2(220f, 24f), "ALAN 1/5 DARALACAK", 15f);
 
         UnityEditor.Undo.RegisterCreatedObjectUndo(rootObject, "Create Editable Zone Counter");
         UnityEditor.EditorUtility.SetDirty(gameObject);
@@ -183,13 +165,7 @@ public class SafeZoneHUD : MonoBehaviour
         return created;
     }
 
-    private static TextMeshProUGUI CreateText(
-        RectTransform parent,
-        string objectName,
-        Vector2 position,
-        Vector2 size,
-        string value,
-        float fontSize)
+    private static TextMeshProUGUI CreateText(RectTransform parent, string objectName, Vector2 position, Vector2 size, string value, float fontSize)
     {
         GameObject textObject = CreateUiObject(objectName, parent);
         RectTransform rect = textObject.GetComponent<RectTransform>();

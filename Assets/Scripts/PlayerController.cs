@@ -4,6 +4,16 @@ using UnityEngine;
 [RequireComponent(typeof(NetworkTransform), typeof(PlayerStateMachine), typeof(PlayerShooting))]
 public class PlayerController : NetworkBehaviour
 {
+    [Header("Yercekimi")]
+    [Tooltip("Egimli araziye oturmak icin uygulanan dusus ivmesi.")]
+    [SerializeField] private float gravity = -22f;
+    [Tooltip("Yerdeyken zemine yapisik kalmak icin uygulanan sabit bastirma.")]
+    [SerializeField] private float groundedStick = -2f;
+
+    [Header("Inis")]
+    [Tooltip("Inis noktasi ararken zemin sayilan katmanlar.")]
+    [SerializeField] private LayerMask dropGroundMask = ~0;
+
     [Header("Silah Ayarlari")]
     public GameObject weaponInHand;
     public Animator anim;
@@ -15,7 +25,10 @@ public class PlayerController : NetworkBehaviour
     private ChangeDetector _changeDetector;
     private LobbyCountdownController _lobbyCountdown;
     private DropPhaseController _dropPhase;
+    private SafeZoneController _safeZone;
     private CharacterController _characterController;
+    private NewBattle.Gameplay.ParachuteDescent _descent;
+    private float _verticalVelocity;
     private static readonly int HasWeaponHash = Animator.StringToHash("HasWeapon");
 
     [Networked] public NetworkBool HasSelectedDrop { get; private set; }
@@ -27,6 +40,7 @@ public class PlayerController : NetworkBehaviour
         _stateMachine = GetComponent<PlayerStateMachine>();
         _shooting = GetComponent<PlayerShooting>();
         _characterController = GetComponent<CharacterController>();
+        _descent = GetComponent<NewBattle.Gameplay.ParachuteDescent>();
 
         if (weaponInHand != null)
             weaponInHand.SetActive(false);
@@ -37,6 +51,7 @@ public class PlayerController : NetworkBehaviour
         _changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
         _lobbyCountdown = UnityEngine.Object.FindFirstObjectByType<LobbyCountdownController>();
         _dropPhase = UnityEngine.Object.FindFirstObjectByType<DropPhaseController>();
+        _safeZone = UnityEngine.Object.FindFirstObjectByType<SafeZoneController>();
 
         if (HasStateAuthority)
         {
@@ -80,6 +95,17 @@ public class PlayerController : NetworkBehaviour
         if (HasStateAuthority && !DropApplied)
             ApplyDropPosition();
 
+        // Inis surerken kontrol ParachuteDescent'te: oyuncu ne yurur ne ates eder,
+        // sadece suzulme yonunu degistirebilir.
+        if (_descent != null && _descent.IsDescending)
+            return;
+
+        // Yercekimi girdiden bagimsiz calisir: girdi paketi dusen bir oyuncu da,
+        // hic hareket etmeyen bir oyuncu da arazinin egimine oturmali. Duz zeminli
+        // prototip arenada fark etmiyordu, gercek yukseltili haritada sart.
+        if (HasStateAuthority)
+            ApplyGravity();
+
         if (!GetInput<NetworkInputData>(out var input))
             return;
 
@@ -88,6 +114,25 @@ public class PlayerController : NetworkBehaviour
         // Saldiri state'e bagli degildir: oyuncu dururken de kosarken de saldirabilir.
         if (input.RightJoystickVector.sqrMagnitude > 0.01f)
             _shooting.ProcessShooting(input.RightJoystickVector);
+    }
+
+    private void ApplyGravity()
+    {
+        if (_characterController == null || !_characterController.enabled)
+            return;
+
+        if (_characterController.isGrounded && _verticalVelocity < 0f)
+        {
+            // Sifir yerine kucuk bir negatif deger: isGrounded'in her tick
+            // dogru donmesi icin karakterin zemine bastirilmasi gerekiyor.
+            _verticalVelocity = groundedStick;
+        }
+        else
+        {
+            _verticalVelocity += gravity * Runner.DeltaTime;
+        }
+
+        _characterController.Move(Vector3.up * (_verticalVelocity * Runner.DeltaTime));
     }
 
     public void RequestDropPosition(Vector3 worldPosition)
@@ -101,14 +146,63 @@ public class PlayerController : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_RequestDropPosition(Vector3 worldPosition)
     {
-        float radius = _dropPhase != null ? _dropPhase.PlayableMapRadius : 29f;
-        Vector2 horizontal = Vector2.ClampMagnitude(
-            new Vector2(worldPosition.x, worldPosition.z),
-            radius * 0.96f
-        );
-
-        SelectedDropPosition = new Vector3(horizontal.x, 0f, horizontal.y);
+        SelectedDropPosition = ClampToSafeArea(worldPosition);
         HasSelectedDrop = true;
+    }
+
+    /// <summary>
+    /// Secilen inis noktasini once haritanin, sonra GUVENLI ALANIN icine tasir.
+    ///
+    /// Oyuncu ilk cemberin disina dokunabilir - bu bir hata degil, harita
+    /// tamamen gorunuyor ve orasi da haritanin bir parcasi. Ama oraya inmek
+    /// demek, ayaklari yere deger degmez can kaybetmeye baslamak demek. O yuzden
+    /// secimi reddetmek yerine cemberin icindeki EN YAKIN noktaya kaydiriyoruz:
+    /// oyuncu nereye inmek istedigini soylemis oluyor, oyun da onu cezalandirmadan
+    /// oraya en yakin gecerli yere birakiyor.
+    /// </summary>
+    private Vector3 ClampToSafeArea(Vector3 worldPosition)
+    {
+        float mapRadius = _dropPhase != null ? _dropPhase.PlayableMapRadius : 29f;
+
+        Vector2 point = Vector2.ClampMagnitude(
+            new Vector2(worldPosition.x, worldPosition.z),
+            mapRadius * 0.96f);
+
+        SafeZoneController safeZone = _safeZone != null
+            ? _safeZone
+            : _safeZone = UnityEngine.Object.FindFirstObjectByType<SafeZoneController>();
+
+        if (safeZone != null && safeZone.Object != null && safeZone.Object.IsValid &&
+            safeZone.SafeRadius > 0f)
+        {
+            Vector2 center = new(safeZone.SafeCenter.x, safeZone.SafeCenter.z);
+            Vector2 fromCenter = point - center;
+
+            // Kenara yapismasin: cemberin hemen icine, biraz pay birakarak koy.
+            float allowed = safeZone.SafeRadius * 0.92f;
+
+            if (fromCenter.magnitude > allowed)
+                point = center + fromCenter.normalized * allowed;
+        }
+
+        // SON VE EN ONEMLI ADIM: secilen yerin altinda gercekten zemin var mi.
+        //
+        // Yukaridaki iki kirpma noktayi haritanin ve alanin "matematiksel"
+        // icine tasiyor, ama harita dairesel degil - cemberin icinde kalan bir
+        // nokta yine de arazinin bittigi bir bosluga denk gelebilir. Oraya
+        // birakilan oyuncu yercekimiyle sonsuza kadar duser.
+        //
+        // GroundSampler bulamazsa cevreyi tarayip EN YAKIN gecerli zemine tasir.
+        Vector3 candidate = new(point.x, 0f, point.y);
+
+        if (NewBattle.Gameplay.GroundSampler.TryFindGround(
+                candidate, mapRadius, dropGroundMask, out Vector3 ground))
+        {
+            return ground;
+        }
+
+        // Hicbir yerde zemin yoksa (harita henuz aktif degil) alanin merkezine birak.
+        return safeZone != null ? safeZone.SafeCenter : Vector3.zero;
     }
 
     private void ApplyDropPosition()
@@ -119,7 +213,18 @@ public class PlayerController : NetworkBehaviour
         if (!HasSelectedDrop)
         {
             Vector2 randomPoint = Random.insideUnitCircle * radius * 0.9f;
-            targetPosition = new Vector3(randomPoint.x, 0f, randomPoint.y);
+            targetPosition = ClampToSafeArea(new Vector3(randomPoint.x, 0f, randomPoint.y));
+        }
+
+        DropApplied = true;
+
+        // Parasut bileseni varsa oyuncu haritaya suzulerek iner; yoksa eski
+        // davranisa (anlik yerlestirme) duseriz, boylece prefab guncellenmemis
+        // bir projede oyun yine de calisir.
+        if (_descent != null)
+        {
+            _descent.BeginDescent(targetPosition);
+            return;
         }
 
         bool controllerWasEnabled = _characterController != null && _characterController.enabled;
@@ -130,8 +235,6 @@ public class PlayerController : NetworkBehaviour
 
         if (controllerWasEnabled)
             _characterController.enabled = true;
-
-        DropApplied = true;
     }
 
     public override void Render()

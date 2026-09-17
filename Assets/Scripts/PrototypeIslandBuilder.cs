@@ -5,6 +5,9 @@ public class PrototypeIslandBuilder : MonoBehaviour
 {
     [SerializeField] private bool buildOnAwake = true;
 
+    [Tooltip("Kapaliyken ada sahne acilisinda degil, sadece elle cagrildiginda kurulur.")]
+    [SerializeField] private bool buildInMenu;
+
     private Transform _root;
     private Material _waterMaterial;
     private Material _grassMaterial;
@@ -17,7 +20,10 @@ public class PrototypeIslandBuilder : MonoBehaviour
 
     private void Awake()
     {
-        if (buildOnAwake)
+        // Menude ada kurulmaz: oyuncu mod secmeden sahneye hicbir sey dusmemeli.
+        // Harita artik disaridan geldigi icin bu bilesen zaten devre disi
+        // birakiliyor; yine de acik kalirsa menuyu kirletmesin.
+        if (buildOnAwake && buildInMenu)
             BuildIsland();
     }
 

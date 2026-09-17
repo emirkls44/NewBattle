@@ -31,6 +31,13 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
     private NetworkRunner _runner;
     private bool _lootSpawned;
 
+    // LootZoneManager kendi tablosu bos kaldiginda bu prefablari devralir.
+    // Boylece ayni prefab referanslarini iki yerde elle doldurmak gerekmez.
+    public NetworkPrefabRef RiflePickupPrefab => riflePickupPrefab;
+    public NetworkPrefabRef HealthPickupPrefab => healthPickupPrefab;
+    public NetworkPrefabRef ShieldPickupPrefab => shieldPickupPrefab;
+    public NetworkPrefabRef AmmoPickupPrefab => ammoPickupPrefab;
+
     private void Awake()
     {
         _runner = GetComponent<NetworkRunner>();
@@ -47,6 +54,16 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
     {
         if (!runner.IsServer || _lootSpawned)
             return;
+
+        // Bolgesel loot sistemi devredeyse toplu spawn yapma: ikisi birden calisirsa
+        // harita iki kat loot ile dolar ve bolgesel yuklemenin anlami kalmaz.
+        if (UnityEngine.Object.FindFirstObjectByType<NewBattle.Gameplay.LootZoneManager>(
+                FindObjectsInactive.Include) != null)
+        {
+            _lootSpawned = true;
+            Debug.Log("[Loot] LootZoneManager bulundu; toplu spawn devre disi.");
+            return;
+        }
 
         if (!AllPrefabsValid())
         {

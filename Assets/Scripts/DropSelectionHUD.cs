@@ -24,6 +24,14 @@ public class DropSelectionHUD : MonoBehaviour
     private GameObject _mapCameraObject;
     private float _nextSearchTime;
 
+    [Header("Harita Gorunumu")]
+    [Tooltip("Oynanabilir yaricapin kac katini goster. 1 = sadece oynanabilir " +
+             "alan, 1.7 = harita kenarlari da gorunur.")]
+    [SerializeField, Min(1f)] private float mapViewMultiplier = 1.7f;
+
+    /// <summary>Oyuncu haritaya dokunup inis noktasi sectiyse true.</summary>
+    private bool _hasSelectedPoint;
+
     private void Start()
     {
         ResolveHierarchyReferences();
@@ -37,6 +45,7 @@ public class DropSelectionHUD : MonoBehaviour
             return;
         }
 
+        ApplyPanelStyle();
         CreateMapCamera();
         dropRoot.SetActive(false);
     }
@@ -62,8 +71,8 @@ public class DropSelectionHUD : MonoBehaviour
 
         if (!dropPhaseIsSpawned)
         {
-            playerCountText.text = "ODA HAZIRLANIYOR";
-            countdownText.text = "BAGLANTI BEKLENIYOR";
+            playerCountText.text = "ODA ARANIYOR";
+            countdownText.text = "LUTFEN BEKLE";
             return;
         }
 
@@ -74,8 +83,8 @@ public class DropSelectionHUD : MonoBehaviour
 
         if (!lobbyIsSpawned)
         {
-            playerCountText.text = "ODA HAZIRLANIYOR";
-            countdownText.text = "BAGLANTI BEKLENIYOR";
+            playerCountText.text = "ODA ARANIYOR";
+            countdownText.text = "LUTFEN BEKLE";
             return;
         }
 
@@ -85,15 +94,25 @@ public class DropSelectionHUD : MonoBehaviour
 
         if (!_lobby.MatchStarted)
         {
-            countdownText.text = _lobby.CountdownRunning
-                ? (_lobby.RosterFinalized
-                    ? $"INIS {Mathf.CeilToInt(_lobby.RemainingSeconds)} SANIYE ICINDE"
-                    : $"OYUNCULAR BEKLENIYOR: {Mathf.CeilToInt(_lobby.RemainingSeconds)} sn")
-                : "OYUNCULAR BEKLENIYOR";
+            // Oyuncunun bilmesi gereken tek sey: ne kadar vaktim var ve
+            // secimimi yaptim mi. Onceki metinler bunlarin ikisini de
+            // soylemiyordu.
+            if (_lobby.CountdownRunning)
+            {
+                int seconds = Mathf.CeilToInt(_lobby.RemainingSeconds);
+                countdownText.text = _hasSelectedPoint
+                    ? $"INISE {seconds}"
+                    : $"INISE {seconds}  -  HARITAYA DOKUN";
+            }
+            else
+            {
+                countdownText.text = "RAKIPLER BEKLENIYOR";
+            }
+
             return;
         }
 
-        countdownText.text = "INIS BASLIYOR";
+        countdownText.text = "ATLIYORSUN!";
     }
 
     private void OnDestroy()
@@ -132,12 +151,16 @@ public class DropSelectionHUD : MonoBehaviour
             Mathf.InverseLerp(rect.yMin, rect.yMax, localPoint.y)
         );
 
-        Vector2 circlePoint = (normalized - Vector2.one * 0.5f) * 2f;
-        circlePoint = Vector2.ClampMagnitude(circlePoint, 0.96f);
-        normalized = circlePoint * 0.5f + Vector2.one * 0.5f;
+        // Harita artik kare gosteriliyor, dolayisiyla secim de kare.
+        // Cemberin disina dokunmak yasak DEGIL: sunucu secilen noktayi guvenli
+        // alanin icindeki en yakin noktaya tasiyor (bkz. PlayerController).
+        Vector2 mapPoint = (normalized - Vector2.one * 0.5f) * 2f;
+        mapPoint.x = Mathf.Clamp(mapPoint.x, -1f, 1f);
+        mapPoint.y = Mathf.Clamp(mapPoint.y, -1f, 1f);
+        normalized = mapPoint * 0.5f + Vector2.one * 0.5f;
 
-        float radius = _dropPhase != null ? _dropPhase.PlayableMapRadius : fallbackMapRadius;
-        Vector3 worldPoint = new(circlePoint.x * radius, 0f, circlePoint.y * radius);
+        float radius = MapViewRadius;
+        Vector3 worldPoint = new(mapPoint.x * radius, 0f, mapPoint.y * radius);
 
         if (_localPlayer == null)
             ResolveRuntimeReferences(true);
@@ -146,6 +169,7 @@ public class DropSelectionHUD : MonoBehaviour
             return;
 
         _localPlayer.RequestDropPosition(worldPoint);
+        _hasSelectedPoint = true;
         selectionMarker.anchorMin = normalized;
         selectionMarker.anchorMax = normalized;
         selectionMarker.anchoredPosition = Vector2.zero;
@@ -181,6 +205,70 @@ public class DropSelectionHUD : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Ekranin tamamini kaplayan, TAM OPAK bir panel oldugundan emin olur ve
+    /// her seyin ustune ciker.
+    ///
+    /// NEDEN calisma aninda: panel sahnede zaten kurulu olabilir ve eski
+    /// ayarlarla (yari saydam arka plan, dusuk siralama) gelmis olabilir. Arkada
+    /// oyunun akmaya devam ettigi bir secim ekrani hem dikkat dagitir hem de
+    /// "oyun basladi mi basmadi mi" belirsizligi yaratir.
+    /// </summary>
+    private void ApplyPanelStyle()
+    {
+        if (dropRoot == null)
+            return;
+
+        if (dropRoot.TryGetComponent(out UnityEngine.UI.Image background))
+        {
+            Color color = background.color;
+            color.a = 1f;
+            background.color = color;
+            background.raycastTarget = true;
+        }
+
+        if (dropRoot.TryGetComponent(out RectTransform rect))
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        Canvas canvas = dropRoot.GetComponent<Canvas>();
+        if (canvas == null)
+            canvas = dropRoot.AddComponent<Canvas>();
+
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 900;
+
+        if (dropRoot.GetComponent<UnityEngine.UI.GraphicRaycaster>() == null)
+            dropRoot.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+
+        SetTextIfPresent("Title", "INIS NOKTASI SEC");
+        SetTextIfPresent("Hint", "Haritada inmek istedigin yere dokun");
+    }
+
+    private void SetTextIfPresent(string childName, string value)
+    {
+        Transform child = dropRoot.transform.Find(childName);
+        if (child != null && child.TryGetComponent(out TMPro.TextMeshProUGUI text))
+            text.text = value;
+    }
+
+    /// <summary>
+    /// Inis haritasinda gorunen dunya yaricapi. Oynanabilir alandan genis
+    /// tutuluyor ki harita kenarlari da gorunsun.
+    /// </summary>
+    private float MapViewRadius
+    {
+        get
+        {
+            float playable = _dropPhase != null ? _dropPhase.PlayableMapRadius : fallbackMapRadius;
+            return playable * mapViewMultiplier;
+        }
+    }
+
     private void CreateMapCamera()
     {
         _mapTexture = new RenderTexture(textureResolution, textureResolution, 16)
@@ -193,9 +281,10 @@ public class DropSelectionHUD : MonoBehaviour
         _mapCameraObject = new GameObject("DropSelectionCamera");
         Camera mapCamera = _mapCameraObject.AddComponent<Camera>();
         mapCamera.orthographic = true;
-        mapCamera.orthographicSize = _dropPhase != null
-            ? _dropPhase.PlayableMapRadius
-            : fallbackMapRadius;
+        // Haritanin TAMAMI gorunsun. Onceki deger oynanabilir cemberin yaricapi
+        // idi, yani harita cemberin disina tasan her yeri kirpiliyordu; oyuncu
+        // indigi yerin etrafinda ne oldugunu goremiyordu.
+        mapCamera.orthographicSize = MapViewRadius;
         mapCamera.clearFlags = CameraClearFlags.SolidColor;
         mapCamera.backgroundColor = new Color(0.08f, 0.25f, 0.30f, 1f);
         mapCamera.targetTexture = _mapTexture;
@@ -205,6 +294,10 @@ public class DropSelectionHUD : MonoBehaviour
             new Vector3(0f, cameraHeight, 0f),
             Quaternion.Euler(90f, 0f, 0f)
         );
+
+        // Inis haritasinda sadece arazi gorunsun: oyuncu, bot ve loot
+        // gorselleri bu kameranin render'i sirasinda gizlenir.
+        _mapCameraObject.AddComponent<NewBattle.Gameplay.DropMapCulling>();
 
         mapImage.texture = _mapTexture;
     }

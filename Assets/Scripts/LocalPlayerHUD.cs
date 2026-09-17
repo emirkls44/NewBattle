@@ -126,6 +126,20 @@ public class LocalPlayerHUD : MonoBehaviour
             && shieldText != null;
     }
 
+    /// <summary>
+    /// Networked alanlar SADECE Spawned() ile Despawned() arasinda okunabilir.
+    /// Bu HUD bir MonoBehaviour: Update'i oyuncu nesnesinin yasam dongusunden
+    /// bagimsiz doner. Oyuncu spawn olmadan once veya despawn olduktan sonra
+    /// currentHealth'e dokunmak InvalidOperationException atiyordu.
+    /// </summary>
+    private bool IsHealthReadable()
+    {
+        return _health != null
+            && _health.Object != null
+            && _health.Object.IsValid
+            && _health.Runner != null;
+    }
+
     private void Refresh()
     {
         if (!ReferencesAreValid())
@@ -136,7 +150,7 @@ public class LocalPlayerHUD : MonoBehaviour
         int healthValue = 0;
         int shieldValue = 0;
 
-        if (_health != null)
+        if (IsHealthReadable())
         {
             healthRatio = _health.maxHealth > 0f
                 ? Mathf.Clamp01(_health.currentHealth / _health.maxHealth)

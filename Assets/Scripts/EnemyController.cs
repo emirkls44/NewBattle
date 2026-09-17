@@ -11,7 +11,7 @@ public class EnemyController : NetworkBehaviour
     private NavMeshAgent _agent;
     private HealthController _healthController;
     private Transform _target;
-    private PlayerHide _playerHideScript;
+    private NewBattle.Gameplay.PlayerVisibility _targetVisibility;
     private GameManager _gameManager;
 
     [Header("Görüþ ve Devriye Ayarlarý")]
@@ -70,7 +70,9 @@ public class EnemyController : NetworkBehaviour
         if (_target == null) return;
 
         float distanceToPlayerSqr = Vector3.SqrMagnitude(transform.position - _target.position);
-        bool isPlayerHidden = (_playerHideScript != null && _playerHideScript.isHidden);
+        // Gizlenme kurali tek yerde yasiyor: bot da oyuncuyla ayni kurala uyar.
+        bool isPlayerHidden = _targetVisibility != null &&
+                              !_targetVisibility.IsBodyVisibleFrom(transform.position);
 
         if (distanceToPlayerSqr <= (detectionRadius * detectionRadius) && !isPlayerHidden)
             currentState = EnemyState.Chasing;
@@ -105,7 +107,7 @@ public class EnemyController : NetworkBehaviour
         if (closestPlayer != _target)
         {
             _target = closestPlayer;
-            if (_target != null) _target.TryGetComponent(out _playerHideScript);
+            if (_target != null) _target.TryGetComponent(out _targetVisibility);
         }
     }
 

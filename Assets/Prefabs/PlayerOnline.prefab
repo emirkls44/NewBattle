@@ -24,13 +24,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1415688254850790928}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.8712711, y: 0.0013795935, z: 0.027449077, w: 0.49003214}
-  m_LocalPosition: {x: -0.034, y: 0.094, z: 0.126}
+  m_LocalRotation: {x: -0.0046816496, y: 0.020783802, z: 0.28409612, w: 0.9585591}
+  m_LocalPosition: {x: 0, y: 0.95, z: 0.25}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 9194732246280358278}
-  m_Father: {fileID: 3929318669532006271}
+  m_Father: {fileID: 5745676278015780383}
   m_LocalEulerAnglesHint: {x: -58.647, y: 185.125, z: -182.699}
 --- !u!1 &2132539817856472277
 GameObject:
@@ -65,6 +65,58 @@ Transform:
   - {fileID: 8874506665785929604}
   m_Father: {fileID: 6517979436657607219}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5194772379612365859
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7894589379136567495}
+  - component: {fileID: 8299529357260977376}
+  m_Layer: 0
+  m_Name: BodyHitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7894589379136567495
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5194772379612365859}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5745676278015780383}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8299529357260977376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5194772379612365859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1014831617, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.Hitbox
+  Type: 3
+  SphereRadius: 0.35
+  CapsuleRadius: 0.35
+  BoxExtents: {x: 0, y: 0, z: 0}
+  CapsuleExtents: 0.65
+  Offset: {x: 0, y: 0.87, z: 0}
+  Root: {fileID: 0}
+  GizmosColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
 --- !u!1 &5306603171586723263
 GameObject:
   m_ObjectHideFlags: 0
@@ -211,6 +263,15 @@ GameObject:
   - component: {fileID: 8637202385070938021}
   - component: {fileID: 8374249172760018616}
   - component: {fileID: 6351197541509066542}
+  - component: {fileID: 4868397180321765481}
+  - component: {fileID: 2747689001087501295}
+  - component: {fileID: 7811951989332322757}
+  - component: {fileID: 8503473336937847846}
+  - component: {fileID: 8385931594669891090}
+  - component: {fileID: 554476888715411979}
+  - component: {fileID: 1753487376790570560}
+  - component: {fileID: 594635409095441111}
+  - component: {fileID: 5290710232284382774}
   m_Layer: 0
   m_Name: PlayerOnline
   m_TagString: Player
@@ -232,6 +293,8 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2934283404659826524}
+  - {fileID: 7894589379136567495}
+  - {fileID: 6517979436657607219}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &467476928805919912
@@ -289,6 +352,10 @@ MonoBehaviour:
   - {fileID: 2147592686916387975}
   - {fileID: 8374249172760018616}
   - {fileID: 6351197541509066542}
+  - {fileID: 4868397180321765481}
+  - {fileID: 554476888715411979}
+  - {fileID: 594635409095441111}
+  - {fileID: 5290710232284382774}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &6824372794148934148
 MonoBehaviour:
@@ -347,7 +414,7 @@ MonoBehaviour:
   moveSpeed: 5
   rotationSpeed: 15
   arenaCenter: {x: 0, y: 0}
-  arenaRadius: 33
+  arenaRadius: 47.94
 --- !u!114 &3431651861579835683
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -360,10 +427,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 626f4184d7773eb45afeb4b5954a8009, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHide
-  revealDistance: 3
-  footprintIcon: {fileID: 0}
-  _isHidden:
-    _value: 0
+  moveSpeed: 3.5
+  rotationSpeed: 15
 --- !u!114 &7207047315026665585
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -390,19 +455,44 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerShooting
   firePoint: {fileID: 8874506665785929604}
-  meleeRange: 1.5
-  meleeForwardOffset: 1
-  meleeCooldownSeconds: 0.5
-  meleeDamage: 25
+  weapons:
+  - label: Yumruk
+    isMelee: 1
+    damage: 25
+    fireInterval: 0.5
+    range: 1.5
+    pellets: 1
+    spreadAngle: 0
+    maxAmmo: 1
+    infiniteAmmo: 1
+    tracerColor: {r: 1, g: 0.93, b: 0.55, a: 1}
+  - label: Tufek
+    isMelee: 0
+    damage: 15
+    fireInterval: 0.18
+    range: 35
+    pellets: 1
+    spreadAngle: 1.5
+    maxAmmo: 120
+    infiniteAmmo: 0
+    tracerColor: {r: 1, g: 0.93, b: 0.55, a: 1}
+  - label: Airdrop Tufegi
+    isMelee: 0
+    damage: 31
+    fireInterval: 0.16
+    range: 42
+    pellets: 1
+    spreadAngle: 1
+    maxAmmo: 120
+    infiniteAmmo: 0
+    tracerColor: {r: 1, g: 0.55, b: 0.15, a: 1}
   meleeHitLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  rifleRange: 35
-  rifleFireInterval: 0.18
-  rifleDamage: 15
   rifleHitLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  meleeForwardOffset: 1
 --- !u!114 &3091210527851534813
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -419,8 +509,7 @@ MonoBehaviour:
   _currentHealth: 0
   maxShield: 100
   _currentShield: 0
-  maxShieldDamageReduction: 1
-  shieldDrainMultiplier: 1
+  shieldAbsorbRatio: 1
 --- !u!114 &5450176138272360823
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -433,9 +522,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de56f54df978518499488d1f89ec7565, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
+  gravity: -22
+  groundedStick: -2
   weaponInHand: {fileID: 919132149155446097, guid: 8f083f752e53ebf4787c6fe3f1cddda4, type: 3}
   anim: {fileID: 9104176048247883046}
   _hasWeapon:
+    _value: 0
+  _HasSelectedDrop:
     _value: 0
 --- !u!114 &-9132476441740439616
 MonoBehaviour:
@@ -495,10 +588,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLoadout
   rifleVisual: {fileID: 2132539817856472277}
-  _HasRifle:
+  _WeaponId: 0
+  _Ammo: 0
+  _HasRangedWeapon:
     _value: 0
-  _RifleAmmo: 0
-  _SelectedSlot: 0
 --- !u!114 &6351197541509066542
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -512,6 +605,183 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCombatStats
   _Kills: 0
+  _TeamId: 0
+--- !u!114 &4868397180321765481
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0cd8f9ccad9c1e41a4a1e556b5eed39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.PlayerPresence
+  movementSpeedThreshold: 0.35
+  combatMemorySeconds: 4
+  _InGrass:
+    _value: 0
+  _IsMoving:
+    _value: 0
+--- !u!114 &2747689001087501295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0e20688ea091d74c93486b4b0452b0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.FootprintTrail
+  stepDistance: 0.55
+  footSpacing: 0.13
+  groundOffset: 0.03
+  lifetime: 4
+  poolSize: 14
+  printColor: {r: 0.18, g: 0.14, b: 0.09, a: 0.55}
+--- !u!114 &7811951989332322757
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9619531e9923404eb6848630ab01299, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.PlayerVisibility
+  closeRevealDistance: 6
+  footprintRevealDistance: 20
+  requireObserverMovement: 0
+  fadeSelfInGrass: 1
+  selfGrassAlpha: 0.45
+--- !u!114 &8503473336937847846
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b4e357582ca7a54fac0b517ca41baad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.PlayerRingIndicator
+  radius: 1.15
+  groundOffset: 0.04
+  selfColor: {r: 1, g: 1, b: 1, a: 0.85}
+  teammateColor: {r: 0.25, g: 0.66, b: 1, a: 0.85}
+  enemyColor: {r: 1, g: 0.27, b: 0.36, a: 0.85}
+  followBodyVisibility: 1
+--- !u!54 &8385931594669891090
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &554476888715411979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7f267429c5fb2a48bc25084cef40330, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.ParachuteDescent
+  freefallSeconds: 0.8
+  parachuteSeconds: 2
+  startAltitude: 48
+  freefallAltitudeShare: 0.68
+  driftSpeed: 6
+  freefallDriftSpeed: 2
+  parachuteMesh: {fileID: 4300000, guid: 32b53bc2dccae3543aae28e66490e841, type: 2}
+  parachuteMaterial: {fileID: 2100000, guid: be542fad40519094f99338d44f198893, type: 2}
+  parachuteOffset: {x: 0, y: 2.15, z: 0}
+  parachuteScale: 1
+  _Phase: 0
+--- !u!114 &1753487376790570560
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8454dca9010ac144a8e90386981a1e72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.AimLineIndicator
+  maxDots: 16
+  dotSpacing: 0.85
+  startOffset: 1.1
+  dotSize: 0.13
+  groundHeight: 0.12
+  alignWithBullets: 1
+  nearColor: {r: 1, g: 1, b: 1, a: 0.85}
+  farColor: {r: 1, g: 1, b: 1, a: 0.18}
+  blockedColor: {r: 1, g: 0.42, b: 0.36, a: 0.75}
+  stopAtObstacle: 1
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+--- !u!114 &594635409095441111
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c72c12ee2638381489cd72647cfe9145, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.PlayerRegistry
+--- !u!114 &5290710232284382774
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1039544458, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.HitboxRoot
+  Config: 3
+  BroadRadius: 1.25
+  Offset: {x: 0, y: 0.87, z: 0}
+  GizmosColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  Hitboxes:
+  - {fileID: 8299529357260977376}
 --- !u!1001 &3400800772213962935
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -579,20 +849,12 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 825894089210680117, guid: 4c95d4a4827bb7e4fad0a3af5194c90b, type: 3}
-    m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 1852576806548013000, guid: 4c95d4a4827bb7e4fad0a3af5194c90b, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 6517979436657607219}
+    m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4c95d4a4827bb7e4fad0a3af5194c90b, type: 3}
 --- !u!4 &2934283404659826524 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4c95d4a4827bb7e4fad0a3af5194c90b, type: 3}
-  m_PrefabInstance: {fileID: 3400800772213962935}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &3929318669532006271 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1852576806548013000, guid: 4c95d4a4827bb7e4fad0a3af5194c90b, type: 3}
   m_PrefabInstance: {fileID: 3400800772213962935}
   m_PrefabAsset: {fileID: 0}
 --- !u!95 &9104176048247883046 stripped

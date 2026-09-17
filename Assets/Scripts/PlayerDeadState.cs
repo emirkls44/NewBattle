@@ -7,6 +7,9 @@ public class PlayerDeadState : PlayerStateBase
 
     [Networked] private TickTimer DespawnTimer { get; set; }
 
+    /// <summary>PlayerLife bu state'e 3 numarayla geciyor.</summary>
+    private const int DeadStateIndex = 3;
+
     private Animator _animator;
     private Collider _collider;
     private bool _hasDeathTrigger;
@@ -45,7 +48,20 @@ public class PlayerDeadState : PlayerStateBase
 
     public override void UpdateNetworkState(NetworkInputData input)
     {
-        if (HasStateAuthority && DespawnTimer.Expired(Runner))
+        // Olu oyuncu girdi islemez. Despawn sayaci FixedUpdateNetwork'te doner:
+        // PlayerController olen oyuncu icin ProcessInput'u hic cagirmadigi icin
+        // sayaci buraya baglamak oyuncunun sonsuza kadar sahnede kalmasina yol acardi.
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (!HasStateAuthority || stateMachine == null)
+            return;
+
+        if (stateMachine.ActiveStateIndex != DeadStateIndex)
+            return;
+
+        if (DespawnTimer.Expired(Runner))
             Runner.Despawn(Object);
     }
 

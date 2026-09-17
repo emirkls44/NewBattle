@@ -13,6 +13,26 @@ public enum BattleGameMode
     Squad = 2
 }
 
+/// <summary>
+/// Oynanabilir bir harita. Her harita KENDI SAHNESINDE yasar.
+///
+/// Neden sahne basina harita: 4 harita tek sahnede dursa, oyuncu hangi haritaya
+/// duserse dussun dortunu birden yuklemis olur - bellek, acilis suresi ve mobil
+/// indirme boyutu dorde katlanir. Ayri sahne ile sadece oynanan harita yuklenir.
+/// </summary>
+[System.Serializable]
+public struct BattleMap
+{
+    [Tooltip("Menude ve kayitlarda gorunen ad.")]
+    public string displayName;
+
+    [Tooltip("Build Settings'teki sahne indeksi. -1 = mevcut sahneyi kullan.")]
+    public int sceneBuildIndex;
+
+    [Tooltip("Bu haritada ayni anda kac kisi oynayabilir.")]
+    [Min(2)] public int capacity;
+}
+
 [RequireComponent(typeof(NetworkRunner))]
 [RequireComponent(typeof(NetworkSceneManagerDefault))]
 public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
@@ -22,6 +42,10 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private bool useFixedSessionName;
     [SerializeField] private string sessionName = "NewBattlePrototype";
     [SerializeField, Range(2, 32)] private int maxPlayers = 16;
+
+    [Header("Haritalar")]
+    [Tooltip("Bos birakilirsa mevcut sahne tek harita olarak kullanilir.")]
+    [SerializeField] private BattleMap[] maps;
 
     [Header("Spawner")]
     [SerializeField] private NetworkPrefabRef playerPrefab;
@@ -39,10 +63,49 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public BattleGameMode SelectedMode { get; private set; } = BattleGameMode.Bots;
     public static BattleGameMode ActiveMode { get; private set; } = BattleGameMode.Bots;
 
-    public int MatchCapacity => SelectedMode == BattleGameMode.Squad
-        ? Mathf.Clamp(maxPlayers / 4 * 4, 8, 32) : Mathf.Clamp(maxPlayers, 2, 32);
+    public int MatchCapacity
+    {
+        get
+        {
+            // Harita kendi kapasitesini soyluyorsa o kazanir: kucuk bir harita
+            // 32 kisiyi kaldiramaz, buyuk bir harita 8 kisiyle bos kalir.
+            int baseCapacity = HasMapList && SelectedMapIndex < maps.Length && maps[SelectedMapIndex].capacity >= 2
+                ? maps[SelectedMapIndex].capacity
+                : maxPlayers;
+
+            return SelectedMode == BattleGameMode.Squad
+                ? Mathf.Clamp(baseCapacity / 4 * 4, 8, 32)
+                : Mathf.Clamp(baseCapacity, 2, 32);
+        }
+    }
     public NetworkPrefabRef PlayerPrefab => playerPrefab;
     public bool RosterLocked { get; set; }
+
+    /// <summary>Su an secili harita indeksi (maps dizisinde).</summary>
+    public int SelectedMapIndex { get; private set; }
+
+    public static int ActiveMapIndex { get; private set; }
+
+    public BattleMap[] Maps => maps;
+
+    public bool HasMapList => maps != null && maps.Length > 0;
+
+    public string SelectedMapName =>
+        HasMapList && SelectedMapIndex < maps.Length && !string.IsNullOrEmpty(maps[SelectedMapIndex].displayName)
+            ? maps[SelectedMapIndex].displayName
+            : "Varsayilan Harita";
+
+    /// <summary>Menuden harita secimi. StartMatchmaking'den ONCE cagrilmali.</summary>
+    public void SelectMap(int mapIndex)
+    {
+        if (!HasMapList)
+        {
+            SelectedMapIndex = 0;
+            return;
+        }
+
+        SelectedMapIndex = Mathf.Clamp(mapIndex, 0, maps.Length - 1);
+    }
 
     private void Awake()
     {
@@ -77,23 +140,44 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
         SelectedMode = mode;
         ActiveMode = mode;
+        ActiveMapIndex = SelectedMapIndex;
         _startRequested = true;
         _runner.ProvideInput = true;
         StatusChanged?.Invoke(mode == BattleGameMode.Bots
             ? "BOT MACI HAZIRLANIYOR..."
             : "ESLESME ARANIYOR...");
 
-        Scene activeScene = SceneManager.GetActiveScene();
+        // Harita listesi doluysa o haritanin sahnesini, degilse mevcut sahneyi
+        // yukle. Boylece tek sahneli mevcut proje de calismaya devam eder.
+        int sceneIndex = SceneManager.GetActiveScene().buildIndex;
+
+        if (HasMapList && SelectedMapIndex < maps.Length && maps[SelectedMapIndex].sceneBuildIndex >= 0)
+            sceneIndex = maps[SelectedMapIndex].sceneBuildIndex;
+
         NetworkSceneInfo sceneInfo = new();
-        sceneInfo.AddSceneRef(SceneRef.FromIndex(activeScene.buildIndex), LoadSceneMode.Single);
+        sceneInfo.AddSceneRef(SceneRef.FromIndex(sceneIndex), LoadSceneMode.Single);
 
         bool isBotMode = mode == BattleGameMode.Bots;
+
+        // ODA DAGITIMI BURADA OLUYOR.
+        //
+        // SessionName bos + AutoHostOrClient + SessionProperties = Photon'un
+        // rastgele eslestirmesi. Photon, bu ozelliklerin HEPSI tutan ve DOLU
+        // OLMAYAN bir oda arar; bulursa oyuncuyu oraya koyar, bulamazsa yeni
+        // oda acar.
+        //
+        // "map" ozelligini eklemek, istenen davranisi tam olarak verir:
+        // Harita 1 odasi 32 kisiyle dolunca 33. oyuncu Harita 1'in ikinci
+        // odasini acar; Harita 2 secen oyuncu hicbir zaman Harita 1 odasina
+        // dusmez. Oyuncu sayisini elle bolmeye gerek yok, dagitim kendiliginden
+        // olusur.
         Dictionary<string, SessionProperty> sessionProperties = isBotMode
             ? null
             : new Dictionary<string, SessionProperty>
             {
                 { "mode", (int)mode },
                 { "capacity", MatchCapacity },
+                { "map", SelectedMapIndex },
                 { "flow", 2 }
             };
 
@@ -102,7 +186,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             GameMode = isBotMode ? GameMode.Single : GameMode.AutoHostOrClient,
             SessionName = isBotMode
                 ? null
-                : useFixedSessionName ? $"{sessionName}_{mode}_{MatchCapacity}_v2" : null,
+                : useFixedSessionName ? $"{sessionName}_{mode}_{SelectedMapIndex}_{MatchCapacity}_v2" : null,
             SessionProperties = sessionProperties,
             PlayerCount = isBotMode ? 1 : MatchCapacity,
             IsOpen = !isBotMode,

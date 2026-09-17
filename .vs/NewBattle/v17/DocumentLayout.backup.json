@@ -3,12 +3,32 @@
   "WorkspaceRootPath": "D:\\emir\\Game\\NewBattle\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkBootstrap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\NetworkBootstrap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PrototypeIslandBuilder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\PrototypeIslandBuilder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\SafeZoneController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\SafeZoneController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\PlayerController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MatchResultHUD.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\MatchResultHUD.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\BattleMatchController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\BattleMatchController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MainMenuFlow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\MainMenuFlow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkBootstrap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\NetworkBootstrap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkMenuUI.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -51,18 +71,6 @@
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\MinimapSystem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MatchResultHUD.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\MatchResultHUD.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\SafeZoneController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\SafeZoneController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\PlayerController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerShooting.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\PlayerShooting.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -99,10 +107,6 @@
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\PlayerMoveState.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PrototypeIslandBuilder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\PrototypeIslandBuilder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerDeadState.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Assets\\Scripts\\PlayerDeadState.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -126,73 +130,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "MainMenuFlow.cs",
-              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MainMenuFlow.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\MainMenuFlow.cs",
-              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MainMenuFlow.cs",
-              "RelativeToolTip": "Assets\\Scripts\\MainMenuFlow.cs",
-              "ViewState": "AgIAAEkAAAAAAAAAAAAMwFIAAAAvAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-13T12:08:00.52Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "NetworkBootstrap.cs",
-              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkBootstrap.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\NetworkBootstrap.cs",
-              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkBootstrap.cs",
-              "RelativeToolTip": "Assets\\Scripts\\NetworkBootstrap.cs",
-              "ViewState": "AgIAALoAAAAAAAAAAAAcwMwAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-13T11:01:51.048Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "DropPhaseController.cs",
-              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\DropPhaseController.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\DropPhaseController.cs",
-              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\DropPhaseController.cs",
-              "RelativeToolTip": "Assets\\Scripts\\DropPhaseController.cs",
-              "ViewState": "AgIAACIAAAAAAAAAAAAcwDQAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-12T21:46:13.665Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "NetworkMenuUI.cs",
-              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkMenuUI.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\NetworkMenuUI.cs",
-              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkMenuUI.cs",
-              "RelativeToolTip": "Assets\\Scripts\\NetworkMenuUI.cs",
-              "ViewState": "AgIAAKQAAAAAAAAAAAAcwLYAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-12T21:37:17.074Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 14,
-              "Title": "PlayerController.cs",
-              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerController.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerController.cs",
-              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerController.cs",
-              "RelativeToolTip": "Assets\\Scripts\\PlayerController.cs",
-              "ViewState": "AgIAAIYAAAAAAAAAAAAcwJgAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-10T15:52:51.294Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 9,
               "Title": "DropSelectionHUD.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\DropSelectionHUD.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\DropSelectionHUD.cs",
@@ -205,6 +147,116 @@
             {
               "$type": "Document",
               "DocumentIndex": 3,
+              "Title": "MatchResultHUD.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MatchResultHUD.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\MatchResultHUD.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MatchResultHUD.cs",
+              "RelativeToolTip": "Assets\\Scripts\\MatchResultHUD.cs",
+              "ViewState": "AgIAABwCAAAAAAAAAAAcwC4CAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-12T16:43:32.812Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "SafeZoneController.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\SafeZoneController.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\SafeZoneController.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\SafeZoneController.cs",
+              "RelativeToolTip": "Assets\\Scripts\\SafeZoneController.cs",
+              "ViewState": "AgIAALEBAAAAAAAAAAAcwLcBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-12T15:49:35.431Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "NetworkMenuUI.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkMenuUI.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\NetworkMenuUI.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkMenuUI.cs",
+              "RelativeToolTip": "Assets\\Scripts\\NetworkMenuUI.cs",
+              "ViewState": "AgIAAKQAAAAAAAAAAAAcwLYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-12T21:37:17.074Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "PrototypeIslandBuilder.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PrototypeIslandBuilder.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\PrototypeIslandBuilder.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PrototypeIslandBuilder.cs",
+              "RelativeToolTip": "Assets\\Scripts\\PrototypeIslandBuilder.cs",
+              "ViewState": "AgIAAL4AAAAAAAAAAAAcwMIAAAAnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-10T21:18:53.892Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "PlayerController.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerController.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerController.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerController.cs",
+              "RelativeToolTip": "Assets\\Scripts\\PlayerController.cs",
+              "ViewState": "AgIAAIgAAAAAAAAAAAAcwJoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-10T15:52:51.294Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "BattleMatchController.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\BattleMatchController.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\BattleMatchController.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\BattleMatchController.cs",
+              "RelativeToolTip": "Assets\\Scripts\\BattleMatchController.cs",
+              "ViewState": "AgIAAEAAAAAAAAAAAAAcwFIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-13T23:36:33.963Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "DropPhaseController.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\DropPhaseController.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DropPhaseController.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\DropPhaseController.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DropPhaseController.cs",
+              "ViewState": "AgIAACIAAAAAAAAAAAAcwDQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-12T21:46:13.665Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "NetworkBootstrap.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkBootstrap.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\NetworkBootstrap.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkBootstrap.cs",
+              "RelativeToolTip": "Assets\\Scripts\\NetworkBootstrap.cs",
+              "ViewState": "AgIAADoAAAAAAAAAAAAMwEMAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-13T11:01:51.048Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "MainMenuFlow.cs",
+              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MainMenuFlow.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\MainMenuFlow.cs",
+              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MainMenuFlow.cs",
+              "RelativeToolTip": "Assets\\Scripts\\MainMenuFlow.cs",
+              "ViewState": "AgIAAMIAAAAAAAAAAAAowNMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-13T12:08:00.52Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
               "Title": "NetworkBootstrap (1).cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\NetworkBootstrap (1).cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\NetworkBootstrap (1).cs",
@@ -216,7 +268,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 12,
               "Title": "TrainingBotSpawner.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\TrainingBotSpawner.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\TrainingBotSpawner.cs",
@@ -228,19 +280,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "SafeZoneController.cs",
-              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\SafeZoneController.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\SafeZoneController.cs",
-              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\SafeZoneController.cs",
-              "RelativeToolTip": "Assets\\Scripts\\SafeZoneController.cs",
-              "ViewState": "AgIAAKoBAAAAAAAAAAAcwLwBAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-12T15:49:35.431Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 11,
               "Title": "PlayerCombatStats.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerCombatStats.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerCombatStats.cs",
@@ -252,7 +292,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 14,
               "Title": "HealthController.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\HealthController.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\HealthController.cs",
@@ -264,7 +304,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 13,
               "Title": "TrainingBot.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\TrainingBot.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\TrainingBot.cs",
@@ -276,19 +316,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
-              "Title": "MatchResultHUD.cs",
-              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MatchResultHUD.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\MatchResultHUD.cs",
-              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MatchResultHUD.cs",
-              "RelativeToolTip": "Assets\\Scripts\\MatchResultHUD.cs",
-              "ViewState": "AgIAAL0AAAAAAAAAAAAcwM8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-12T16:43:32.812Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 15,
               "Title": "SafeZoneHUD.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\SafeZoneHUD.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\SafeZoneHUD.cs",
@@ -300,7 +328,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 16,
               "Title": "MinimapSystem.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\MinimapSystem.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\MinimapSystem.cs",
@@ -312,7 +340,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 17,
               "Title": "PlayerShooting.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerShooting.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerShooting.cs",
@@ -324,7 +352,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 18,
               "Title": "CombatLoadoutHUD.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\CombatLoadoutHUD.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\CombatLoadoutHUD.cs",
@@ -336,7 +364,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 19,
               "Title": "LocalPlayerHUD.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\LocalPlayerHUD.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\LocalPlayerHUD.cs",
@@ -348,7 +376,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 24,
               "Title": "CameraFollow.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\CameraFollow.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\CameraFollow.cs",
@@ -360,19 +388,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
-              "Title": "PrototypeIslandBuilder.cs",
-              "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PrototypeIslandBuilder.cs",
-              "RelativeDocumentMoniker": "Assets\\Scripts\\PrototypeIslandBuilder.cs",
-              "ToolTip": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PrototypeIslandBuilder.cs",
-              "RelativeToolTip": "Assets\\Scripts\\PrototypeIslandBuilder.cs",
-              "ViewState": "AgIAAK0AAAAAAAAAAAAAwMsAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-10T21:18:53.892Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 20,
               "Title": "VirtualJoystick.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\VirtualJoystick.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\VirtualJoystick.cs",
@@ -384,7 +400,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 22,
               "Title": "InventoryManager.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\InventoryManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\InventoryManager.cs",
@@ -396,7 +412,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 21,
               "Title": "RecoveryPickup.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\RecoveryPickup.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\RecoveryPickup.cs",
@@ -408,7 +424,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 23,
               "Title": "WorldHealthBar.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\WorldHealthBar.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\WorldHealthBar.cs",
@@ -420,7 +436,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 26,
               "Title": "PlayerDeadState.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerDeadState.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerDeadState.cs",
@@ -432,7 +448,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 25,
               "Title": "PlayerMoveState.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerMoveState.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerMoveState.cs",
@@ -444,7 +460,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 27,
               "Title": "PlayerDeadState1.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerDeadState1.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerDeadState1.cs",
@@ -455,7 +471,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 28,
               "Title": "PlayerIdleState.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerIdleState.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerIdleState.cs",
@@ -467,7 +483,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 29,
               "Title": "PlayerHide.cs",
               "DocumentMoniker": "D:\\emir\\Game\\NewBattle\\Assets\\Scripts\\PlayerHide.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerHide.cs",

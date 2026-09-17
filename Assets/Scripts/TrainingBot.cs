@@ -15,6 +15,7 @@ public class TrainingBot : NetworkBehaviour
     private PlayerStateMachine _stateMachine;
     private PlayerShooting _shooting;
     private Transform _target;
+    private PlayerCombatStats _ownStats;
     private TickTimer _targetSearchTimer;
     private LobbyCountdownController _lobbyCountdown;
     private DropPhaseController _dropPhase;
@@ -59,8 +60,13 @@ public class TrainingBot : NetworkBehaviour
         NetworkInputData botInput = default;
 
         if (_target != null)
+            _lastKnownTargetPosition = _target.position;
+
+        Vector3? destination = _target != null ? _target.position : _lastKnownTargetPosition;
+
+        if (destination.HasValue)
         {
-            Vector3 difference = _target.position - transform.position;
+            Vector3 difference = destination.Value - transform.position;
             difference.y = 0f;
             float distance = difference.magnitude;
 
@@ -80,8 +86,14 @@ public class TrainingBot : NetworkBehaviour
                     botInput.JoystickInput = new Vector2(moveDirection.x, moveDirection.z);
                 }
 
-                if (attackEnabled && distance <= attackDistance)
+                // Ates sadece hedef GERCEKTEN gorunuyorken: son bilinen konuma
+                // yurumek serbest, gorunmeyen oyuncuya ates etmek degil.
+                if (attackEnabled && _target != null && distance <= attackDistance)
                     botInput.RightJoystickVector = new Vector2(direction.x, direction.z);
+
+                // Son bilinen konuma varildiysa arayisi birak.
+                if (_target == null && distance <= stoppingDistance)
+                    _lastKnownTargetPosition = null;
             }
         }
 
@@ -93,52 +105,46 @@ public class TrainingBot : NetworkBehaviour
 
     private void FindNearestHuman()
     {
-        PlayerController[] players = UnityEngine.Object.FindObjectsByType<PlayerController>(
-            FindObjectsInactive.Exclude,
-            FindObjectsSortMode.None
-        );
+        if (_ownStats == null)
+            _ownStats = GetComponent<PlayerCombatStats>();
 
-        float nearestDistanceSquared = float.MaxValue;
-        Transform nearestTarget = null;
+        // requireVisible: bot cimen gizlenmesine oyuncuyla AYNI kurala uyar.
+        // Onceki surum bu kontrolu hic yapmiyordu - oyuncu caliya girip gorunmez
+        // oluyor ama botlar yine de uzerine kosuyordu; gizlenmeyi tamamen anlamsiz
+        // kilan sey buydu.
+        NewBattle.Gameplay.PlayerRegistry nearest =
+            NewBattle.Gameplay.PlayerRegistry.FindNearestEnemy(
+                transform.position,
+                _ownStats,
+                Runner,
+                exclude: gameObject,
+                humansOnly: true,
+                requireVisible: true);
 
-        foreach (PlayerController player in players)
-        {
-            if (player == null || player.Object == null)
-                continue;
-
-            if (!player.Object.IsValid || player.Runner != Runner || player.gameObject == gameObject) continue;
-            var health = player.GetComponent<HealthController>();
-            if (health == null || health.currentHealth <= 0f) continue;
-            var ownStats = GetComponent<PlayerCombatStats>();
-            var targetStats = player.GetComponent<PlayerCombatStats>();
-            if (ownStats != null && ownStats.IsTeammate(targetStats)) continue;
-
-            float distanceSquared = (player.transform.position - transform.position).sqrMagnitude;
-            if (distanceSquared >= nearestDistanceSquared)
-                continue;
-
-            nearestDistanceSquared = distanceSquared;
-            nearestTarget = player.transform;
-        }
-
-        _target = nearestTarget;
+        _target = nearest != null ? nearest.transform : null;
     }
+
+    /// <summary>
+    /// Hedefini kaybeden bot en son gordugu yere gider, oraya varinca durur.
+    /// Oyuncunun caliya girip yok olmasi botu aninda dondurmemeli; aksi halde
+    /// gizlenmek "botlar beni unuttu" gibi yapay gorunur.
+    /// </summary>
+    private Vector3? _lastKnownTargetPosition;
 
     private Vector3 CalculateSeparation()
     {
-        TrainingBot[] bots = UnityEngine.Object.FindObjectsByType<TrainingBot>(
-            FindObjectsInactive.Exclude,
-            FindObjectsSortMode.None
-        );
-
+        var registry = NewBattle.Gameplay.PlayerRegistry.All;
         Vector3 separation = Vector3.zero;
 
-        foreach (TrainingBot other in bots)
+        for (int i = 0; i < registry.Count; i++)
         {
-            if (other == null || other == this || other.Object == null)
+            NewBattle.Gameplay.PlayerRegistry other = registry[i];
+
+            if (other == null || other.gameObject == gameObject || other.Object == null)
                 continue;
 
-            if (other.Object.InputAuthority != PlayerRef.None)
+            // Sadece botlar birbirinden kacinir; oyuncudan kacmak istemiyoruz.
+            if (other.IsHuman)
                 continue;
 
             Vector3 away = transform.position - other.transform.position;

@@ -1,3 +1,4 @@
+using System;
 using Fusion;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,27 +6,74 @@ using UnityEngine.UI;
 [RequireComponent(typeof(NetworkObject))]
 public class SafeZoneController : NetworkBehaviour
 {
-    [Header("Alan Ayarlari")]
+    [Serializable]
+    private struct ZoneStage
+    {
+        [Min(1f)] public float targetRadius;
+        [Min(0f)] public float waitSeconds;
+        [Min(0.1f)] public float shrinkSeconds;
+
+        public ZoneStage(float targetRadius, float waitSeconds, float shrinkSeconds)
+        {
+            this.targetRadius = targetRadius;
+            this.waitSeconds = waitSeconds;
+            this.shrinkSeconds = shrinkSeconds;
+        }
+    }
+
+    private const int WaitingPhase = 0;
+    private const int ShrinkingPhase = 1;
+    private const int FinishedPhase = 2;
+
+    private static readonly ZoneStage[] DefaultStages =
+    {
+        new(24f, 10f, 9f),
+        new(16f, 10f, 8f),
+        new(10f, 5f, 7f),
+        new(6f, 5f, 6f),
+        new(3.5f, 5f, 5f)
+    };
+
+    [Header("Alan Asamalari")]
     [SerializeField, Min(1f)] private float initialRadius = 32f;
-    [SerializeField, Min(1f)] private float finalRadius = 4f;
-    [SerializeField, Min(0f)] private float waitBeforeShrink = 20f;
-    [SerializeField, Min(1f)] private float shrinkDuration = 120f;
-    [SerializeField, Range(0f, 1f)] private float finalCenterRandomness = 0.85f;
+    [SerializeField, Range(0f, 1f)] private float nextCenterRandomness = 0.85f;
+    [SerializeField] private ZoneStage[] stages =
+    {
+        new(24f, 10f, 9f),
+        new(16f, 10f, 8f),
+        new(10f, 5f, 7f),
+        new(6f, 5f, 6f),
+        new(3.5f, 5f, 5f)
+    };
 
     [Header("Alan Disi Hasari")]
     [SerializeField, Min(0.1f)] private float damageInterval = 1f;
     [SerializeField, Min(0f)] private float damagePerInterval = 5f;
 
-    [Header("Gorunum")]
-    [SerializeField] private Color boundaryColor = new(0.2f, 0.65f, 1f, 0.9f);
-    [SerializeField, Min(0.02f)] private float boundaryWidth = 0.22f;
+    [Header("Mevcut Alan Gorunumu")]
+    [SerializeField] private Color boundaryColor = new(1f, 0.24f, 0.42f, 0.95f);
+    [SerializeField, Min(0.02f)] private float boundaryWidth = 0.55f;
     [SerializeField, Range(24, 160)] private int boundarySegments = 96;
     [SerializeField] private float boundaryHeight = 0.12f;
 
+    [Header("Sonraki Alan Gorunumu")]
+    [SerializeField] private Color nextBoundaryColor = new(1f, 1f, 1f, 0.95f);
+    [SerializeField, Min(0.02f)] private float nextBoundaryWidth = 0.4f;
+    [SerializeField] private float nextBoundaryHeight = 0.14f;
+
     [Header("Alan Disi Pusu")]
-    [SerializeField] private Color outsideFogColor = new(0.12f, 0.28f, 0.42f, 0.22f);
-    [SerializeField, Min(40f)] private float fogOuterRadius = 80f;
+    [Tooltip("Guvenli cemberin DISINDA kalan zeminin rengi. Zemine serilen yumusak " +
+             "bir kirmizi ortu; hicbir nesnenin uzerine tirmanmaz.")]
+    [SerializeField] private Color outsideFogColor = new(0.92f, 0.16f, 0.18f, 0.24f);
+    [SerializeField, Min(40f)] private float fogOuterRadius = 120f;
     [SerializeField] private float fogHeight = 0.08f;
+
+    [Header("Zemin Takibi")]
+    [Tooltip("Cember ve duvar arazinin yuksekligini takip eder. Bu olmadan " +
+             "yukseltili haritada cizgi tepelerin altinda kalir.")]
+    [SerializeField] private bool followGround = true;
+    [SerializeField] private LayerMask groundMask = ~0;
+    [SerializeField, Min(10f)] private float groundSampleFrom = 300f;
 
     [Header("Ekran Tehlike Efekti")]
     [SerializeField] private Color dangerScreenColor = new(0.75f, 0.02f, 0.02f, 1f);
@@ -35,16 +83,32 @@ public class SafeZoneController : NetworkBehaviour
 
     [Networked] public Vector3 SafeCenter { get; private set; }
     [Networked] public float SafeRadius { get; private set; }
-    [Networked] public Vector3 FinalCenter { get; private set; }
+    [Networked] public Vector3 NextCenter { get; private set; }
+    [Networked] public float NextRadius { get; private set; }
+    [Networked] public int CurrentStageIndex { get; private set; }
+    [Networked] private int PhaseState { get; set; }
+    [Networked] private Vector3 ShrinkStartCenter { get; set; }
+    [Networked] private float ShrinkStartRadius { get; set; }
+    [Networked] private float ActiveShrinkDuration { get; set; }
     [Networked] private TickTimer WaitTimer { get; set; }
     [Networked] private TickTimer ShrinkTimer { get; set; }
     [Networked] private TickTimer DamageTimer { get; set; }
-    [Networked] private NetworkBool ShrinkStarted { get; set; }
-    [Networked] private NetworkBool ShrinkFinished { get; set; }
     [Networked] private NetworkBool ZoneMatchInitialized { get; set; }
 
+    /// <summary>
+    /// Alan gorselleri (cember, pus, duvar). Inis secim haritasi bunlari
+    /// gizleyebilsin diye disariya aciliyor: oyuncu inecegi yeri secerken
+    /// haritayi temiz gormeli.
+    /// </summary>
+    public Transform VisualRoot => transform;
+
     private LineRenderer _boundary;
+    private LineRenderer _nextBoundary;
+    /// <summary>Cember uzerindeki her segmentin zemin yuksekligi.</summary>
+    private float[] _groundHeights;
+    private float _nextGroundSampleTime;
     private Material _boundaryMaterial;
+    private Material _nextBoundaryMaterial;
     private Mesh _fogMesh;
     private Vector3[] _fogVertices;
     private Transform _fogTransform;
@@ -57,18 +121,21 @@ public class SafeZoneController : NetworkBehaviour
     private LobbyCountdownController _lobbyCountdown;
     private DropPhaseController _dropPhase;
 
-    public bool IsWaitingForShrink => !ShrinkStarted;
-    public bool IsShrinking => ShrinkStarted && !ShrinkFinished;
-    public bool IsFinalZone => ShrinkFinished;
+    public bool IsWaitingForShrink => ZoneMatchInitialized && PhaseState == WaitingPhase;
+    public bool IsShrinking => ZoneMatchInitialized && PhaseState == ShrinkingPhase;
+    public bool IsFinalZone => ZoneMatchInitialized && PhaseState == FinishedPhase;
+    public bool HasNextZone => ZoneMatchInitialized && PhaseState != FinishedPhase && NextRadius > 0f;
+    public int StageNumber => Mathf.Clamp(CurrentStageIndex + 1, 1, StageCount);
+    public int StageCount => GetConfiguredStageCount();
 
     public float RemainingPhaseSeconds
     {
         get
         {
-            if (Runner == null)
+            if (Runner == null || !ZoneMatchInitialized)
                 return 0f;
 
-            TickTimer activeTimer = ShrinkStarted ? ShrinkTimer : WaitTimer;
+            TickTimer activeTimer = PhaseState == ShrinkingPhase ? ShrinkTimer : WaitTimer;
             return Mathf.Max(0f, activeTimer.RemainingTime(Runner) ?? 0f);
         }
     }
@@ -76,7 +143,7 @@ public class SafeZoneController : NetworkBehaviour
     public override void Spawned()
     {
         _initialCenter = transform.position;
-        CreateBoundary();
+        CreateBoundaries();
         CreateOutsideFog();
         CreateDangerOverlay();
         _lobbyCountdown = GetComponent<LobbyCountdownController>();
@@ -85,16 +152,13 @@ public class SafeZoneController : NetworkBehaviour
         if (!HasStateAuthority)
             return;
 
-        float safeFinalRadius = Mathf.Clamp(finalRadius, 1f, initialRadius);
-        float maximumOffset = Mathf.Max(0f, initialRadius - safeFinalRadius);
-        Vector2 randomOffset = Random.insideUnitCircle * maximumOffset * finalCenterRandomness;
-
         SafeCenter = _initialCenter;
-        SafeRadius = initialRadius;
-        FinalCenter = _initialCenter + new Vector3(randomOffset.x, 0f, randomOffset.y);
+        SafeRadius = Mathf.Max(1f, initialRadius);
+        NextCenter = SafeCenter;
+        NextRadius = SafeRadius;
+        CurrentStageIndex = 0;
+        PhaseState = WaitingPhase;
         ZoneMatchInitialized = false;
-        ShrinkStarted = false;
-        ShrinkFinished = false;
     }
 
     public override void FixedUpdateNetwork()
@@ -110,12 +174,10 @@ public class SafeZoneController : NetworkBehaviour
             if (_dropPhase != null && !_dropPhase.GameplayStarted)
                 return;
 
-            ZoneMatchInitialized = true;
-            WaitTimer = TickTimer.CreateFromSeconds(Runner, waitBeforeShrink);
-            DamageTimer = TickTimer.CreateFromSeconds(Runner, damageInterval);
+            BeginZoneMatch();
         }
 
-        UpdateShrinking();
+        UpdateZonePhase();
 
         if (DamageTimer.ExpiredOrNotRunning(Runner))
         {
@@ -126,50 +188,165 @@ public class SafeZoneController : NetworkBehaviour
 
     public override void Render()
     {
-        DrawBoundary();
+        SampleGroundHeights();
+        DrawBoundaries();
         DrawOutsideFog();
         UpdateDangerOverlay();
     }
 
-    private void UpdateShrinking()
+    /// <summary>
+    /// Cember uzerindeki noktalarin zemin yuksekligini olcer.
+    ///
+    /// NEDEN: Cizgi ve pus eskiden SABIT bir dunya yuksekliginde (y = 0.12)
+    /// ciziliyordu. Duz prototip arenada dogruydu; yukseltili bir haritada alan
+    /// cizgisi tepelerin ICINDE kalir ve oyuncu daralan alani hic goremeden
+    /// canini kaybeder.
+    ///
+    /// Isin atmak bedava degil, o yuzden saniyede ~12 kez ornekliyoruz ve
+    /// sonucu iki cizgi, pus ve duvar arasinda paylasiyoruz.
+    /// </summary>
+    private void SampleGroundHeights()
     {
-        if (ShrinkFinished)
+        int count = boundarySegments + 1;
+
+        if (_groundHeights == null || _groundHeights.Length != count)
+        {
+            _groundHeights = new float[count];
+            _nextGroundSampleTime = 0f;
+        }
+
+        if (!followGround)
+        {
+            for (int i = 0; i < count; i++)
+                _groundHeights[i] = 0f;
+
+            return;
+        }
+
+        if (Time.time < _nextGroundSampleTime)
             return;
 
-        if (!ShrinkStarted)
+        _nextGroundSampleTime = Time.time + 0.08f;
+
+        for (int i = 0; i < count; i++)
         {
-            if (!WaitTimer.Expired(Runner))
+            float angle = i * Mathf.PI * 2f / boundarySegments;
+            Vector3 origin = new(
+                SafeCenter.x + Mathf.Cos(angle) * SafeRadius,
+                groundSampleFrom,
+                SafeCenter.z + Mathf.Sin(angle) * SafeRadius);
+
+            _groundHeights[i] = Physics.Raycast(origin, Vector3.down, out RaycastHit hit,
+                groundSampleFrom * 2f, groundMask, QueryTriggerInteraction.Ignore)
+                ? hit.point.y
+                : 0f;
+        }
+    }
+
+    private float GroundHeightAt(int segment)
+    {
+        if (_groundHeights == null || _groundHeights.Length == 0)
+            return 0f;
+
+        return _groundHeights[Mathf.Clamp(segment, 0, _groundHeights.Length - 1)];
+    }
+
+    /// <summary>Tek nokta icin zemin yuksekligi; sonraki alan cemberi gibi ayri merkezler icin.</summary>
+    private float SampleGroundAt(float x, float z)
+    {
+        if (!followGround)
+            return 0f;
+
+        return Physics.Raycast(new Vector3(x, groundSampleFrom, z), Vector3.down,
+            out RaycastHit hit, groundSampleFrom * 2f, groundMask, QueryTriggerInteraction.Ignore)
+            ? hit.point.y
+            : 0f;
+    }
+
+    private void BeginZoneMatch()
+    {
+        ZoneMatchInitialized = true;
+        CurrentStageIndex = 0;
+        SafeCenter = _initialCenter;
+        SafeRadius = Mathf.Max(1f, initialRadius);
+        DamageTimer = TickTimer.CreateFromSeconds(Runner, damageInterval);
+        PrepareCurrentStage();
+    }
+
+    private void PrepareCurrentStage()
+    {
+        if (CurrentStageIndex >= GetConfiguredStageCount())
+        {
+            PhaseState = FinishedPhase;
+            NextCenter = SafeCenter;
+            NextRadius = SafeRadius;
+            return;
+        }
+
+        ZoneStage stage = GetStage(CurrentStageIndex);
+        float targetRadius = Mathf.Clamp(stage.targetRadius, 1f, SafeRadius);
+        float maximumCenterOffset = Mathf.Max(0f, SafeRadius - targetRadius);
+        Vector2 offset = UnityEngine.Random.insideUnitCircle * maximumCenterOffset * nextCenterRandomness;
+
+        NextCenter = SafeCenter + new Vector3(offset.x, 0f, offset.y);
+        NextRadius = targetRadius;
+        PhaseState = WaitingPhase;
+        WaitTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(0f, stage.waitSeconds));
+    }
+
+    private void UpdateZonePhase()
+    {
+        if (PhaseState == FinishedPhase)
+            return;
+
+        ZoneStage stage = GetStage(CurrentStageIndex);
+
+        if (PhaseState == WaitingPhase)
+        {
+            if (!WaitTimer.ExpiredOrNotRunning(Runner))
                 return;
 
-            ShrinkStarted = true;
-            ShrinkTimer = TickTimer.CreateFromSeconds(Runner, shrinkDuration);
+            ShrinkStartCenter = SafeCenter;
+            ShrinkStartRadius = SafeRadius;
+            ActiveShrinkDuration = Mathf.Max(0.1f, stage.shrinkSeconds);
+            ShrinkTimer = TickTimer.CreateFromSeconds(Runner, ActiveShrinkDuration);
+            PhaseState = ShrinkingPhase;
         }
 
         float remaining = ShrinkTimer.RemainingTime(Runner) ?? 0f;
-        float progress = 1f - Mathf.Clamp01(remaining / shrinkDuration);
+        float progress = 1f - Mathf.Clamp01(remaining / Mathf.Max(0.1f, ActiveShrinkDuration));
+        SafeCenter = Vector3.Lerp(ShrinkStartCenter, NextCenter, progress);
+        SafeRadius = Mathf.Lerp(ShrinkStartRadius, NextRadius, progress);
 
-        SafeCenter = Vector3.Lerp(_initialCenter, FinalCenter, progress);
-        SafeRadius = Mathf.Lerp(initialRadius, finalRadius, progress);
-
-        if (!ShrinkTimer.Expired(Runner))
+        if (!ShrinkTimer.ExpiredOrNotRunning(Runner))
             return;
 
-        SafeCenter = FinalCenter;
-        SafeRadius = finalRadius;
-        ShrinkFinished = true;
+        SafeCenter = NextCenter;
+        SafeRadius = NextRadius;
+        CurrentStageIndex++;
+        PrepareCurrentStage();
+    }
+
+    private int GetConfiguredStageCount()
+    {
+        return stages != null && stages.Length > 0 ? stages.Length : DefaultStages.Length;
+    }
+
+    private ZoneStage GetStage(int index)
+    {
+        ZoneStage[] source = stages != null && stages.Length > 0 ? stages : DefaultStages;
+        return source[Mathf.Clamp(index, 0, source.Length - 1)];
     }
 
     private void DamagePlayersOutsideZone()
     {
-        HealthController[] players = UnityEngine.Object.FindObjectsByType<HealthController>(
-            FindObjectsInactive.Exclude,
-            FindObjectsSortMode.None
-        );
-
         float radiusSquared = SafeRadius * SafeRadius;
+        var registry = NewBattle.Gameplay.PlayerRegistry.All;
 
-        foreach (HealthController player in players)
+        for (int i = 0; i < registry.Count; i++)
         {
+            HealthController player = registry[i] != null ? registry[i].Health : null;
+
             if (player == null || !player.HasStateAuthority || player.currentHealth <= 0f)
                 continue;
 
@@ -181,56 +358,77 @@ public class SafeZoneController : NetworkBehaviour
         }
     }
 
-    private void CreateBoundary()
+    private void CreateBoundaries()
     {
-        if (_boundary != null)
-            return;
+        _boundary = CreateBoundaryRenderer("SafeZoneBoundary", boundaryColor, boundaryWidth, out _boundaryMaterial);
+        _nextBoundary = CreateBoundaryRenderer("NextSafeZoneBoundary", nextBoundaryColor, nextBoundaryWidth, out _nextBoundaryMaterial);
 
-        GameObject boundaryObject = new("SafeZoneBoundary");
+        SampleGroundHeights();
+        DrawBoundaries();
+    }
+
+    private LineRenderer CreateBoundaryRenderer(string objectName, Color color, float width, out Material material)
+    {
+        GameObject boundaryObject = new(objectName);
         boundaryObject.transform.SetParent(transform, false);
 
-        _boundary = boundaryObject.AddComponent<LineRenderer>();
-        _boundary.loop = true;
-        _boundary.useWorldSpace = true;
-        _boundary.positionCount = boundarySegments;
-        _boundary.startWidth = boundaryWidth;
-        _boundary.endWidth = boundaryWidth;
-        _boundary.numCornerVertices = 2;
-        _boundary.numCapVertices = 2;
+        LineRenderer line = boundaryObject.AddComponent<LineRenderer>();
+        line.loop = true;
+        line.useWorldSpace = true;
+        line.positionCount = boundarySegments;
+        line.startWidth = width;
+        line.endWidth = width;
+        line.numCornerVertices = 2;
+        line.numCapVertices = 2;
+        line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        line.receiveShadows = false;
 
         Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null)
             shader = Shader.Find("Sprites/Default");
 
-        _boundaryMaterial = new Material(shader)
-        {
-            name = "RuntimeSafeZoneMaterial",
-            color = boundaryColor
-        };
-
-        _boundary.sharedMaterial = _boundaryMaterial;
-        _boundary.startColor = boundaryColor;
-        _boundary.endColor = boundaryColor;
-        DrawBoundary();
+        material = new Material(shader) { name = $"Runtime{objectName}Material" };
+        ConfigureTransparentMaterial(material, color);
+        line.sharedMaterial = material;
+        line.startColor = color;
+        line.endColor = color;
+        return line;
     }
 
-    private void DrawBoundary()
+    private void DrawBoundaries()
     {
-        if (_boundary == null || SafeRadius <= 0f)
+        DrawCircle(_boundary, SafeCenter, SafeRadius, boundaryHeight, true);
+
+        if (_nextBoundary != null)
+        {
+            _nextBoundary.enabled = HasNextZone;
+            if (HasNextZone)
+                DrawCircle(_nextBoundary, NextCenter, NextRadius, nextBoundaryHeight, false);
+        }
+    }
+
+    /// <summary>
+    /// useCachedGround: mevcut alan cemberi onceden olculmus yukseklikleri kullanir.
+    /// Sonraki alan cemberi baska bir merkez/yaricapta oldugu icin kendi olcumunu
+    /// yapar.
+    /// </summary>
+    private void DrawCircle(LineRenderer line, Vector3 center, float radius, float height,
+        bool useCachedGround)
+    {
+        if (line == null || radius <= 0f)
             return;
 
-        if (_boundary.positionCount != boundarySegments)
-            _boundary.positionCount = boundarySegments;
+        if (line.positionCount != boundarySegments)
+            line.positionCount = boundarySegments;
 
         for (int i = 0; i < boundarySegments; i++)
         {
             float angle = i * Mathf.PI * 2f / boundarySegments;
-            Vector3 point = SafeCenter + new Vector3(
-                Mathf.Cos(angle) * SafeRadius,
-                boundaryHeight,
-                Mathf.Sin(angle) * SafeRadius
-            );
-            _boundary.SetPosition(i, point);
+            float x = center.x + Mathf.Cos(angle) * radius;
+            float z = center.z + Mathf.Sin(angle) * radius;
+            float groundY = useCachedGround ? GroundHeightAt(i) : SampleGroundAt(x, z);
+
+            line.SetPosition(i, new Vector3(x, groundY + height, z));
         }
     }
 
@@ -269,7 +467,6 @@ public class SafeZoneController : NetworkBehaviour
         {
             int vertex = i * 2;
             int triangle = i * 6;
-
             triangles[triangle] = vertex;
             triangles[triangle + 1] = vertex + 1;
             triangles[triangle + 2] = vertex + 2;
@@ -294,18 +491,21 @@ public class SafeZoneController : NetworkBehaviour
             BuildFogTriangles();
 
         float outerRadius = Mathf.Max(fogOuterRadius, SafeRadius + 1f);
-
         for (int i = 0; i <= boundarySegments; i++)
         {
             float angle = i * Mathf.PI * 2f / boundarySegments;
             float x = Mathf.Cos(angle);
             float z = Mathf.Sin(angle);
 
-            _fogVertices[i * 2] = new Vector3(x * SafeRadius, fogHeight, z * SafeRadius);
-            _fogVertices[i * 2 + 1] = new Vector3(x * outerRadius, fogHeight, z * outerRadius);
+            // Pus da zemine oturur; sabit yukseklikte birakirsak tepelerin
+            // icinde kaybolur, cukurlarda havada asili durur.
+            float groundY = GroundHeightAt(i) + fogHeight;
+
+            _fogVertices[i * 2] = new Vector3(x * SafeRadius, groundY, z * SafeRadius);
+            _fogVertices[i * 2 + 1] = new Vector3(x * outerRadius, groundY, z * outerRadius);
         }
 
-        _fogTransform.position = new Vector3(SafeCenter.x, transform.position.y, SafeCenter.z);
+        _fogTransform.position = new Vector3(SafeCenter.x, 0f, SafeCenter.z);
         _fogMesh.vertices = _fogVertices;
         _fogMesh.RecalculateBounds();
     }
@@ -313,25 +513,12 @@ public class SafeZoneController : NetworkBehaviour
     private static void ConfigureTransparentMaterial(Material material, Color color)
     {
         material.color = color;
-
-        if (material.HasProperty("_BaseColor"))
-            material.SetColor("_BaseColor", color);
-
-        if (material.HasProperty("_Surface"))
-            material.SetFloat("_Surface", 1f);
-
-        if (material.HasProperty("_SrcBlend"))
-            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
-
-        if (material.HasProperty("_DstBlend"))
-            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-
-        if (material.HasProperty("_ZWrite"))
-            material.SetFloat("_ZWrite", 0f);
-
-        if (material.HasProperty("_Cull"))
-            material.SetFloat("_Cull", 0f);
-
+        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+        if (material.HasProperty("_Surface")) material.SetFloat("_Surface", 1f);
+        if (material.HasProperty("_SrcBlend")) material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        if (material.HasProperty("_DstBlend")) material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        if (material.HasProperty("_ZWrite")) material.SetFloat("_ZWrite", 0f);
+        if (material.HasProperty("_Cull")) material.SetFloat("_Cull", 0f);
         material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
         material.SetOverrideTag("RenderType", "Transparent");
         material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
@@ -339,14 +526,7 @@ public class SafeZoneController : NetworkBehaviour
 
     private void CreateDangerOverlay()
     {
-        _dangerCanvasObject = new GameObject(
-            "OutsideZoneDangerOverlay",
-            typeof(RectTransform),
-            typeof(Canvas),
-            typeof(CanvasScaler),
-            typeof(GraphicRaycaster)
-        );
-
+        _dangerCanvasObject = new GameObject("OutsideZoneDangerOverlay", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         _dangerCanvasObject.transform.SetParent(transform, false);
 
         Canvas canvas = _dangerCanvasObject.GetComponent<Canvas>();
@@ -368,10 +548,8 @@ public class SafeZoneController : NetworkBehaviour
 
         _dangerOverlay = imageObject.GetComponent<Image>();
         _dangerOverlay.raycastTarget = false;
-        _dangerOverlay.color = new Color(dangerScreenColor.r, dangerScreenColor.g, dangerScreenColor.b, 0f);
-
-        GraphicRaycaster raycaster = _dangerCanvasObject.GetComponent<GraphicRaycaster>();
-        raycaster.enabled = false;
+        _dangerOverlay.color = Color.clear;
+        _dangerCanvasObject.GetComponent<GraphicRaycaster>().enabled = false;
     }
 
     private void UpdateDangerOverlay()
@@ -385,20 +563,17 @@ public class SafeZoneController : NetworkBehaviour
             _nextLocalPlayerSearchTime = Time.unscaledTime + 0.25f;
         }
 
-        var localHealth = _localPlayer != null ? _localPlayer.GetComponent<HealthController>() : null;
-        if (MatchResultHUD.LocalGameplayStopped || localHealth == null ||
-            localHealth.Object == null || !localHealth.Object.IsValid || localHealth.currentHealth <= 0f)
+        HealthController localHealth = _localPlayer != null ? _localPlayer.GetComponent<HealthController>() : null;
+        if (MatchResultHUD.LocalGameplayStopped || localHealth == null || localHealth.Object == null ||
+            !localHealth.Object.IsValid || localHealth.currentHealth <= 0f)
         {
             _dangerOverlay.color = Color.clear;
             return;
         }
-        bool isOutside = false;
-        if (_localPlayer != null && SafeRadius > 0f)
-        {
-            Vector3 offset = _localPlayer.position - SafeCenter;
-            offset.y = 0f;
-            isOutside = offset.sqrMagnitude > SafeRadius * SafeRadius;
-        }
+
+        Vector3 offset = _localPlayer.position - SafeCenter;
+        offset.y = 0f;
+        bool isOutside = SafeRadius > 0f && offset.sqrMagnitude > SafeRadius * SafeRadius;
 
         float alpha = 0f;
         if (isOutside)
@@ -409,21 +584,12 @@ public class SafeZoneController : NetworkBehaviour
             alpha = dangerBaseAlpha + dangerPulseAlpha * Mathf.Max(firstBeat, secondBeat);
         }
 
-        _dangerOverlay.color = new Color(
-            dangerScreenColor.r,
-            dangerScreenColor.g,
-            dangerScreenColor.b,
-            alpha
-        );
+        _dangerOverlay.color = new Color(dangerScreenColor.r, dangerScreenColor.g, dangerScreenColor.b, alpha);
     }
 
     private void FindLocalPlayer()
     {
-        HealthController[] players = UnityEngine.Object.FindObjectsByType<HealthController>(
-            FindObjectsInactive.Exclude,
-            FindObjectsSortMode.None
-        );
-
+        HealthController[] players = UnityEngine.Object.FindObjectsByType<HealthController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         foreach (HealthController player in players)
         {
             if (player == null || player.Object == null || !player.HasInputAuthority)
@@ -434,18 +600,18 @@ public class SafeZoneController : NetworkBehaviour
         }
     }
 
+    [ContextMenu("Use Recommended Zone Stages")]
+    private void UseRecommendedZoneStages()
+    {
+        stages = (ZoneStage[])DefaultStages.Clone();
+    }
+
     private void OnDestroy()
     {
-        if (_boundaryMaterial != null)
-            Destroy(_boundaryMaterial);
-
-        if (_fogMaterial != null)
-            Destroy(_fogMaterial);
-
-        if (_fogMesh != null)
-            Destroy(_fogMesh);
-
-        if (_dangerCanvasObject != null)
-            Destroy(_dangerCanvasObject);
+        if (_boundaryMaterial != null) Destroy(_boundaryMaterial);
+        if (_nextBoundaryMaterial != null) Destroy(_nextBoundaryMaterial);
+        if (_fogMaterial != null) Destroy(_fogMaterial);
+        if (_fogMesh != null) Destroy(_fogMesh);
+        if (_dangerCanvasObject != null) Destroy(_dangerCanvasObject);
     }
 }

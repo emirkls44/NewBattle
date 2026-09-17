@@ -9,6 +9,9 @@ public class WorldHealthBar : MonoBehaviour
     [SerializeField] private Color shieldColor = new(0.15f, 0.65f, 1f, 1f);
 
     private HealthController _health;
+    private NewBattle.Gameplay.PlayerPresence _presence;
+    private NewBattle.Gameplay.PlayerVisibility _visibility;
+    private PlayerCombatStats _stats;
     private Camera _camera;
     private Transform _canvasTransform;
     private RectTransform _healthFill;
@@ -28,6 +31,9 @@ public class WorldHealthBar : MonoBehaviour
         }
 
         _camera = Camera.main;
+        _presence = GetComponent<NewBattle.Gameplay.PlayerPresence>();
+        _visibility = GetComponent<NewBattle.Gameplay.PlayerVisibility>();
+        _stats = GetComponent<PlayerCombatStats>();
 
         CreateBar();
         _health.OnHealthChanged += Refresh;
@@ -45,6 +51,14 @@ public class WorldHealthBar : MonoBehaviour
         if (_canvasTransform == null)
             return;
 
+        bool shouldShow = ShouldShowBar();
+
+        if (_canvasTransform.gameObject.activeSelf != shouldShow)
+            _canvasTransform.gameObject.SetActive(shouldShow);
+
+        if (!shouldShow)
+            return;
+
         if (_camera == null)
             _camera = Camera.main;
 
@@ -55,6 +69,32 @@ public class WorldHealthBar : MonoBehaviour
 
         // Event kacirsa bile agdaki son can degeri ekrana yansir.
         Refresh();
+    }
+
+    /// <summary>
+    /// Can bari kurali:
+    ///   - Gizlenmis (cimende kaybolmus) bir oyuncunun bari asla gorunmez,
+    ///     yoksa gizlenmenin anlami kalmaz.
+    ///   - Takim arkadaslarinin bari her zaman gorunur; onlarin canini takip etmek
+    ///     oyuncunun isine yarar.
+    ///   - Dusmanin bari SADECE catisma sirasinda gorunur (son hasardan sonra
+    ///     birkac saniye). Boylece harita surekli can barlariyla dolu olmaz.
+    /// </summary>
+    private bool ShouldShowBar()
+    {
+        if (_visibility != null && !_visibility.IsBodyVisible)
+            return false;
+
+        if (_presence == null)
+            return true; // Bot veya Presence tasimayan nesne: eski davranis.
+
+        NewBattle.Gameplay.PlayerRelation relation =
+            NewBattle.Gameplay.LocalPlayerContext.GetRelation(_stats);
+
+        if (relation == NewBattle.Gameplay.PlayerRelation.Enemy)
+            return _presence.InCombat;
+
+        return true;
     }
 
     private void CreateBar()

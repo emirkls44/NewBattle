@@ -124,8 +124,15 @@ public class CombatLoadoutHUD : MonoBehaviour
         if (!ReferencesAreValid())
             return;
 
-        bool hasRifle = _loadout != null && _loadout.HasRifle;
-        int selectedSlot = _loadout != null ? _loadout.SelectedSlot : 0;
+        // Networked alanlar sadece nesne spawn'liyken okunabilir; bu HUD ise
+        // oyuncudan bagimsiz calisan bir MonoBehaviour.
+        bool loadoutReady = _loadout != null
+            && _loadout.Object != null
+            && _loadout.Object.IsValid
+            && _loadout.Runner != null;
+
+        bool hasRifle = loadoutReady && _loadout.HasRifle;
+        int selectedSlot = loadoutReady ? _loadout.SelectedSlot : 0;
 
         fistBackground.color = selectedSlot == 0 ? selectedColor : availableColor;
         rifleBackground.color = !hasRifle
@@ -134,6 +141,15 @@ public class CombatLoadoutHUD : MonoBehaviour
 
         rifleButton.interactable = hasRifle;
         rifleText.text = hasRifle ? $"SILAH\n{_loadout.RifleAmmo}" : "SILAH\nKILITLI";
+    }
+
+    /// <summary>Elindeki silahin adi; cok silahli sistemde hangi silah oldugunu gosterir.</summary>
+    private string WeaponLabel()
+    {
+        NewBattle.Gameplay.WeaponDefinition weapon = _loadout.CurrentWeapon;
+        return weapon != null && !string.IsNullOrEmpty(weapon.label)
+            ? weapon.label.ToUpperInvariant()
+            : "SILAH";
     }
 
     [ContextMenu("Create Editable Combat Slots In Hierarchy")]

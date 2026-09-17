@@ -10,7 +10,15 @@ public abstract class TimedLootPickup : NetworkBehaviour
     [SerializeField, Min(0.2f)] private float collectionRadius = 1.25f;
     [SerializeField, Min(0.01f)] private float ringWidth = 0.055f;
     [SerializeField] private float ringWorldHeight = 0.04f;
+    [Tooltip("Pickup'in merkezinden zemine olan mesafe. Loot havada durdugu icin " +
+             "halkayi biraz asagi indirmek gerekir.")]
+    [SerializeField] private float ringGroundOffset = -0.55f;
     [SerializeField] private Color progressColor = new Color(0.2f, 1f, 0.08f, 1f);
+
+    [Tooltip("Beyaz halka ancak yerel oyuncu bu mesafedeyken cizilir. " +
+             "Haritadaki tum loot'larin halkasi ayni anda gorunurse ekran " +
+             "beyaz cemberlerden gorunmez hale gelir.")]
+    [SerializeField, Min(0.5f)] private float ringVisibleDistance = 4.5f;
     [Networked, Capacity(32)] private NetworkDictionary<NetworkId, float> Progress => default;
     private static readonly HashSet<TimedLootPickup> Active = new();
     private readonly List<NetworkId> _remove = new();
@@ -27,9 +35,14 @@ public abstract class TimedLootPickup : NetworkBehaviour
     {
         _consumed = false;
         Active.Add(this);
+        // Spawn'da bir kez: burada sahne taramasi kabul edilebilir.
         foreach (var lobby in FindObjectsByType<LobbyCountdownController>(FindObjectsSortMode.None))
             if (lobby.Runner == Runner) { _lobby = lobby; break; }
         _rings = new GameObject(name + "_LootRings");
+        // Pickup'in altina bagli olsun: LineRenderer zaten world-space
+        // calistigi icin konum degismez, ama nesne artik sahne kokunde
+        // basibos durmaz ve pickup ile birlikte taranabilir.
+        _rings.transform.SetParent(transform, true);
         var shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null) shader = Shader.Find("Sprites/Default");
         if (shader == null) return;
@@ -88,8 +101,11 @@ public abstract class TimedLootPickup : NetworkBehaviour
         _eligible.Clear();
         PlayerLoadout winner = null;
         float winnerTime = float.NegativeInfinity;
-        foreach (var player in FindObjectsByType<PlayerLoadout>(FindObjectsSortMode.None))
+        var registry = NewBattle.Gameplay.PlayerRegistry.All;
+        for (int i = 0; i < registry.Count; i++)
         {
+            PlayerLoadout player = registry[i] != null ? registry[i].Loadout : null;
+            if (player == null) continue;
             if (!Eligible(player) || !player.HasStateAuthority || Nearest(player) != this) continue;
             NetworkId id = player.Object.Id;
             _eligible.Add(id);
@@ -107,6 +123,12 @@ public abstract class TimedLootPickup : NetworkBehaviour
         {
             _consumed = true;
             GiveTo(winner);
+
+            // Bolge yoneticisine "bu yuva alindi" de. Bolge bosaltilip tekrar
+            // yuklendiginde bu esya geri gelmesin diye gerekli; despawn tek basina
+            // yeterli degil cunku bosaltma da despawn ediyor.
+            NewBattle.Gameplay.LootZoneManager.NotifyConsumed(Object);
+
             Runner.Despawn(Object);
         }
     }
@@ -115,14 +137,39 @@ public abstract class TimedLootPickup : NetworkBehaviour
     {
         if (_white == null || _green == null) return;
         float progress = 0;
-        foreach (var player in FindObjectsByType<PlayerLoadout>(FindObjectsSortMode.None))
+        var registry = NewBattle.Gameplay.PlayerRegistry.All;
+        for (int i = 0; i < registry.Count; i++)
         {
-            if (player.Object == null || !player.Object.IsValid || player.Runner != Runner || !player.HasInputAuthority) continue;
+            PlayerLoadout player = registry[i] != null ? registry[i].Loadout : null;
+            if (player == null || player.Object == null || !player.Object.IsValid || player.Runner != Runner || !player.HasInputAuthority) continue;
             if (Progress.TryGet(player.Object.Id, out float elapsed)) progress = Mathf.Clamp01(elapsed / Mathf.Max(0.05f, collectionSeconds));
             break;
         }
-        Draw(_white, 1f, 0f);
+        // Halkalar sadece yakindayken cizilir.
+        //
+        // Onceki surum her loot'un beyaz halkasini her zaman ciziyordu. Loot
+        // yogunlugu artinca ekranda ayni anda 30+ beyaz cember oluyor ve harita
+        // okunmaz hale geliyordu. Battlelands'te de halka ancak uzerine
+        // yaklasinca beliriyor - halka bir "burada esya var" isareti degil,
+        // "toplamaya baslayabilirsin" isareti.
+        bool nearLocalPlayer = IsLocalPlayerNear();
+
+        Draw(_white, nearLocalPlayer ? 1f : 0f, 0f);
         Draw(_green, progress, 0.008f);
+    }
+
+    /// <summary>Yerel oyuncu halkanin gorunecegi mesafede mi.</summary>
+    private bool IsLocalPlayerNear()
+    {
+        Transform localPlayer = NewBattle.Gameplay.LocalPlayerContext.Transform;
+
+        if (localPlayer == null)
+            return false;
+
+        Vector3 delta = localPlayer.position - transform.position;
+        delta.y = 0f;
+
+        return delta.sqrMagnitude <= ringVisibleDistance * ringVisibleDistance;
     }
 
     private void Draw(LineRenderer line, float fraction, float lift)
@@ -131,7 +178,14 @@ public abstract class TimedLootPickup : NetworkBehaviour
         if (!line.enabled) return;
         int steps = Mathf.Max(1, Mathf.CeilToInt(64 * fraction));
         line.positionCount = steps + 1;
-        Vector3 center = new Vector3(transform.position.x, ringWorldHeight + lift, transform.position.z);
+        // Halka pickup'in KENDI yuksekligine gore cizilir. Onceki surum mutlak
+        // dunya Y'si kullaniyordu (y = 0.04); duz prototip arenada dogruydu ama
+        // yukseltili bir haritada tepedeki loot'un halkasi yerin metrelerce
+        // altinda kaliyor ve hic gorunmuyordu.
+        Vector3 center = new Vector3(
+            transform.position.x,
+            transform.position.y + ringGroundOffset + ringWorldHeight + lift,
+            transform.position.z);
         for (int i = 0; i <= steps; i++)
         {
             float angle = i / (float)steps * fraction * Mathf.PI * 2;
