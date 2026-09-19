@@ -7,6 +7,17 @@ public class MinimapSystem : MonoBehaviour
     [SerializeField] private int textureResolution = 512;
     [SerializeField] private float mapHeight = 50f;
 
+    /// <summary>
+    /// Haritanin bos kalan yerlerinin rengi (deniz / bosluk).
+    ///
+    /// Sabit yazilmis degildi, cunku minimapin genel tonunu belirleyen
+    /// sey bu: harita dokusunun altinda kalan her piksel bu renk.
+    /// Sahnedeki MapImage'in stop halindeki rengi de buna esitleniyor,
+    /// boylece Play'e basmadan minimap nasil gorunecekse oyle gorunuyor.
+    /// </summary>
+    [Tooltip("Minimapin bos alan rengi. MapImage'in stop halindeki rengi de bu olmali.")]
+    [SerializeField] private Color mapBackgroundColor = new(0.12f, 0.25f, 0.31f, 1f);
+
     [Tooltip("Minimapta gorunen dunya yaricapi. Kucuk deger = daha yakin.")]
     [SerializeField] private float visibleWorldRadius = 11f;
 
@@ -369,7 +380,7 @@ public class MinimapSystem : MonoBehaviour
         _visibleRadius = visibleWorldRadius;
         minimapCamera.orthographicSize = _visibleRadius;
         minimapCamera.clearFlags = CameraClearFlags.SolidColor;
-        minimapCamera.backgroundColor = new Color(0.12f, 0.25f, 0.31f, 1f);
+        minimapCamera.backgroundColor = mapBackgroundColor;
         minimapCamera.targetTexture = _renderTexture;
         minimapCamera.nearClipPlane = 0.1f;
         minimapCamera.farClipPlane = mapHeight + 20f;
@@ -538,7 +549,14 @@ public class MinimapSystem : MonoBehaviour
         RawImage mapImage = FindChild<RawImage>("MapImage");
 
         if (mapImage != null)
+        {
             mapImage.texture = _renderTexture;
+
+            // Sahnedeki rengi, doku yokken minimapin bos gorunmemesi icin
+            // arka plan rengine boyanmis durumda. Doku gelince o renk
+            // dokuyu da boyardi; bu yuzden beyaza cekiyoruz.
+            mapImage.color = Color.white;
+        }
         else
             Debug.LogWarning("MinimapSystem: 'MapImage' bulunamadi, harita gorunmeyecek.");
 
