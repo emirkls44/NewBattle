@@ -1344,6 +1344,9 @@ MonoBehaviour:
   holdSeconds: 1.1
   fadeOutSeconds: 0.9
   peakAlpha: 0.72
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  outlineWidth: 0.22
+  outlineColor: {r: 0, g: 0, b: 0, a: 0.9}
   heightFraction: 0.062
   verticalOffset: 0.14
   font: {fileID: 11400000, guid: 957497c710c5347468cffe55bb18c5d2, type: 2}
@@ -3124,7 +3127,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 54, y: 0}
   m_SizeDelta: {x: 120, y: 42}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &935589106
@@ -3227,6 +3230,73 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!21 &957900224
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: TitanOne SDF Material (Instance)
+  m_Shader: {fileID: 4800000, guid: fe393ace9b354375a9cb14cdbbc28be4, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: -4947135440339636338, guid: 957497c710c5347468cffe55bb18c5d2, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _ColorMask: 15
+    - _CullMode: 0
+    - _FaceDilate: 0
+    - _GradientScale: 10
+    - _MaskSoftnessX: 0
+    - _MaskSoftnessY: 0
+    - _OutlineSoftness: 0
+    - _OutlineWidth: 0.22
+    - _PerspectiveFilter: 0.875
+    - _ScaleRatioA: 0.9
+    - _ScaleRatioB: 1
+    - _ScaleRatioC: 0.73125
+    - _ScaleX: 1
+    - _ScaleY: 1
+    - _ShaderFlags: 0
+    - _Sharpness: 0
+    - _Stencil: 0
+    - _StencilComp: 8
+    - _StencilOp: 0
+    - _StencilReadMask: 255
+    - _StencilWriteMask: 255
+    - _TextureHeight: 1024
+    - _TextureWidth: 1024
+    - _UnderlayDilate: 0
+    - _UnderlayOffsetX: 0
+    - _UnderlayOffsetY: 0
+    - _UnderlaySoftness: 0
+    - _VertexOffsetX: 0
+    - _VertexOffsetY: 0
+    - _WeightBold: 0.75
+    - _WeightNormal: 0
+    m_Colors:
+    - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
+    - _FaceColor: {r: 1, g: 1, b: 1, a: 1}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 0.9019608}
+    - _UnderlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!1 &969625235
 GameObject:
   m_ObjectHideFlags: 0
@@ -4021,9 +4091,9 @@ MonoBehaviour:
   m_text: SKOR  0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 957497c710c5347468cffe55bb18c5d2, type: 2}
-  m_sharedMaterial: {fileID: 7100869835953706256, guid: 957497c710c5347468cffe55bb18c5d2, type: 2}
+  m_sharedMaterial: {fileID: 957900224}
   m_fontSharedMaterials: []
-  m_fontMaterial: {fileID: 0}
+  m_fontMaterial: {fileID: 957900224}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
@@ -4114,7 +4184,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: -2, y: -41}
+  m_AnchoredPosition: {x: 52, y: -41}
   m_SizeDelta: {x: 120, y: 42}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &1099531656
@@ -4668,9 +4738,9 @@ MonoBehaviour:
   m_text: BOTLARLA OYNA
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 957497c710c5347468cffe55bb18c5d2, type: 2}
-  m_sharedMaterial: {fileID: 7100869835953706256, guid: 957497c710c5347468cffe55bb18c5d2, type: 2}
+  m_sharedMaterial: {fileID: 1503909753}
   m_fontSharedMaterials: []
-  m_fontMaterial: {fileID: 0}
+  m_fontMaterial: {fileID: 1503909753}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
@@ -4950,6 +5020,7 @@ MonoBehaviour:
   outsideFogColor: {r: 1, g: 0.33, b: 0.36, a: 0.3}
   fogOuterRadius: 124.32
   fogHeight: 0.08
+  mapCoverRadius: 56.572
   followGround: 1
   groundMask:
     serializedVersion: 2
@@ -5627,6 +5698,73 @@ Transform:
   - {fileID: 973380871}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!21 &1503909753
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: TitanOne SDF Material (Instance)
+  m_Shader: {fileID: 4800000, guid: fe393ace9b354375a9cb14cdbbc28be4, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: -4947135440339636338, guid: 957497c710c5347468cffe55bb18c5d2, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _ColorMask: 15
+    - _CullMode: 0
+    - _FaceDilate: 0
+    - _GradientScale: 10
+    - _MaskSoftnessX: 0
+    - _MaskSoftnessY: 0
+    - _OutlineSoftness: 0
+    - _OutlineWidth: 0
+    - _PerspectiveFilter: 0.875
+    - _ScaleRatioA: 0.9
+    - _ScaleRatioB: 1
+    - _ScaleRatioC: 0.73125
+    - _ScaleX: 1
+    - _ScaleY: 1
+    - _ShaderFlags: 0
+    - _Sharpness: 0
+    - _Stencil: 0
+    - _StencilComp: 8
+    - _StencilOp: 0
+    - _StencilReadMask: 255
+    - _StencilWriteMask: 255
+    - _TextureHeight: 1024
+    - _TextureWidth: 1024
+    - _UnderlayDilate: 0
+    - _UnderlayOffsetX: 0
+    - _UnderlayOffsetY: 0
+    - _UnderlaySoftness: 0
+    - _VertexOffsetX: 0
+    - _VertexOffsetY: 0
+    - _WeightBold: 0.75
+    - _WeightNormal: 0
+    m_Colors:
+    - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
+    - _FaceColor: {r: 1, g: 1, b: 1, a: 1}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _UnderlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!1 &1547847399
 GameObject:
   m_ObjectHideFlags: 0
@@ -5933,8 +6071,6 @@ MonoBehaviour:
   zoomSpeed: 1.4
   airdropColor: {r: 1, g: 0.85, b: 0.15, a: 1}
   airdropMarkerSize: 16
-  directionArrowColor: {r: 1, g: 0.85, b: 0.15, a: 1}
-  directionArrowSize: 20
   minimapSize: 220
   cornerOffset: {x: 25, y: 25}
   squareMinimap: 1

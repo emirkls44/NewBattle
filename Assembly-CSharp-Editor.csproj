@@ -75,6 +75,7 @@
     <Compile Include="Assets\Editor\ArtGen\WorldScaleSync.cs" />
     <Compile Include="Assets\Editor\ArtGen\IslandFactory.cs" />
     <Compile Include="Assets\Editor\ArtGen\PropFactory.cs" />
+    <Compile Include="Assets\Editor\HudIconBuilder.cs" />
     <Compile Include="Assets\Editor\ArtGen\MapSetupWindow.cs" />
     <Compile Include="Assets\Editor\BattlelandsHudSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\ToonPalette.cs" />
