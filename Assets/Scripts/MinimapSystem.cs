@@ -32,6 +32,20 @@ public class MinimapSystem : MonoBehaviour
 
     [Header("Minimap UI")]
     [SerializeField] private float minimapSize = 220f;
+
+    [Header("Sahne Referansi")]
+    /// <summary>
+    /// Sahnede hazir kurulmus minimap nesnesi.
+    ///
+    /// Atanirsa UI calisma aninda URETILMEZ; buradaki nesne kullanilir.
+    /// Boylece cerceveyi, boyutu, renkleri Inspector'dan gorerek
+    /// ayarlayabiliyorsun - calisma aninda uretilen bir UI'i duzenlemek
+    /// mumkun degil, cunku Play'e basmadan ortada nesne olmuyor.
+    ///
+    /// Bos birakilirsa eski davranis surer ve UI kendiliginden kurulur.
+    /// </summary>
+    [Tooltip("Sahnedeki hazir minimap. Atanirsa UI calisma aninda uretilmez.")]
+    [SerializeField] private RectTransform minimapRoot;
     [SerializeField] private Vector2 cornerOffset = new(25f, 25f);
 
     [Tooltip("Acikken minimap kare, kapaliyken daire olur.")]
@@ -376,6 +390,12 @@ public class MinimapSystem : MonoBehaviour
 
     private void CreateMinimapUI()
     {
+        if (minimapRoot != null)
+        {
+            AdoptSceneMinimap();
+            return;
+        }
+
         Canvas canvas = GetComponentInParent<Canvas>();
         if (canvas == null)
         {
@@ -492,6 +512,75 @@ public class MinimapSystem : MonoBehaviour
         markerObject.SetActive(false);
     }
 
+
+    /// <summary>
+    /// Sahnede hazir duran minimap nesnesini kullanir.
+    ///
+    /// Alt nesneleri ADA gore buluyor. Tek tek serilestirilmis alan
+    /// yerine ad kullanmanin sebebi: sen sahneyi duzenlerken bir nesneyi
+    /// silip yeniden olusturursan serilestirilmis referans kopardi ve
+    /// minimap sessizce calismaz olurdu. Ad eslemesi buna dayanikli.
+    ///
+    /// Bulunamayan parca icin uyari yazilir; sessizce eksik kalmasi,
+    /// "neden alan cemberi gorunmuyor" diye aranmaya yol acardi.
+    /// </summary>
+    private void AdoptSceneMinimap()
+    {
+        _uiRoot = minimapRoot.gameObject;
+        _minimapRect = minimapRoot;
+
+        // Piksel hesaplari bu degere dayaniyor; sen nesneyi Inspector'dan
+        // buyutup kucultunce isaretciler de onunla birlikte olceklensin
+        // diye gercek genisligi okuyoruz.
+        if (minimapRoot.sizeDelta.x > 1f)
+            minimapSize = minimapRoot.sizeDelta.x;
+
+        RawImage mapImage = FindChild<RawImage>("MapImage");
+
+        if (mapImage != null)
+            mapImage.texture = _renderTexture;
+        else
+            Debug.LogWarning("MinimapSystem: 'MapImage' bulunamadi, harita gorunmeyecek.");
+
+        _currentZoneGraphic = FindChild<CircleOutlineGraphic>("CurrentZone");
+        _currentZoneRect = _currentZoneGraphic != null ? _currentZoneGraphic.rectTransform : null;
+
+        _nextZoneGraphic = FindChild<CircleOutlineGraphic>("NextZone");
+        _nextZoneRect = _nextZoneGraphic != null ? _nextZoneGraphic.rectTransform : null;
+
+        Graphic airdrop = FindChild<Graphic>("AirdropMarker");
+        _airdropMarker = airdrop != null ? airdrop.rectTransform : null;
+
+        AdoptTeammateMarkers();
+    }
+
+    private T FindChild<T>(string childName) where T : Component
+    {
+        Transform child = minimapRoot.Find(childName);
+        return child != null ? child.GetComponent<T>() : null;
+    }
+
+    /// <summary>
+    /// Takim isaretcilerini sahneden toplar: Teammate_0, Teammate_1, ...
+    /// Kac tane koydugun onemli degil, bulundugu kadari kullanilir.
+    /// </summary>
+    private void AdoptTeammateMarkers()
+    {
+        System.Collections.Generic.List<RectTransform> found = new();
+
+        for (int i = 0; i < maxTeammateMarkers; i++)
+        {
+            Transform child = minimapRoot.Find($"Teammate_{i}");
+
+            if (child == null)
+                break;
+
+            found.Add(child as RectTransform);
+            child.gameObject.SetActive(false);
+        }
+
+        _teammateMarkers = found.ToArray();
+    }
 
     private void CreateTeammateMarkers(RectTransform parent)
     {

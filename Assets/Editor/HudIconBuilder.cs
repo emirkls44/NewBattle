@@ -118,6 +118,19 @@ namespace NewBattle.EditorTools
                 BuildTopBadges(emojiFont);
 
             EditorGUILayout.Space(16f);
+            EditorGUILayout.LabelField("Minimap", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Minimap su an calisma aninda uretiliyor, o yuzden Hierarchy'de " +
+                "gorunmuyor ve Play'e basmadan duzenleyemiyorsun.\n\n" +
+                "Bu dugme minimapi gercek sahne nesnesi olarak kurar: cerceve, " +
+                "harita, alan cemberleri, isaretciler - hepsi ayri ayri " +
+                "Hierarchy'de durur ve Inspector'dan ayarlanir.",
+                MessageType.None);
+
+            if (GUILayout.Button("Minimapi Hiyerarsiye Kur", GUILayout.Height(34f)))
+                BuildMinimap();
+
+            EditorGUILayout.Space(16f);
             EditorGUILayout.LabelField("Kurtarma", EditorStyles.boldLabel);
 
             if (GUILayout.Button("Yazilari Varsayilan Fonta Dondur"))
@@ -132,6 +145,225 @@ namespace NewBattle.EditorTools
                 Report();
 
             EditorGUILayout.EndScrollView();
+        }
+
+        // ------------------------------------------------------------------
+        // Minimap
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Minimapi sahne nesnesi olarak kurar ve MinimapSystem'e baglar.
+        ///
+        /// MinimapSystem, minimapRoot alani doluysa UI'i calisma aninda
+        /// URETMIYOR; buradaki hazir nesneyi kullaniyor. Boylece cerceve,
+        /// boyut, renkler Inspector'dan gorerek ayarlanabiliyor.
+        ///
+        /// Alt nesneler ADA gore bulunuyor, serilestirilmis referansla
+        /// degil: bir parcayi silip yeniden olusturursan ad eslemesi
+        /// calismaya devam eder, referans ise kopardi.
+        /// </summary>
+        private static void BuildMinimap()
+        {
+            MinimapSystem system = Object.FindFirstObjectByType<MinimapSystem>(
+                FindObjectsInactive.Include);
+
+            if (system == null)
+            {
+                Debug.LogError("Sahnede MinimapSystem yok.");
+                return;
+            }
+
+            Canvas canvas = system.GetComponentInParent<Canvas>();
+
+            if (canvas == null)
+            {
+                Debug.LogError("MinimapSystem bir Canvas altinda olmali.");
+                return;
+            }
+
+            SerializedObject so = new(system);
+            SerializedProperty rootProperty = so.FindProperty("minimapRoot");
+
+            if (rootProperty == null)
+            {
+                Debug.LogError("MinimapSystem'de minimapRoot alani yok. Script guncel mi?");
+                return;
+            }
+
+            if (rootProperty.objectReferenceValue != null)
+            {
+                Debug.Log("Minimap zaten sahnede kurulu. Yeniden kurmak icin " +
+                          "once Hierarchy'den 'Minimap' nesnesini sil.");
+                return;
+            }
+
+            float size = ReadFloat(so, "minimapSize", 220f);
+            Vector2 corner = ReadVector(so, "cornerOffset", new Vector2(25f, 25f));
+            float borderThickness = ReadFloat(so, "borderThickness", 3f);
+            Color borderColor = ReadColor(so, "borderColor", Color.white);
+            Color currentZoneColor = ReadColor(so, "currentZoneColor", new Color(1f, 0.24f, 0.42f, 0.95f));
+            Color nextZoneColor = ReadColor(so, "nextZoneColor", new Color(1f, 1f, 1f, 0.95f));
+            Color airdropColor = ReadColor(so, "airdropColor", new Color(1f, 0.85f, 0.15f, 1f));
+            Color teammateColor = ReadColor(so, "teammateColor", new Color(0.25f, 0.66f, 1f, 1f));
+
+            GameObject root = new("Minimap", typeof(RectTransform), typeof(Image), typeof(Mask));
+            RectTransform rootRect = root.GetComponent<RectTransform>();
+            rootRect.SetParent(canvas.transform, false);
+            rootRect.anchorMin = Vector2.one;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.pivot = Vector2.one;
+            rootRect.anchoredPosition = new Vector2(-corner.x, -corner.y);
+            rootRect.sizeDelta = new Vector2(size, size);
+
+            Image mask = root.GetComponent<Image>();
+            mask.color = Color.white;
+            mask.raycastTarget = false;
+            root.GetComponent<Mask>().showMaskGraphic = false;
+
+            // Harita dokusu. Texture calisma aninda atanir; burada bos.
+            GameObject mapObject = new("MapImage", typeof(RectTransform), typeof(RawImage));
+            RectTransform mapRect = mapObject.GetComponent<RectTransform>();
+            mapRect.SetParent(rootRect, false);
+            Stretch(mapRect);
+            RawImage mapImage = mapObject.GetComponent<RawImage>();
+            mapImage.color = Color.white;
+            mapImage.raycastTarget = false;
+
+            CreateCircle("CurrentZone", rootRect, currentZoneColor, 4f, Vector2.zero);
+            CreateCircle("NextZone", rootRect, nextZoneColor, 3f, Vector2.zero);
+
+            RectTransform airdrop = CreateCircle("AirdropMarker", rootRect, airdropColor, 8f,
+                new Vector2(16f, 16f));
+            airdrop.gameObject.SetActive(false);
+
+            CreateCircle("LocalPlayerMarker", rootRect, new Color(0.15f, 1f, 0.2f, 1f), 8f,
+                new Vector2(16f, 16f));
+
+            int teammateCount = Mathf.Max(0, ReadInt(so, "maxTeammateMarkers", 3));
+            float teammateSize = ReadFloat(so, "teammateMarkerSize", 13f);
+
+            for (int i = 0; i < teammateCount; i++)
+            {
+                RectTransform marker = CreateCircle($"Teammate_{i}", rootRect, teammateColor,
+                    teammateSize * 0.5f, new Vector2(teammateSize, teammateSize));
+                marker.gameObject.SetActive(false);
+            }
+
+            CreateBorder(rootRect, borderColor, borderThickness);
+
+            rootProperty.objectReferenceValue = rootRect;
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(system);
+
+            Undo.RegisterCreatedObjectUndo(root, "Minimap kur");
+            Selection.activeObject = root;
+            MarkSceneDirty();
+
+            Debug.Log(
+                "Minimap Hierarchy'ye kuruldu ve MinimapSystem'e baglandi.\n" +
+                "  Minimap            -> cerceve maskesi, boyut, konum\n" +
+                "  Minimap/MapImage   -> harita goruntusu\n" +
+                "  Minimap/CurrentZone, NextZone -> alan cemberleri\n" +
+                "  Minimap/AirdropMarker, LocalPlayerMarker, Teammate_N\n" +
+                "  Minimap/Border     -> dort kenar serit\n\n" +
+                "Artik UI calisma aninda uretilmiyor; hepsini Inspector'dan ayarla.");
+        }
+
+        private static RectTransform CreateCircle(string name, RectTransform parent,
+            Color color, float thickness, Vector2 size)
+        {
+            GameObject circle = new(name, typeof(RectTransform), typeof(CircleOutlineGraphic));
+            RectTransform rect = circle.GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+
+            if (size.sqrMagnitude > 0.01f)
+                rect.sizeDelta = size;
+
+            CircleOutlineGraphic graphic = circle.GetComponent<CircleOutlineGraphic>();
+            graphic.raycastTarget = false;
+            graphic.color = color;
+            graphic.SetThickness(thickness);
+
+            return rect;
+        }
+
+        /// <summary>
+        /// Kare cerceve: dort ince serit.
+        ///
+        /// Tek bir 9-slice sprite yerine dort dikdortgen, cunku disaridan
+        /// bir sprite varligina bagimli olmak istemiyoruz - eksik bir asset
+        /// cerceveyi sessizce yok ederdi.
+        /// </summary>
+        private static void CreateBorder(RectTransform parent, Color color, float thickness)
+        {
+            GameObject borderRoot = new("Border", typeof(RectTransform));
+            RectTransform rootRect = borderRoot.GetComponent<RectTransform>();
+            rootRect.SetParent(parent, false);
+            Stretch(rootRect);
+
+            CreateEdge(rootRect, "Top", new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(0f, thickness), color);
+            CreateEdge(rootRect, "Bottom", new Vector2(0f, 0f), new Vector2(1f, 0f),
+                new Vector2(0f, thickness), color);
+            CreateEdge(rootRect, "Left", new Vector2(0f, 0f), new Vector2(0f, 1f),
+                new Vector2(thickness, 0f), color);
+            CreateEdge(rootRect, "Right", new Vector2(1f, 0f), new Vector2(1f, 1f),
+                new Vector2(thickness, 0f), color);
+        }
+
+        private static void CreateEdge(RectTransform parent, string name,
+            Vector2 anchorMin, Vector2 anchorMax, Vector2 size, Color color)
+        {
+            GameObject edge = new(name, typeof(RectTransform), typeof(Image));
+            RectTransform rect = edge.GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.sizeDelta = size;
+            rect.anchoredPosition = Vector2.zero;
+
+            Image image = edge.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+        }
+
+        private static void Stretch(RectTransform rect)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        private static float ReadFloat(SerializedObject so, string field, float fallback)
+        {
+            SerializedProperty p = so.FindProperty(field);
+            return p != null ? p.floatValue : fallback;
+        }
+
+        private static int ReadInt(SerializedObject so, string field, int fallback)
+        {
+            SerializedProperty p = so.FindProperty(field);
+            return p != null ? p.intValue : fallback;
+        }
+
+        private static Color ReadColor(SerializedObject so, string field, Color fallback)
+        {
+            SerializedProperty p = so.FindProperty(field);
+            return p != null ? p.colorValue : fallback;
+        }
+
+        private static Vector2 ReadVector(SerializedObject so, string field, Vector2 fallback)
+        {
+            SerializedProperty p = so.FindProperty(field);
+            return p != null ? p.vector2Value : fallback;
         }
 
         // ------------------------------------------------------------------
