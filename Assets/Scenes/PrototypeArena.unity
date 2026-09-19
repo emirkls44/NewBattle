@@ -197,7 +197,7 @@ MonoBehaviour:
   autoStart: 0
   useFixedSessionName: 0
   sessionName: NewBattlePrototype
-  maxPlayers: 4
+  maxPlayers: 2
   maps: []
   playerPrefab:
     RawGuidValue: f49277fef334f1c429b5716c12296f9c
@@ -4193,6 +4193,60 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1099531656}
   m_CullTransparentMesh: 1
+--- !u!1 &1135231662
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1135231664}
+  - component: {fileID: 1135231663}
+  m_Layer: 0
+  m_Name: DamageNumberPool
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1135231663
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1135231662}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a010b41c271a697408965f9ba81e350c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DamageNumberPopup
+  font: {fileID: 11400000, guid: 957497c710c5347468cffe55bb18c5d2, type: 2}
+  fontSize: 4.5
+  fontStyle: 1
+  healthColor: {r: 1, g: 0.9, b: 0.15, a: 1}
+  shieldColor: {r: 0.2, g: 0.72, b: 1, a: 1}
+  outlineWidth: 0.2
+  outlineColor: {r: 0, g: 0, b: 0, a: 0.85}
+  lifetime: 0.85
+  riseSpeed: 1.4
+  heightOffset: 2.35
+--- !u!4 &1135231664
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1135231662}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1138113650
 GameObject:
   m_ObjectHideFlags: 0
@@ -4845,6 +4899,7 @@ GameObject:
   - component: {fileID: 1284525978}
   - component: {fileID: 1284525979}
   - component: {fileID: 1284525980}
+  - component: {fileID: 1284525981}
   m_Layer: 0
   m_Name: SafeZone
   m_TagString: Untagged
@@ -4932,6 +4987,7 @@ MonoBehaviour:
   - {fileID: 1284525977}
   - {fileID: 1284525978}
   - {fileID: 1284525979}
+  - {fileID: 1284525981}
   ForceRemoteRenderTimeframe: 0
 --- !u!4 &1284525974
 Transform:
@@ -5077,6 +5133,24 @@ MonoBehaviour:
   worldRoots:
   - {fileID: 0}
   menuOnlyRoots: []
+--- !u!114 &1284525981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1284525971}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a22a2854a215fb748b0ed7c09ce50744, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.TestLootPlacer
+  placements: []
+  heightAboveGround: 0.65
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  logPlacements: 1
 --- !u!1 &1325914286
 GameObject:
   m_ObjectHideFlags: 0
@@ -8096,3 +8170,4 @@ SceneRoots:
   - {fileID: 1480322728}
   - {fileID: 3787162145643779711}
   - {fileID: 323510953}
+  - {fileID: 1135231664}

@@ -103,6 +103,33 @@ namespace NewBattle.EditorTools
             if (GUILayout.Button("Hasar Sayisini Sahneye Ekle"))
                 AddDamageNumbers();
 
+            EditorGUILayout.Space(18f);
+            EditorGUILayout.LabelField("5 - Test silahi", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Haritanin merkezine bir silah birakir. Loot prefablari ag " +
+                "nesnesi oldugu icin sahneye elle surukleyemiyoruz; bu bilesen " +
+                "maci baslatinca host tarafinda doguruyor.\n\n" +
+                "Konumu ve neyin birakilacagini Inspector'dan degistirebilirsin.",
+                MessageType.None);
+
+            if (GUILayout.Button("Haritaya Test Silahi Koy", GUILayout.Height(32f)))
+                AddTestLoot();
+
+            EditorGUILayout.Space(18f);
+            EditorGUILayout.LabelField("6 - Harita olculeri", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Zemini OLCER ve alan/kamera/loot ayarlarini ona gore yeniden " +
+                "hesaplar.\n\n" +
+                "Su an oyun 160x160 bir haritaya gore ayarli ama senin haritan " +
+                "80x80. Oyuncu merkezden 76.8 birim yuruyebiliyor, zemin ise " +
+                "40'ta bitiyor - yani haritanin kenarindan cikip bosluga " +
+                "yurunebiliyor. Alan yaricapi da (102.4) haritanin tamamindan " +
+                "buyuk, bu yuzden ilk asamalar hicbir sey yapmiyor.",
+                MessageType.Warning);
+
+            if (GUILayout.Button("Alani ve Sinirlari Haritaya Uyarla", GUILayout.Height(34f)))
+                RetuneToMap();
+
             EditorGUILayout.Space(14f);
 
             if (GUILayout.Button("Durumu Yaz (degistirmez)"))
@@ -383,6 +410,236 @@ namespace NewBattle.EditorTools
             Debug.Log(fontAsset != null
                 ? "DamageNumberPool sahneye eklendi, Titan One atandi. Inspector'dan ayarla."
                 : "DamageNumberPool sahneye eklendi. Once fontu hazirla, sonra tekrar bas.");
+        }
+
+        /// <summary>
+        /// Test loot birakiciyi sahneye ekler.
+        ///
+        /// Yeni bir nesne yaratmak yerine MEVCUT bir ag nesnesinin uzerine
+        /// takiliyor (SafeZone). Sebebi: NetworkBehaviour'un calismasi icin
+        /// ayni nesnede kayitli bir NetworkObject gerekiyor. Sifirdan bir
+        /// sahne ag nesnesi kurmak, Fusion'un sahne nesnesi kaydina elle
+        /// mudahale etmek demek olurdu; hazir ve calisan bir taneye
+        /// eklemek hem kisa hem guvenli.
+        /// </summary>
+        private static void AddTestLoot()
+        {
+            if (Object.FindFirstObjectByType<TestLootPlacer>(FindObjectsInactive.Include) != null)
+            {
+                Debug.Log("TestLootPlacer zaten sahnede. Inspector'dan ayarlayabilirsin.");
+                return;
+            }
+
+            LootZoneManager host = Object.FindFirstObjectByType<LootZoneManager>(
+                FindObjectsInactive.Include);
+
+            if (host == null)
+            {
+                Debug.LogError(
+                    "SafeZone (LootZoneManager tasiyan nesne) bulunamadi. " +
+                    "TestLootPlacer'in calismak icin kayitli bir NetworkObject'e " +
+                    "ihtiyaci var; onu elle bir ag nesnesine ekle.");
+                return;
+            }
+
+            Undo.AddComponent<TestLootPlacer>(host.gameObject);
+            Selection.activeObject = host.gameObject;
+            MarkSceneDirty();
+
+            Debug.Log(
+                $"TestLootPlacer '{host.gameObject.name}' nesnesine eklendi. " +
+                "Liste bos oldugu icin haritanin merkezine (0,0) bir silah birakacak.");
+        }
+
+        /// <summary>
+        /// Zemini olcup butun mesafe ayarlarini ona gore yeniden hesaplar.
+        ///
+        /// Neden olcuyoruz: harita elle kuruldugu icin boyutu kodun bilmedigi
+        /// bir sey. Sabit bir sayi yazsaydik harita her degistiginde bu arac
+        /// da yanlis olurdu. Zemin renderer'larinin sinirlarini olcmek, harita
+        /// nasil kurulmus olursa olsun dogru cevabi veriyor.
+        /// </summary>
+        private static void RetuneToMap()
+        {
+            if (!TryMeasureGround(out float halfExtent, out string mapName))
+            {
+                Debug.LogError(
+                    "Zemin olculemedi. Sahnede zemin nesneleri (CityGround, " +
+                    "ForestGround, SandGround vb.) bulunamadi.");
+                return;
+            }
+
+            List<string> log = new()
+            {
+                "=== HARITA OLCULERINE UYARLAMA ===",
+                $"  Olculen zemin : {halfExtent * 2f:0.#} x {halfExtent * 2f:0.#} birim ({mapName})",
+                $"  Yari genislik : {halfExtent:0.#}",
+                string.Empty
+            };
+
+            // Oyuncu kenara kadar gidebilsin ama disina cikmasin: kucuk bir
+            // pay birakiyoruz, yoksa kenarda duran oyuncunun yarisi bosluga
+            // tasiyor.
+            float playable = halfExtent * 0.96f;
+
+            // Alan koseleri de kapsamali. Kare bir haritada merkezden koseye
+            // uzaklik yari genisligin kok2 katidir; biraz uzerine cikiyoruz.
+            float initialRadius = halfExtent * 1.48f;
+
+            if (TrySet<DropPhaseController>("playableMapExtent", playable, log))
+                log.Add($"    oyuncu siniri  -> {playable:0.#}");
+
+            if (TrySet<LootSpawner>("spawnExtent", halfExtent * 0.92f, log))
+                log.Add($"    loot dagilimi  -> {halfExtent * 0.92f:0.#}");
+
+            if (TrySet<NewBattle.Gameplay.LootZoneManager>("mapRadiusOverride", halfExtent, log))
+                log.Add($"    loot bolgeleri -> {halfExtent:0.#}");
+
+            CameraFollow camera = Object.FindFirstObjectByType<CameraFollow>(FindObjectsInactive.Include);
+
+            if (camera != null)
+            {
+                Undo.RecordObject(camera, "Harita olculeri");
+                camera.cameraFocusRadius = playable;
+                EditorUtility.SetDirty(camera);
+                log.Add($"    kamera siniri  -> {playable:0.#}");
+            }
+
+            RetuneZone(initialRadius, halfExtent, log);
+
+            MarkSceneDirty();
+            Debug.Log(string.Join("\n", log));
+        }
+
+        private static bool TryMeasureGround(out float halfExtent, out string mapName)
+        {
+            halfExtent = 0f;
+            mapName = "-";
+
+            Bounds bounds = default;
+            bool any = false;
+
+            foreach (Renderer renderer in Object.FindObjectsByType<Renderer>(
+                         FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                // Zemin: genis, yassi ve dunya orijinine yakin yukseklikte.
+                // Agaclar, binalar ve karakterler bu filtreye takilmiyor.
+                Bounds candidate = renderer.bounds;
+
+                if (candidate.size.x < 10f || candidate.size.z < 10f)
+                    continue;
+
+                if (Mathf.Abs(candidate.center.y) > 5f)
+                    continue;
+
+                if (!any)
+                {
+                    bounds = candidate;
+                    mapName = renderer.name;
+                    any = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(candidate);
+                }
+            }
+
+            if (!any)
+                return false;
+
+            halfExtent = Mathf.Max(bounds.size.x, bounds.size.z) * 0.5f;
+            return halfExtent > 1f;
+        }
+
+        /// <summary>
+        /// Alan yaricaplarini yeni harita olcusune gore olcekler.
+        ///
+        /// Asama yaricaplari mutlak deger olarak saklaniyor. Oranlarini
+        /// koruyarak olcekliyoruz: asamalarin birbirine gore temposu
+        /// (genis -> orta -> dar) el yapimi bir denge, onu bozmak istemiyoruz.
+        /// </summary>
+        private static void RetuneZone(float initialRadius, float halfExtent, List<string> log)
+        {
+            SafeZoneController zone = Object.FindFirstObjectByType<SafeZoneController>(
+                FindObjectsInactive.Include);
+
+            if (zone == null)
+            {
+                log.Add("    SafeZoneController bulunamadi.");
+                return;
+            }
+
+            SerializedObject so = new(zone);
+
+            SerializedProperty initial = so.FindProperty("initialRadius");
+            float previousInitial = initial != null ? initial.floatValue : 0f;
+
+            if (initial != null)
+            {
+                initial.floatValue = initialRadius;
+                log.Add($"    alan yaricapi  -> {initialRadius:0.#}  (onceki {previousInitial:0.#})");
+            }
+
+            SerializedProperty fog = so.FindProperty("fogOuterRadius");
+
+            if (fog != null)
+                fog.floatValue = initialRadius * 2.1f;
+
+            // Videoda alan disi PEMBE kapli, mavi degil.
+            SerializedProperty fogColor = so.FindProperty("outsideFogColor");
+
+            if (fogColor != null)
+            {
+                fogColor.colorValue = new Color(1f, 0.33f, 0.36f, 0.30f);
+                log.Add("    alan disi rengi-> pembe (videodaki gibi)");
+            }
+
+            SerializedProperty stages = so.FindProperty("stages");
+
+            if (stages != null && stages.isArray && previousInitial > 0.01f)
+            {
+                float scale = initialRadius / previousInitial;
+
+                for (int i = 0; i < stages.arraySize; i++)
+                {
+                    SerializedProperty target =
+                        stages.GetArrayElementAtIndex(i).FindPropertyRelative("targetRadius");
+
+                    if (target != null)
+                        target.floatValue *= scale;
+                }
+
+                log.Add($"    {stages.arraySize} asama {scale:0.##} katsayisiyla olceklendi");
+            }
+
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(zone);
+        }
+
+        private static bool TrySet<T>(string fieldName, float value, List<string> log)
+            where T : Component
+        {
+            T component = Object.FindFirstObjectByType<T>(FindObjectsInactive.Include);
+
+            if (component == null)
+            {
+                log.Add($"    {typeof(T).Name} bulunamadi.");
+                return false;
+            }
+
+            SerializedObject so = new(component);
+            SerializedProperty property = so.FindProperty(fieldName);
+
+            if (property == null)
+            {
+                log.Add($"    {typeof(T).Name}.{fieldName} alani yok.");
+                return false;
+            }
+
+            property.floatValue = value;
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(component);
+            return true;
         }
 
         private static void Report()

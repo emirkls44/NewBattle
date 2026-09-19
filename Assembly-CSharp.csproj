@@ -94,7 +94,9 @@
     <Compile Include="Assets\Scripts\LocalPlayerHUD.cs" />
     <Compile Include="Assets\Scripts\Gameplay\AirdropCratePickup.cs" />
     <Compile Include="Assets\Scripts\PlayerStateBase.cs" />
+    <Compile Include="Assets\Scripts\Gameplay\HitFlash.cs" />
     <Compile Include="Assets\Scripts\GameManager.cs" />
+    <Compile Include="Assets\Scripts\Gameplay\TestLootPlacer.cs" />
     <Compile Include="Assets\Scripts\TrainingBot.cs" />
     <Compile Include="Assets\Scripts\LobbyCountdownController.cs" />
     <Compile Include="Assets\Scripts\Gameplay\PlayerVisibility.cs" />
