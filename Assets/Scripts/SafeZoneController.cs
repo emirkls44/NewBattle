@@ -75,6 +75,16 @@ public class SafeZoneController : NetworkBehaviour
     [SerializeField, Min(40f)] private float fogOuterRadius = 120f;
     [SerializeField] private float fogHeight = 0.08f;
 
+    /// <summary>
+    /// Haritanin merkezden koseye uzakligi (yari kosegen).
+    ///
+    /// Pus halkasinin haritayi her durumda kapatmasi icin gerekiyor.
+    /// "Alani ve Sinirlari Haritaya Uyarla" araci bunu olcup yaziyor;
+    /// 0 birakilirsa sadece fogOuterRadius kullanilir.
+    /// </summary>
+    [Tooltip("Haritanin yari kosegeni. Arac olcup doldurur; pusun haritayi kapatmasi icin.")]
+    [SerializeField, Min(0f)] private float mapCoverRadius;
+
     [Header("Zemin Takibi")]
     [Tooltip("Cember ve duvar arazinin yuksekligini takip eder. Bu olmadan " +
              "yukseltili haritada cizgi tepelerin altinda kalir.")]
@@ -707,7 +717,18 @@ public class SafeZoneController : NetworkBehaviour
         if (_fogMesh.vertexCount != requiredVertexCount)
             BuildFogTriangles();
 
-        float outerRadius = Mathf.Max(fogOuterRadius, SafeRadius + 1f);
+        // Pus halkasi ALAN merkezine oturuyor, harita merkezine degil. Alan
+        // daralip merkezi kaydikca halka da kayiyor; yaricap sabit kalirsa
+        // haritanin obur ucu halkanin disinda kalip acikta gorunuyor.
+        //
+        // En kotu durum: alan merkezi haritanin bir kosesinde, kapatilmasi
+        // gereken nokta karsi kosede - yani harita kosegeni kadar. Yari
+        // kosegenin iki kati tam olarak bu.
+        float outerRadius = Mathf.Max(
+            fogOuterRadius,
+            SafeRadius + 1f,
+            mapCoverRadius * 2f);
+
         for (int i = 0; i <= boundarySegments; i++)
         {
             float angle = i * Mathf.PI * 2f / boundarySegments;

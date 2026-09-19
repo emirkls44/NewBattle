@@ -26,6 +26,11 @@ namespace NewBattle.EditorTools
         private const string FontSourcePath = "Assets/Fonts/TitanOne-Regular.ttf";
         private const string FontAssetPath = "Assets/Fonts/TitanOne SDF.asset";
 
+        /// <summary>HUD yazilarinin konturu. Acik zeminde okunurlugu saglar.</summary>
+        private const float HudOutlineWidth = 0.22f;
+
+        private static readonly Color HudOutlineColor = new(0f, 0f, 0f, 0.9f);
+
         // ------------------------------------------------------------------
         // Videodan olculen yerlesim (ekran genisligi/yuksekliginin orani).
         // Oran olarak tutuluyor cunku sahnedeki canvas referans cozunurlugu
@@ -59,10 +64,11 @@ namespace NewBattle.EditorTools
             EditorGUILayout.LabelField("1 - Font", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "Assets/Fonts/TitanOne-Regular.ttf dosyasindan TextMeshPro font " +
-                "varligi uretir ve sahnedeki tum yazilara uygular.\n\n" +
-                "Dinamik mod kullaniliyor: Turkce karakterler (s, g, i, o, u, c) " +
-                "kullanildiklari anda atlasa ekleniyor, onceden liste vermeye " +
-                "gerek kalmiyor.",
+                "varligi uretir, sahnedeki tum yazilara uygular ve KOYU KONTUR " +
+                "ekler.\n\n" +
+                "Kontur olmadan beyaz yazilar acik zeminde (kum, kar, beton) " +
+                "neredeyse gorunmuyor. Fontu daha once uyguladiysan bile konturu " +
+                "almak icin tekrar bas.",
                 MessageType.None);
 
             if (GUILayout.Button("Fontu Hazirla ve Uygula", GUILayout.Height(32f)))
@@ -212,6 +218,14 @@ namespace NewBattle.EditorTools
             Debug.Log($"Font {changed} yaziya uygulandi.");
         }
 
+        /// <summary>
+        /// Fontu ve KONTURU sahnedeki tum yazilara uygular.
+        ///
+        /// Kontur olmadan beyaz HUD yazilari acik zeminde (kum, kar, beton)
+        /// neredeyse gorunmuyor. Oyun her renkteki zeminin uzerinde
+        /// oynandigi icin yaziyi arka plandan ayiran bir sey gerekiyor;
+        /// koyu kontur bunu her durumda sagliyor.
+        /// </summary>
         private static int ApplyFontToScene(TMP_FontAsset fontAsset)
         {
             int changed = 0;
@@ -219,11 +233,12 @@ namespace NewBattle.EditorTools
             foreach (TextMeshProUGUI label in Object.FindObjectsByType<TextMeshProUGUI>(
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (label.font == fontAsset)
-                    continue;
+                Undo.RecordObject(label, "Font ve kontur uygula");
 
-                Undo.RecordObject(label, "Font uygula");
                 label.font = fontAsset;
+                label.outlineWidth = HudOutlineWidth;
+                label.outlineColor = HudOutlineColor;
+
                 EditorUtility.SetDirty(label);
                 changed++;
             }
@@ -559,6 +574,7 @@ namespace NewBattle.EditorTools
         /// (genis -> orta -> dar) el yapimi bir denge, onu bozmak istemiyoruz.
         /// </summary>
         private static void RetuneZone(float initialRadius, float halfExtent, List<string> log)
+        // halfExtent: haritanin yari genisligi; pus kapsamasi buradan cikiyor.
         {
             SafeZoneController zone = Object.FindFirstObjectByType<SafeZoneController>(
                 FindObjectsInactive.Include);
@@ -580,10 +596,21 @@ namespace NewBattle.EditorTools
                 log.Add($"    alan yaricapi  -> {initialRadius:0.#}  (onceki {previousInitial:0.#})");
             }
 
+            // Kare haritada merkezden koseye uzaklik yari genisligin kok2 kati.
+            float halfDiagonal = halfExtent * 1.4143f;
+
+            SerializedProperty cover = so.FindProperty("mapCoverRadius");
+
+            if (cover != null)
+            {
+                cover.floatValue = halfDiagonal;
+                log.Add($"    pus kapsama    -> {halfDiagonal:0.#} (yari kosegen)");
+            }
+
             SerializedProperty fog = so.FindProperty("fogOuterRadius");
 
             if (fog != null)
-                fog.floatValue = initialRadius * 2.1f;
+                fog.floatValue = Mathf.Max(initialRadius * 2.1f, halfDiagonal * 2f);
 
             // Videoda alan disi PEMBE kapli, mavi degil.
             SerializedProperty fogColor = so.FindProperty("outsideFogColor");

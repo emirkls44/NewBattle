@@ -46,8 +46,16 @@ namespace NewBattle.Gameplay
         [Tooltip("Ekran yuksekliginin yuzdesi olarak yazi boyutu.")]
         [SerializeField, Range(0.02f, 0.15f)] private float heightFraction = 0.062f;
 
-        [Tooltip("Ekranin dikey ortasindan ne kadar yukarida dursun (yukseklik yuzdesi).")]
-        [SerializeField, Range(-0.4f, 0.4f)] private float verticalOffset = 0.14f;
+        /// <summary>
+        /// Ekranin dikey ortasindan yukari kayma miktari.
+        ///
+        /// Duyuru ekranin tam ortasinda degil, USTTE duruyor: orta bolge
+        /// oyuncunun ve nisan almanin oldugu yer, oraya yazi koymak
+        /// catisma sirasinda gorusu kapatiyor. Ust serit zaten alan
+        /// bilgisinin bulundugu yer; duyuru da onun hemen altina oturuyor.
+        /// </summary>
+        [Tooltip("Dikey ortadan yukari kayma. 0.58 = alan yazisinin hemen alti.")]
+        [SerializeField, Range(-0.4f, 0.9f)] private float verticalOffset = 0.58f;
 
         [Tooltip("Bos birakilirsa TextMeshPro varsayilan fontu kullanilir.")]
         [SerializeField] private TMP_FontAsset font;
