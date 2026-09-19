@@ -65,6 +65,16 @@ namespace NewBattle.EditorTools
 
             EditorGUILayout.Space(10f);
 
+            if (GUILayout.Button("Mavi NavMesh gorunumunu ac/kapat", GUILayout.Height(26f)))
+                ToggleGizmos();
+
+            EditorGUILayout.LabelField(
+                "Sadece NavMesh'i gizlemek icin: Scene penceresi ustundeki " +
+                "Gizmos menusu > NavMeshSurface.",
+                EditorStyles.miniLabel);
+
+            EditorGUILayout.Space(6f);
+
             if (GUILayout.Button("Durumu Yaz", GUILayout.Height(26f)))
                 ReportStatus();
 
@@ -331,6 +341,33 @@ namespace NewBattle.EditorTools
         }
 
         // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Sahne goruntusundeki gizmolari topluca kapatir.
+        ///
+        /// NavMesh'in mavi ortusu prop yerlestirirken zemini kapatiyor ve
+        /// agaci nereye koydugunu goremiyorsun. Sadece NavMesh'i gizlemenin
+        /// yolu Gizmos menusundeki tek tik, ama o menu her Unity surumunde
+        /// biraz farkli yerde; buradaki dugme her yerde calisir.
+        ///
+        /// Kapali gizmo hicbir seyi bozmaz, sadece gorunumdur; NavMesh
+        /// verisi yerinde durur.
+        /// </summary>
+        private static void ToggleGizmos()
+        {
+            SceneView view = SceneView.lastActiveSceneView;
+
+            if (view == null)
+            {
+                Debug.LogWarning("Acik bir Scene penceresi yok.");
+                return;
+            }
+
+            view.drawGizmos = !view.drawGizmos;
+            view.Repaint();
+
+            Debug.Log("Sahne gizmolari: " + (view.drawGizmos ? "ACIK" : "KAPALI"));
+        }
 
         private static NavMeshSurface FindSurface()
         {

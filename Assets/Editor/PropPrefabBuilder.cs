@@ -50,6 +50,25 @@ namespace NewBattle.EditorTools
             Capsule = 2,
         }
 
+        /// <summary>Aracin ne yapacagi.</summary>
+        private enum Mode
+        {
+            /// <summary>Modelden sifirdan yeni bir prefab uretir.</summary>
+            NewPrefab = 0,
+
+            /// <summary>
+            /// Hazir bir prefab'i YERINDE duzenler: collider, etiket ve
+            /// golge ayarlarini ekler, dosyayi ayni yere yazar.
+            ///
+            /// Haritaya zaten yuzlerce kopya konduktan sonra tek care bu:
+            /// kaynak prefab degisince butun kopyalar otomatik aliyor,
+            /// yeniden dagitmak gerekmiyor.
+            /// </summary>
+            InPlace = 1,
+        }
+
+        private Mode _mode = Mode.NewPrefab;
+        private bool _overwriteCollider;
         private PropKind _kind = PropKind.Solid;
         private ColliderShape _shape = ColliderShape.Auto;
         private bool _castShadows = true;
@@ -77,11 +96,32 @@ namespace NewBattle.EditorTools
         {
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
-            EditorGUILayout.HelpBox(
-                "Project penceresinden bir ya da birden fazla model sec " +
-                "(FBX / OBJ / prefab), ayarlari sec, Kur'a bas.\n\n" +
-                "Uretilenler: " + OutputFolder,
-                MessageType.Info);
+            _mode = (Mode)EditorGUILayout.EnumPopup("Calisma sekli", _mode);
+
+            if (_mode == Mode.NewPrefab)
+            {
+                EditorGUILayout.HelpBox(
+                    "Project penceresinden bir ya da birden fazla model sec " +
+                    "(FBX / OBJ / prefab), ayarlari sec, Kur'a bas.\n\n" +
+                    "Uretilenler: " + OutputFolder,
+                    MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "Hazir prefab'lari secip collider ekler ve DOSYAYI YERINDE " +
+                    "degistirir.\n\n" +
+                    "Haritada o prefab'in kac kopyasi varsa hepsi otomatik " +
+                    "collider kazanir; yeniden dagitmana gerek kalmaz.\n\n" +
+                    "FBX/OBJ dosyalari yerinde degistirilemez, onlar icin " +
+                    "'NewPrefab' kullan.",
+                    MessageType.Warning);
+
+                _overwriteCollider = EditorGUILayout.Toggle(
+                    new GUIContent("Mevcut collider'i degistir",
+                        "Kapaliyken collider'i olan prefab atlanir."),
+                    _overwriteCollider);
+            }
 
             EditorGUILayout.Space(6f);
 
@@ -136,9 +176,11 @@ namespace NewBattle.EditorTools
 
             GameObject[] models = SelectedModels();
 
+            string verb = _mode == Mode.NewPrefab ? "Kur" : "Collider Ekle";
+
             using (new EditorGUI.DisabledScope(models.Length == 0))
             {
-                if (GUILayout.Button($"Kur ({models.Length} model)", GUILayout.Height(34f)))
+                if (GUILayout.Button($"{verb} ({models.Length} secili)", GUILayout.Height(34f)))
                     BuildAll(models);
             }
 
@@ -196,7 +238,9 @@ namespace NewBattle.EditorTools
 
             foreach (GameObject model in models)
             {
-                string path = Build(model, log);
+                string path = _mode == Mode.NewPrefab
+                    ? Build(model, log)
+                    : PatchInPlace(model, log);
 
                 if (path != null)
                     made++;
@@ -269,6 +313,80 @@ namespace NewBattle.EditorTools
 
         // ------------------------------------------------------------------
 
+        /// <summary>
+        /// Hazir bir prefab dosyasini yerinde duzenler.
+        ///
+        /// LoadPrefabContents prefab'i gorunmez bir sahnede aciyor; orada
+        /// degistirip ayni yola geri yaziyoruz. Sahnedeki kopyalara hic
+        /// dokunmuyoruz - onlar prefab'i takip ettigi icin degisikligi
+        /// kendiliginden aliyorlar.
+        ///
+        /// Konum, donus ve olcu HIC degismiyor: yuzlerce agaci yerinden
+        /// oynatmak butun haritayi bozardi.
+        /// </summary>
+        private string PatchInPlace(GameObject asset, StringBuilder log)
+        {
+            string path = AssetDatabase.GetAssetPath(asset);
+
+            if (string.IsNullOrEmpty(path))
+            {
+                log.AppendLine($"  {asset.name}: disk uzerinde degil, atlandi.");
+                return null;
+            }
+
+            if (PrefabUtility.GetPrefabAssetType(asset) == PrefabAssetType.Model)
+            {
+                log.AppendLine($"  {asset.name}: FBX/OBJ yerinde degistirilemez. " +
+                               "'NewPrefab' modunu kullan.");
+                return null;
+            }
+
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+
+            try
+            {
+                Collider existing = root.GetComponent<Collider>();
+
+                if (existing != null && !_overwriteCollider)
+                {
+                    log.AppendLine($"  {asset.name}: collider'i zaten var, atlandi.");
+                    return null;
+                }
+
+                if (existing != null)
+                {
+                    foreach (Collider c in root.GetComponents<Collider>())
+                        Object.DestroyImmediate(c, true);
+                }
+
+                Bounds bounds = LocalBounds(root);
+
+                if (bounds.size == Vector3.zero)
+                {
+                    log.AppendLine($"  {asset.name}: renderer yok, olcu alinamadi.");
+                    return null;
+                }
+
+                ApplyCollider(root, bounds);
+                ApplyRendererSettings(root);
+                ApplyTagAndStatic(root);
+
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+
+                log.AppendLine($"  {asset.name}: {_kind}, olcu " +
+                               $"{bounds.size.x:0.00} x {bounds.size.y:0.00} x " +
+                               $"{bounds.size.z:0.00}");
+
+                return path;
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        // ------------------------------------------------------------------
+
         /// <summary>Butun renderer'lari kapsayan, koke gore olculmus kutu.</summary>
         private static Bounds LocalBounds(GameObject root)
         {
@@ -305,12 +423,15 @@ namespace NewBattle.EditorTools
                 shape = height > width * 1.6f ? ColliderShape.Capsule : ColliderShape.Box;
             }
 
+            // Merkezi bounds'tan aliyoruz, "taban sifirda" varsayimindan
+            // degil: yerinde duzenleme modunda prefab'in pivotu nerede
+            // olursa olsun collider gorselin uzerine oturmali.
             if (shape == ColliderShape.Capsule)
             {
                 CapsuleCollider capsule = root.AddComponent<CapsuleCollider>();
                 capsule.radius = Mathf.Max(0.05f, width * 0.5f);
                 capsule.height = Mathf.Max(capsule.radius * 2f, height);
-                capsule.center = new Vector3(0f, capsule.height * 0.5f, 0f);
+                capsule.center = bounds.center;
                 capsule.isTrigger = _kind == PropKind.Bush;
             }
             else
@@ -320,7 +441,7 @@ namespace NewBattle.EditorTools
                     Mathf.Max(0.05f, bounds.size.x * _colliderShrink),
                     Mathf.Max(0.05f, height),
                     Mathf.Max(0.05f, bounds.size.z * _colliderShrink));
-                box.center = new Vector3(0f, height * 0.5f, 0f);
+                box.center = bounds.center;
                 box.isTrigger = _kind == PropKind.Bush;
             }
         }
