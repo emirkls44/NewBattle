@@ -29,8 +29,6 @@ public class MinimapSystem : MonoBehaviour
     [Header("Tedarik ve Yon Oku")]
     [SerializeField] private Color airdropColor = new(1f, 0.85f, 0.15f, 1f);
     [SerializeField, Min(4f)] private float airdropMarkerSize = 16f;
-    [SerializeField] private Color directionArrowColor = new(1f, 0.85f, 0.15f, 1f);
-    [SerializeField, Min(4f)] private float directionArrowSize = 20f;
 
     [Header("Minimap UI")]
     [SerializeField] private float minimapSize = 220f;
@@ -83,7 +81,6 @@ public class MinimapSystem : MonoBehaviour
     private float _visibleRadius;
 
     private RectTransform _airdropMarker;
-    private RectTransform _directionArrow;
     private Transform _trackedCrate;
     private float _nextCrateSearchTime;
 
@@ -119,7 +116,6 @@ public class MinimapSystem : MonoBehaviour
             UpdateZoneMarkers();
             UpdateTeammateMarkers();
             UpdateAirdropMarker();
-            UpdateDirectionArrow();
         }
     }
 
@@ -194,40 +190,6 @@ public class MinimapSystem : MonoBehaviour
             Mathf.Clamp(pixels.y, -limit, limit));
     }
 
-    /// <summary>
-    /// Bir sonraki guvenli alanin yonunu gosteren sari cizgi.
-    ///
-    /// Sadece cemberi cizmek yetmiyor: alan ekranin disindaysa cember
-    /// minimapta gorunmuyor ve oyuncu nereye kosacagini bilemiyor. Cizgi
-    /// her zaman oyuncudan disari dogru uzaniyor.
-    /// </summary>
-    private void UpdateDirectionArrow()
-    {
-        if (_directionArrow == null || _localPlayer == null)
-            return;
-
-        bool show = _safeZone != null && _safeZone.Object != null &&
-                    _safeZone.Runner != null && _safeZone.Runner.IsRunning &&
-                    _safeZone.HasNextZone;
-
-        if (show)
-        {
-            Vector3 toNext = _safeZone.NextCenter - _localPlayer.position;
-            Vector2 flat = new(toNext.x, toNext.z);
-
-            // Oyuncu zaten hedefin icindeyse ok anlamsiz - yon gostermiyor,
-            // sadece titriyor.
-            show = flat.magnitude > _safeZone.NextRadius * 0.5f;
-
-            if (show)
-            {
-                float angle = Mathf.Atan2(flat.y, flat.x) * Mathf.Rad2Deg;
-                _directionArrow.localRotation = Quaternion.Euler(0f, 0f, angle);
-            }
-        }
-
-        _directionArrow.gameObject.SetActive(show);
-    }
 
     /// <summary>
     /// Takim arkadaslarini minimapta mavi nokta olarak gosterir.
@@ -500,7 +462,6 @@ public class MinimapSystem : MonoBehaviour
         marker.SetThickness(8f);
 
         CreateAirdropMarker(minimapRect);
-        CreateDirectionArrow(minimapRect);
 
         _minimapRect = minimapRect;
         CreateTeammateMarkers(minimapRect);
@@ -531,30 +492,6 @@ public class MinimapSystem : MonoBehaviour
         markerObject.SetActive(false);
     }
 
-    /// <summary>
-    /// Yon cizgisi: oyuncunun merkezinden disari uzanan ince dikdortgen.
-    ///
-    /// Pivot sol kenarda; boylece nesneyi dondurdugumuzde cizgi oyuncunun
-    /// uzerinde sabit kalip ucu hedefe donuyor. Pivot ortada olsaydi cizgi
-    /// oyuncunun iki yanina birden uzanirdi.
-    /// </summary>
-    private void CreateDirectionArrow(RectTransform parent)
-    {
-        GameObject arrowObject = new("NextZoneArrow", typeof(RectTransform), typeof(Image));
-        _directionArrow = arrowObject.GetComponent<RectTransform>();
-        _directionArrow.SetParent(parent, false);
-        _directionArrow.anchorMin = new Vector2(0.5f, 0.5f);
-        _directionArrow.anchorMax = new Vector2(0.5f, 0.5f);
-        _directionArrow.pivot = new Vector2(0f, 0.5f);
-        _directionArrow.anchoredPosition = Vector2.zero;
-        _directionArrow.sizeDelta = new Vector2(directionArrowSize * 2.2f, directionArrowSize * 0.22f);
-
-        Image image = arrowObject.GetComponent<Image>();
-        image.color = directionArrowColor;
-        image.raycastTarget = false;
-
-        arrowObject.SetActive(false);
-    }
 
     private void CreateTeammateMarkers(RectTransform parent)
     {

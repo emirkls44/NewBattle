@@ -3,7 +3,6 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using NewBattle.Gameplay;
@@ -23,13 +22,8 @@ namespace NewBattle.EditorTools
     /// </summary>
     public class BattlelandsHudSetup : EditorWindow
     {
-        private const string FontSourcePath = "Assets/Fonts/TitanOne-Regular.ttf";
         private const string FontAssetPath = "Assets/Fonts/TitanOne SDF.asset";
 
-        /// <summary>HUD yazilarinin konturu. Acik zeminde okunurlugu saglar.</summary>
-        private const float HudOutlineWidth = 0.22f;
-
-        private static readonly Color HudOutlineColor = new(0f, 0f, 0f, 0.9f);
 
         // ------------------------------------------------------------------
         // Videodan olculen yerlesim (ekran genisligi/yuksekliginin orani).
@@ -61,18 +55,15 @@ namespace NewBattle.EditorTools
         {
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
-            EditorGUILayout.LabelField("1 - Font", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Assets/Fonts/TitanOne-Regular.ttf dosyasindan TextMeshPro font " +
-                "varligi uretir, sahnedeki tum yazilara uygular ve KOYU KONTUR " +
-                "ekler.\n\n" +
-                "Kontur olmadan beyaz yazilar acik zeminde (kum, kar, beton) " +
-                "neredeyse gorunmuyor. Fontu daha once uyguladiysan bile konturu " +
-                "almak icin tekrar bas.",
-                MessageType.None);
-
-            if (GUILayout.Button("Fontu Hazirla ve Uygula", GUILayout.Height(32f)))
-                SetupFont();
+                "Font uretimi bu aractan kaldirildi: script ile uretilen font " +
+                "varliginin glif eslemesi bozulup ekranda anlamsiz karakterler " +
+                "cikariyordu.\n\n" +
+                "Font icin Unity'nin kendi aracini kullan: " +
+                "Window > TextMeshPro > Font Asset Creator. Bozuk yazilari " +
+                "kurtarmak icin: Tools > NewBattle > HUD Rozetleri > " +
+                "'Yazilari Varsayilan Fonta Dondur'.",
+                MessageType.Info);
 
             EditorGUILayout.Space(18f);
             EditorGUILayout.LabelField("2 - HUD yerlesimi", EditorStyles.boldLabel);
@@ -142,109 +133,6 @@ namespace NewBattle.EditorTools
                 Report();
 
             EditorGUILayout.EndScrollView();
-        }
-
-        // ------------------------------------------------------------------
-        // Font
-        // ------------------------------------------------------------------
-
-        /// <summary>
-        /// TTF dosyasindan TMP font varligi uretir.
-        ///
-        /// Atlas'i DINAMIK kuruyoruz: statik atlas, olusturma aninda hangi
-        /// karakterlerin gerekecegini bilmeyi gerektirir. Turkce metinde
-        /// sonradan eklenen tek bir "s" harfi bile eksik kalirsa ekranda
-        /// bos kare olarak cikar. Dinamik modda glif ilk kullanildiginda
-        /// atlasa ekleniyor.
-        /// </summary>
-        private static void SetupFont()
-        {
-            Font source = AssetDatabase.LoadAssetAtPath<Font>(FontSourcePath);
-
-            if (source == null)
-            {
-                Debug.LogError(
-                    $"Font bulunamadi: {FontSourcePath}\n" +
-                    "Dosya adi TitanOne-Regular.ttf olmali.");
-                return;
-            }
-
-            TMP_FontAsset fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
-
-            if (fontAsset == null)
-            {
-                fontAsset = TMP_FontAsset.CreateFontAsset(
-                    source,
-                    90,                          // ornekleme boyutu
-                    9,                           // atlas dolgusu
-                    GlyphRenderMode.SDFAA,
-                    1024, 1024,
-                    AtlasPopulationMode.Dynamic);
-
-                if (fontAsset == null)
-                {
-                    Debug.LogError("Font varligi uretilemedi. TTF bozuk olabilir.");
-                    return;
-                }
-
-                fontAsset.name = "TitanOne SDF";
-                AssetDatabase.CreateAsset(fontAsset, FontAssetPath);
-
-                // Materyal ve atlas dokusu, font varliginin ALT VARLIGI olarak
-                // saklanmali; ayri dosya olurlarsa font tasindiginda kopuyorlar.
-                if (fontAsset.material != null)
-                {
-                    fontAsset.material.name = fontAsset.name + " Material";
-                    AssetDatabase.AddObjectToAsset(fontAsset.material, fontAsset);
-                }
-
-                if (fontAsset.atlasTextures != null)
-                {
-                    foreach (Texture2D atlas in fontAsset.atlasTextures)
-                    {
-                        if (atlas == null)
-                            continue;
-
-                        atlas.name = fontAsset.name + " Atlas";
-                        AssetDatabase.AddObjectToAsset(atlas, fontAsset);
-                    }
-                }
-
-                AssetDatabase.SaveAssets();
-                Debug.Log($"Font varligi olusturuldu: {FontAssetPath}");
-            }
-
-            int changed = ApplyFontToScene(fontAsset);
-            Debug.Log($"Font {changed} yaziya uygulandi.");
-        }
-
-        /// <summary>
-        /// Fontu ve KONTURU sahnedeki tum yazilara uygular.
-        ///
-        /// Kontur olmadan beyaz HUD yazilari acik zeminde (kum, kar, beton)
-        /// neredeyse gorunmuyor. Oyun her renkteki zeminin uzerinde
-        /// oynandigi icin yaziyi arka plandan ayiran bir sey gerekiyor;
-        /// koyu kontur bunu her durumda sagliyor.
-        /// </summary>
-        private static int ApplyFontToScene(TMP_FontAsset fontAsset)
-        {
-            int changed = 0;
-
-            foreach (TextMeshProUGUI label in Object.FindObjectsByType<TextMeshProUGUI>(
-                         FindObjectsInactive.Include, FindObjectsSortMode.None))
-            {
-                Undo.RecordObject(label, "Font ve kontur uygula");
-
-                label.font = fontAsset;
-                label.outlineWidth = HudOutlineWidth;
-                label.outlineColor = HudOutlineColor;
-
-                EditorUtility.SetDirty(label);
-                changed++;
-            }
-
-            MarkSceneDirty();
-            return changed;
         }
 
         // ------------------------------------------------------------------

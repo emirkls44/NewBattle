@@ -60,7 +60,16 @@ public class SafeZoneController : NetworkBehaviour
     [Tooltip("Kenarlarin ne kadarinin silinerek yumusayacagi. 0 = keskin kenarli " +
              "bant, 0.5 = yarisi gecise ayrilmis yumusak bant.")]
     [SerializeField, Range(0f, 0.9f)] private float boundaryEdgeSoftness = 0.4f;
-    [SerializeField, Range(24, 160)] private int boundarySegments = 96;
+    /// <summary>
+    /// Cemberin kac parcadan cizilecegi.
+    ///
+    /// 96 parca, yaricap 59 iken her parcayi ~3.9 birim yapiyor ve cember
+    /// gozle gorulur sekilde kosegen kosegen gorunuyor - "pikselleme" diye
+    /// gorulen sey bu. 256'da parca ~1.4 birime dusuyor ve kenar duzgun
+    /// cikiyor. Mesh bir kez kuruldugu icin maliyeti ihmal edilebilir
+    /// (256 parca x 4 halka = 1024 kose).
+    /// </summary>
+    [SerializeField, Range(24, 512)] private int boundarySegments = 256;
     [SerializeField] private float boundaryHeight = 0.15f;
 
     [Header("Sonraki Alan Gorunumu")]
