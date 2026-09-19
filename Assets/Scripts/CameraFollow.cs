@@ -45,8 +45,11 @@ public class CameraFollow : MonoBehaviour
             target.position.z - mapCenter.y
         );
 
-        if (targetFromCenter.sqrMagnitude > cameraFocusRadius * cameraFocusRadius)
-            targetFromCenter = targetFromCenter.normalized * cameraFocusRadius;
+        // Harita kare: kamerayi daire icinde tutmak, kosedeki oyuncunun
+        // ekranin kenarina kaymasina yol acardi.
+        targetFromCenter = new Vector2(
+            Mathf.Clamp(targetFromCenter.x, -cameraFocusRadius, cameraFocusRadius),
+            Mathf.Clamp(targetFromCenter.y, -cameraFocusRadius, cameraFocusRadius));
 
         Vector3 focusPosition = new(
             mapCenter.x + targetFromCenter.x,

@@ -22,7 +22,9 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     [Header("Dagitim Alani")]
     [SerializeField] private Vector2 arenaCenter = Vector2.zero;
-    [SerializeField, Min(1f)] private float spawnRadius = 28f;
+    [Tooltip("Merkezden kenara mesafe. Harita kare oldugu icin loot da kareye " +
+             "dagitiliyor; daire kullanmak dort koseyi bos birakirdi.")]
+    [SerializeField, Min(1f)] private float spawnExtent = 74f;
     [SerializeField, Min(0.1f)] private float spawnHeight = 0.65f;
     [SerializeField, Min(1)] private int placementAttempts = 30;
     [SerializeField, Min(0.1f)] private float obstacleCheckRadius = 0.45f;
@@ -106,7 +108,9 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
     {
         for (int attempt = 0; attempt < placementAttempts; attempt++)
         {
-            Vector2 randomPoint = UnityEngine.Random.insideUnitCircle * spawnRadius;
+            Vector2 randomPoint = new(
+                UnityEngine.Random.Range(-spawnExtent, spawnExtent),
+                UnityEngine.Random.Range(-spawnExtent, spawnExtent));
             Vector3 candidate = new(
                 arenaCenter.x + randomPoint.x,
                 spawnHeight,

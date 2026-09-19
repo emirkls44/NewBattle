@@ -51,10 +51,17 @@ public class SafeZoneController : NetworkBehaviour
     [SerializeField, Min(0f)] private float damagePerInterval = 5f;
 
     [Header("Mevcut Alan Gorunumu")]
-    [SerializeField] private Color boundaryColor = new(1f, 0.24f, 0.42f, 0.95f);
-    [SerializeField, Min(0.02f)] private float boundaryWidth = 0.55f;
+    [Tooltip("Sinir seridinin rengi. Alan disi zaten pus ile kizarir; serit " +
+             "bunun uzerine oturan daha parlak, daha doygun bir bant.")]
+    [SerializeField] private Color boundaryColor = new(1f, 0.44f, 0.42f, 0.9f);
+    [Tooltip("Seridin DUNYA birimi cinsinden genisligi. Karakter capi ~1 birim; " +
+             "3 birim uzaktan secilebilen kalin bir bant verir.")]
+    [SerializeField, Min(0.1f)] private float boundaryWidth = 3f;
+    [Tooltip("Kenarlarin ne kadarinin silinerek yumusayacagi. 0 = keskin kenarli " +
+             "bant, 0.5 = yarisi gecise ayrilmis yumusak bant.")]
+    [SerializeField, Range(0f, 0.9f)] private float boundaryEdgeSoftness = 0.4f;
     [SerializeField, Range(24, 160)] private int boundarySegments = 96;
-    [SerializeField] private float boundaryHeight = 0.12f;
+    [SerializeField] private float boundaryHeight = 0.15f;
 
     [Header("Sonraki Alan Gorunumu")]
     [SerializeField] private Color nextBoundaryColor = new(1f, 1f, 1f, 0.95f);
@@ -102,12 +109,23 @@ public class SafeZoneController : NetworkBehaviour
     /// </summary>
     public Transform VisualRoot => transform;
 
-    private LineRenderer _boundary;
+    /// <summary>Kalin sinir seridi: zemine serilen bir halka mesh.</summary>
+    private Mesh _bandMesh;
+    private Vector3[] _bandVertices;
+    private Color[] _bandColors;
+    private Transform _bandTransform;
+    private Material _bandMaterial;
     private LineRenderer _nextBoundary;
+
+    /// <summary>Serit kesitindeki halka sayisi: sonen ic kenar, iki cekirdek, sonen dis kenar.</summary>
+    private const int BandRings = 4;
     /// <summary>Cember uzerindeki her segmentin zemin yuksekligi.</summary>
     private float[] _groundHeights;
     private float _nextGroundSampleTime;
-    private Material _boundaryMaterial;
+    /// <summary>Dikey isin icin tek seferlik tampon; her karede dizi ayirmayalim.</summary>
+    private readonly RaycastHit[] _groundHits = new RaycastHit[16];
+    /// <summary>Son basarili zemin olcumu; isin hicbir seye carpmazsa buna doneriz.</summary>
+    private float _lastGroundHeight;
     private Material _nextBoundaryMaterial;
     private Mesh _fogMesh;
     private Vector3[] _fogVertices;
@@ -236,11 +254,50 @@ public class SafeZoneController : NetworkBehaviour
                 groundSampleFrom,
                 SafeCenter.z + Mathf.Sin(angle) * SafeRadius);
 
-            _groundHeights[i] = Physics.Raycast(origin, Vector3.down, out RaycastHit hit,
-                groundSampleFrom * 2f, groundMask, QueryTriggerInteraction.Ignore)
-                ? hit.point.y
-                : 0f;
+
+            // Olcum basarisizsa onceki degeri koruyoruz: harita disina tasan
+            // bir segmentte cizgiyi y=0'a dusurmek, cizgiyi arazinin icinde
+            // birakir.
+            if (TrySampleGround(origin.x, origin.z, out float groundY))
+                _groundHeights[i] = groundY;
         }
+    }
+
+    /// <summary>
+    /// Tek bir noktanin ZEMIN yuksekligi.
+    ///
+    /// NEDEN en ALTTAKI temas: asagi dogru atilan bir isin yalniz zemine
+    /// degil, zeminin uzerinde duran her seye carpar - agac tepesi, kaya,
+    /// cadir brandasi. Ilk temasi kabul edersek cemberin o segmenti agacin
+    /// tepesine tirmanir; alan cizgisinin nesnelerin uzerinden gecmesinin
+    /// sebebi tam olarak buydu. Dikey bir isinda zemin her zaman en alttaki
+    /// temastir, cunku diger her sey onun ustunde durur.
+    ///
+    /// Bu yontem haritadaki nesneleri ayri bir layer'a tasimayi gerektirmez:
+    /// kullanici disaridan hazir bir arazi paketi attiginda da calisir.
+    /// </summary>
+    private bool TrySampleGround(float x, float z, out float height)
+    {
+        height = _lastGroundHeight;
+
+        int hitCount = Physics.RaycastNonAlloc(
+            new Vector3(x, groundSampleFrom, z),
+            Vector3.down,
+            _groundHits,
+            groundSampleFrom * 2f,
+            groundMask,
+            QueryTriggerInteraction.Ignore);
+
+        if (hitCount <= 0)
+            return false;
+
+        float lowest = float.MaxValue;
+        for (int i = 0; i < hitCount; i++)
+            lowest = Mathf.Min(lowest, _groundHits[i].point.y);
+
+        height = lowest;
+        _lastGroundHeight = lowest;
+        return true;
     }
 
     private float GroundHeightAt(int segment)
@@ -257,10 +314,8 @@ public class SafeZoneController : NetworkBehaviour
         if (!followGround)
             return 0f;
 
-        return Physics.Raycast(new Vector3(x, groundSampleFrom, z), Vector3.down,
-            out RaycastHit hit, groundSampleFrom * 2f, groundMask, QueryTriggerInteraction.Ignore)
-            ? hit.point.y
-            : 0f;
+        TrySampleGround(x, z, out float groundY);
+        return groundY;
     }
 
     private void BeginZoneMatch()
@@ -360,7 +415,7 @@ public class SafeZoneController : NetworkBehaviour
 
     private void CreateBoundaries()
     {
-        _boundary = CreateBoundaryRenderer("SafeZoneBoundary", boundaryColor, boundaryWidth, out _boundaryMaterial);
+        CreateBoundaryBand();
         _nextBoundary = CreateBoundaryRenderer("NextSafeZoneBoundary", nextBoundaryColor, nextBoundaryWidth, out _nextBoundaryMaterial);
 
         SampleGroundHeights();
@@ -395,9 +450,148 @@ public class SafeZoneController : NetworkBehaviour
         return line;
     }
 
+    /// <summary>
+    /// Sinir seridini kurar.
+    ///
+    /// NEDEN LineRenderer degil de mesh: LineRenderer seridi varsayilan
+    /// olarak kameraya dondurur (billboard). Ince bir cizgide fark edilmez
+    /// ama kalinlastirdiginda serit zeminden kalkip ekrana dik duran bir
+    /// perdeye donusur - istedigimiz ise zemine serilmis bir bant. Mesh ile
+    /// serit gercekten yatay durur ve arazinin yuksekligini takip eder.
+    /// </summary>
+    private void CreateBoundaryBand()
+    {
+        GameObject bandObject = new("SafeZoneBoundaryBand");
+        bandObject.transform.SetParent(transform, false);
+        _bandTransform = bandObject.transform;
+
+        MeshFilter filter = bandObject.AddComponent<MeshFilter>();
+        MeshRenderer renderer = bandObject.AddComponent<MeshRenderer>();
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+
+        _bandMesh = new Mesh { name = "RuntimeZoneBandMesh" };
+        _bandMesh.MarkDynamic();
+        filter.sharedMesh = _bandMesh;
+
+        Shader shader = Shader.Find("NewBattle/ZoneBand");
+        if (shader == null)
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+        _bandMaterial = new Material(shader) { name = "RuntimeZoneBandMaterial" };
+
+        // Pustan SONRA cizilsin. Ikisi de saydam ve neredeyse ayni yukseklikte;
+        // ayni siradaysalar kameranin acisina gore sirayi degistirip
+        // titresirler. Serit ustte kalmali, zaten pusun uzerine oturuyor.
+        _bandMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent + 10;
+
+        if (_bandMaterial.HasProperty("_BaseColor"))
+            _bandMaterial.SetColor("_BaseColor", boundaryColor);
+
+        renderer.sharedMaterial = _bandMaterial;
+
+        BuildBandTopology();
+    }
+
+    /// <summary>
+    /// Seridin ucgenleri. Her segmentte dort halka noktasi var:
+    /// sonen ic kenar, dolu cekirdegin iki yakasi, sonen dis kenar.
+    /// Aradaki uc quad her karede sadece konum guncellemesi aliyor.
+    /// </summary>
+    private void BuildBandTopology()
+    {
+        int ringCount = boundarySegments + 1;
+
+        _bandVertices = new Vector3[ringCount * BandRings];
+        _bandColors = new Color[ringCount * BandRings];
+
+        // Kenar saydamligi: dista 0, cekirdekte 1. Kose rengi shader'da
+        // carpan oldugu icin materyalin kendi alfasi da korunuyor.
+        for (int i = 0; i < ringCount; i++)
+        {
+            int baseIndex = i * BandRings;
+            _bandColors[baseIndex] = new Color(1f, 1f, 1f, 0f);
+            _bandColors[baseIndex + 1] = Color.white;
+            _bandColors[baseIndex + 2] = Color.white;
+            _bandColors[baseIndex + 3] = new Color(1f, 1f, 1f, 0f);
+        }
+
+        int[] triangles = new int[boundarySegments * 3 * 6];
+        int write = 0;
+
+        for (int i = 0; i < boundarySegments; i++)
+        {
+            int current = i * BandRings;
+            int next = (i + 1) * BandRings;
+
+            for (int ring = 0; ring < BandRings - 1; ring++)
+            {
+                triangles[write++] = current + ring;
+                triangles[write++] = next + ring;
+                triangles[write++] = current + ring + 1;
+
+                triangles[write++] = current + ring + 1;
+                triangles[write++] = next + ring;
+                triangles[write++] = next + ring + 1;
+            }
+        }
+
+        _bandMesh.Clear();
+        _bandMesh.vertices = _bandVertices;
+        _bandMesh.colors = _bandColors;
+        _bandMesh.triangles = triangles;
+    }
+
+    private void DrawBoundaryBand()
+    {
+        if (_bandMesh == null || _bandTransform == null || SafeRadius <= 0f)
+            return;
+
+        int ringCount = boundarySegments + 1;
+
+        if (_bandVertices == null || _bandVertices.Length != ringCount * BandRings)
+            BuildBandTopology();
+
+        float half = boundaryWidth * 0.5f;
+        float core = half * (1f - Mathf.Clamp01(boundaryEdgeSoftness));
+
+        // Serit guvenli yaricapin iki yanina esit yayiliyor: oyuncu bandin
+        // uzerine bastiginda hala guvende, hasar cizgisi bandin orta ekseni.
+        float[] radii =
+        {
+            Mathf.Max(0f, SafeRadius - half),
+            Mathf.Max(0f, SafeRadius - core),
+            SafeRadius + core,
+            SafeRadius + half
+        };
+
+        for (int i = 0; i < ringCount; i++)
+        {
+            float angle = i * Mathf.PI * 2f / boundarySegments;
+            float cos = Mathf.Cos(angle);
+            float sin = Mathf.Sin(angle);
+
+            // Dort halka da ayni zemin yuksekligini kullaniyor. Serit birkac
+            // birim genis; bu genislikte ayri ayri isin atmak dort kat maliyet
+            // karsiliginda birkac santimlik kazanc demek olurdu.
+            float y = GroundHeightAt(i) + boundaryHeight;
+            int baseIndex = i * BandRings;
+
+            for (int ring = 0; ring < BandRings; ring++)
+            {
+                _bandVertices[baseIndex + ring] =
+                    new Vector3(cos * radii[ring], y, sin * radii[ring]);
+            }
+        }
+
+        _bandTransform.position = new Vector3(SafeCenter.x, 0f, SafeCenter.z);
+        _bandMesh.vertices = _bandVertices;
+        _bandMesh.RecalculateBounds();
+    }
+
     private void DrawBoundaries()
     {
-        DrawCircle(_boundary, SafeCenter, SafeRadius, boundaryHeight, true);
+        DrawBoundaryBand();
 
         if (_nextBoundary != null)
         {
@@ -608,7 +802,8 @@ public class SafeZoneController : NetworkBehaviour
 
     private void OnDestroy()
     {
-        if (_boundaryMaterial != null) Destroy(_boundaryMaterial);
+        if (_bandMaterial != null) Destroy(_bandMaterial);
+        if (_bandMesh != null) Destroy(_bandMesh);
         if (_nextBoundaryMaterial != null) Destroy(_nextBoundaryMaterial);
         if (_fogMaterial != null) Destroy(_fogMaterial);
         if (_fogMesh != null) Destroy(_fogMesh);

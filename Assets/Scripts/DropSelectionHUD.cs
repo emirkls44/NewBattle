@@ -264,7 +264,7 @@ public class DropSelectionHUD : MonoBehaviour
     {
         get
         {
-            float playable = _dropPhase != null ? _dropPhase.PlayableMapRadius : fallbackMapRadius;
+            float playable = _dropPhase != null ? _dropPhase.MapExtent : fallbackMapRadius;
             return playable * mapViewMultiplier;
         }
     }

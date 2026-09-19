@@ -66,7 +66,7 @@ namespace NewBattle.Gameplay
 
             DropPhaseController dropPhase = FindFirstObjectByType<DropPhaseController>();
             if (dropPhase != null)
-                _mapRadius = dropPhase.PlayableMapRadius;
+                _mapRadius = dropPhase.MapExtent;
 
             CreateParachuteVisual();
         }

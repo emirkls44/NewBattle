@@ -162,11 +162,14 @@ public class PlayerController : NetworkBehaviour
     /// </summary>
     private Vector3 ClampToSafeArea(Vector3 worldPosition)
     {
-        float mapRadius = _dropPhase != null ? _dropPhase.PlayableMapRadius : 29f;
+        float mapExtent = _dropPhase != null ? _dropPhase.MapExtent : 78f;
 
-        Vector2 point = Vector2.ClampMagnitude(
-            new Vector2(worldPosition.x, worldPosition.z),
-            mapRadius * 0.96f);
+        Vector2 point = new(worldPosition.x, worldPosition.z);
+
+        // Harita kare: kirpma da kare olmali, yoksa koseler secilemez.
+        point = _dropPhase != null
+            ? _dropPhase.ClampInside(point, mapExtent * 0.04f)
+            : point;
 
         SafeZoneController safeZone = _safeZone != null
             ? _safeZone
@@ -196,7 +199,7 @@ public class PlayerController : NetworkBehaviour
         Vector3 candidate = new(point.x, 0f, point.y);
 
         if (NewBattle.Gameplay.GroundSampler.TryFindGround(
-                candidate, mapRadius, dropGroundMask, out Vector3 ground))
+                candidate, mapExtent, dropGroundMask, out Vector3 ground))
         {
             return ground;
         }
@@ -207,12 +210,16 @@ public class PlayerController : NetworkBehaviour
 
     private void ApplyDropPosition()
     {
-        float radius = _dropPhase != null ? _dropPhase.PlayableMapRadius : 29f;
         Vector3 targetPosition = SelectedDropPosition;
 
         if (!HasSelectedDrop)
         {
-            Vector2 randomPoint = Random.insideUnitCircle * radius * 0.9f;
+            // Yer secmeden oyuna giren oyuncu haritanin HER yerine dusebilmeli.
+            // Daire icinde rastgele secmek koseleri hic kullanmamak demekti.
+            Vector2 randomPoint = _dropPhase != null
+                ? _dropPhase.RandomPointInside(_dropPhase.MapExtent * 0.1f)
+                : Random.insideUnitCircle * 26f;
+
             targetPosition = ClampToSafeArea(new Vector3(randomPoint.x, 0f, randomPoint.y));
         }
 

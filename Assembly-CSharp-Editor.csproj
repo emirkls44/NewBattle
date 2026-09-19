@@ -81,6 +81,7 @@
     <Compile Include="Assets\Editor\ArtGen\LootFactory.cs" />
     <Compile Include="Assets\Editor\ArtGen\CombatSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\GameplaySetup.cs" />
+    <Compile Include="Assets\Editor\ArtGen\CharacterSwapWindow.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

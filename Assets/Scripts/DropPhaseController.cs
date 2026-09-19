@@ -4,15 +4,45 @@ using UnityEngine;
 [RequireComponent(typeof(NetworkObject))]
 public class DropPhaseController : NetworkBehaviour
 {
-    [Header("Haritaya Inis")]
-    [SerializeField, Min(5f)] private float playableMapRadius = 29f;
+    [Header("Harita Olcusu")]
+    [Tooltip("Harita KARE. Bu deger merkezden kenara olan mesafe, yani kenar " +
+             "uzunlugunun yarisi. 160x160 bir harita icin ~78 (kenardan biraz " +
+             "iceride, oyuncu haritanin tam ucunda durmasin diye).")]
+    [SerializeField, Min(5f)] private float playableMapExtent = 78f;
 
     [Networked] public NetworkBool SelectionStarted { get; private set; }
     [Networked] public NetworkBool GameplayStarted { get; private set; }
 
     private LobbyCountdownController _lobby;
 
-    public float PlayableMapRadius => playableMapRadius;
+    /// <summary>Merkezden kenara mesafe (kenar uzunlugunun yarisi).</summary>
+    public float MapExtent => playableMapExtent;
+
+    /// <summary>
+    /// Bir noktayi haritanin KARE sinirlari icine tasir.
+    ///
+    /// Eskiden burada cembersel bir kirpma vardi. Kare haritada bu, dort
+    /// kosenin - haritanin beste birinin - oyuncuya kapali olmasi demek
+    /// olurdu: zemin gorunur ama gidilemez.
+    /// </summary>
+    public Vector2 ClampInside(Vector2 point, float margin = 0f)
+    {
+        float limit = Mathf.Max(0f, playableMapExtent - margin);
+
+        return new Vector2(
+            Mathf.Clamp(point.x, -limit, limit),
+            Mathf.Clamp(point.y, -limit, limit));
+    }
+
+    /// <summary>Harita icinde rastgele bir nokta; kareye esit dagilir.</summary>
+    public Vector2 RandomPointInside(float margin = 0f)
+    {
+        float limit = Mathf.Max(0f, playableMapExtent - margin);
+
+        return new Vector2(
+            Random.Range(-limit, limit),
+            Random.Range(-limit, limit));
+    }
 
     public float RemainingSeconds
     {

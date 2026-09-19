@@ -168,7 +168,7 @@ namespace NewBattle.Gameplay
         {
             _mapRadius = mapRadiusOverride > 0f
                 ? mapRadiusOverride
-                : _dropPhase != null ? _dropPhase.PlayableMapRadius : 29f;
+                : _dropPhase != null ? _dropPhase.MapExtent : 78f;
 
             _columns = Mathf.Max(1, Mathf.CeilToInt(_mapRadius * 2f / zoneSize));
             _zones = new Zone[_columns * _columns];
