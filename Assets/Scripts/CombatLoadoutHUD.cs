@@ -132,15 +132,27 @@ public class CombatLoadoutHUD : MonoBehaviour
             && _loadout.Runner != null;
 
         bool hasRifle = loadoutReady && _loadout.HasRifle;
-        int selectedSlot = loadoutReady ? _loadout.SelectedSlot : 0;
 
-        fistBackground.color = selectedSlot == 0 ? selectedColor : availableColor;
-        rifleBackground.color = !hasRifle
-            ? lockedColor
-            : selectedSlot == 1 ? selectedColor : availableColor;
+        // Ayni anda TEK kutu gorunuyor: elindeki ne ise o.
+        //
+        // Iki kutu, oyuncu ikisi arasinda gecis yapabildigi surece anlamliydi.
+        // Silah alindiktan sonra yumruga donus kalktigi icin yumruk kutusu
+        // artik ne bilgi veriyor ne de bir ise yariyor - sadece ekranin
+        // kosesini dolduruyordu. Referans oyunda da tek gosterge var.
+        if (fistButton.gameObject.activeSelf == hasRifle)
+            fistButton.gameObject.SetActive(!hasRifle);
 
-        rifleButton.interactable = hasRifle;
-        rifleText.text = hasRifle ? $"SILAH\n{_loadout.RifleAmmo}" : "SILAH\nKILITLI";
+        if (rifleButton.gameObject.activeSelf != hasRifle)
+            rifleButton.gameObject.SetActive(hasRifle);
+
+        fistBackground.color = selectedColor;
+
+        if (!hasRifle)
+            return;
+
+        rifleBackground.color = selectedColor;
+        rifleButton.interactable = false;
+        rifleText.text = _loadout.RifleAmmo.ToString();
     }
 
     /// <summary>Elindeki silahin adi; cok silahli sistemde hangi silah oldugunu gosterir.</summary>

@@ -126,6 +126,11 @@ public class SafeZoneController : NetworkBehaviour
     private readonly RaycastHit[] _groundHits = new RaycastHit[16];
     /// <summary>Son basarili zemin olcumu; isin hicbir seye carpmazsa buna doneriz.</summary>
     private float _lastGroundHeight;
+
+    /// <summary>Zemin disindaki noktalar icin sabit dayanak yuksekligi.</summary>
+    private float _referenceGroundHeight;
+
+    private bool _hasReferenceGround;
     private Material _nextBoundaryMaterial;
     private Mesh _fogMesh;
     private Vector3[] _fogVertices;
@@ -278,7 +283,15 @@ public class SafeZoneController : NetworkBehaviour
     /// </summary>
     private bool TrySampleGround(float x, float z, out float height)
     {
-        height = _lastGroundHeight;
+        // Isin bosa giderse SABIT referans yuksekligi donuyor, son basarili
+        // orneklemeyi degil.
+        //
+        // Neden onemli: alan cemberi haritadan buyuk oldugu icin cember
+        // uzerindeki noktalarin bir kismi zeminin disinda kaliyor. Orada
+        // "son bulunan yukseklik" donulurse, cember harita kenarina girip
+        // ciktikca bant o anki son degeri miras aliyor ve yukseklik
+        // zipliyor - bant ekranda kopuk kopuk gorunuyor.
+        height = _referenceGroundHeight;
 
         int hitCount = Physics.RaycastNonAlloc(
             new Vector3(x, groundSampleFrom, z),
@@ -297,6 +310,16 @@ public class SafeZoneController : NetworkBehaviour
 
         height = lowest;
         _lastGroundHeight = lowest;
+
+        // Referans, haritada bulunan ILK gecerli yukseklik. Sonraki
+        // orneklemelerle guncellenmiyor; guncellenseydi zemin disindaki
+        // noktalar yine kayan bir degere baglanirdi.
+        if (!_hasReferenceGround)
+        {
+            _referenceGroundHeight = lowest;
+            _hasReferenceGround = true;
+        }
+
         return true;
     }
 

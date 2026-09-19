@@ -66,6 +66,15 @@ namespace NewBattle.Gameplay
             base.FixedUpdateNetwork();
         }
 
+        [Tooltip("Sandik yere indiginde ekranin ortasinda beliren yazi.")]
+        [SerializeField] private string landingAnnouncement = "Tedarik Paketi Indi";
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void Rpc_AnnounceLanding()
+        {
+            ScreenAnnouncer.Show(landingAnnouncement);
+        }
+
         private void Descend()
         {
             Vector3 position = transform.position;
@@ -75,6 +84,12 @@ namespace NewBattle.Gameplay
             {
                 transform.position = new Vector3(position.x, TargetGroundY + groundOffset, position.z);
                 Landed = true;
+
+                // Inis ani ayrica duyuruluyor. Birakilma duyurusu sandik
+                // hala havadayken cikiyor; oyuncu o sirada catismadaysa
+                // kaciriyor. Inis, sandigin gercekten alinabilir hale
+                // geldigi an - haber verilmesi gereken an bu.
+                Rpc_AnnounceLanding();
                 return;
             }
 

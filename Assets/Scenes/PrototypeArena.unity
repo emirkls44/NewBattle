@@ -242,7 +242,7 @@ MonoBehaviour:
   healthCount: 32
   shieldCount: 32
   arenaCenter: {x: 0, y: 0}
-  spawnExtent: 72.95999
+  spawnExtent: 36.8
   spawnHeight: 0.65
   placementAttempts: 30
   obstacleCheckRadius: 0.45
@@ -1031,7 +1031,7 @@ MonoBehaviour:
   offset: {x: 0, y: 15, z: -10}
   followSpeed: 20
   mapCenter: {x: 0, y: 0}
-  cameraFocusRadius: 76.799995
+  cameraFocusRadius: 38.399998
   cameraAngle: 55
   traumaDecay: 1.8
   shakeFrequency: 24
@@ -4919,22 +4919,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ce708eaf0bac42749b4a16a242555b86, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SafeZoneController
-  initialRadius: 102.399994
+  initialRadius: 59.2
   nextCenterRandomness: 0.85
   stages:
-  - targetRadius: 75.77599
+  - targetRadius: 43.808002
     waitSeconds: 20
     shrinkSeconds: 20
-  - targetRadius: 51.199997
+  - targetRadius: 29.6
     waitSeconds: 15
     shrinkSeconds: 16
-  - targetRadius: 30.72
+  - targetRadius: 17.760002
     waitSeconds: 12
     shrinkSeconds: 13
-  - targetRadius: 17.407999
+  - targetRadius: 10.064
     waitSeconds: 10
     shrinkSeconds: 10
-  - targetRadius: 8.7039995
+  - targetRadius: 5.032
     waitSeconds: 8
     shrinkSeconds: 8
   damageInterval: 1
@@ -4947,8 +4947,8 @@ MonoBehaviour:
   nextBoundaryColor: {r: 1, g: 1, b: 1, a: 0.95}
   nextBoundaryWidth: 1.5999999
   nextBoundaryHeight: 0.14
-  outsideFogColor: {r: 0.12, g: 0.28, b: 0.42, a: 0.22}
-  fogOuterRadius: 176
+  outsideFogColor: {r: 1, g: 0.33, b: 0.36, a: 0.3}
+  fogOuterRadius: 124.32
   fogHeight: 0.08
   followGround: 1
   groundMask:
@@ -5058,7 +5058,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 596f05be957222640b90325f18d11c15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DropPhaseController
-  playableMapExtent: 76.799995
+  playableMapExtent: 38.399998
   _SelectionStarted:
     _value: 0
   _GameplayStarted:
@@ -5076,7 +5076,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.LootZoneManager
   zoneSize: 20
-  mapRadiusOverride: 80
+  mapRadiusOverride: 40
   activationRadius: 35.249996
   unloadDelaySeconds: 20
   scanInterval: 0.5
@@ -5926,6 +5926,15 @@ MonoBehaviour:
   textureResolution: 512
   mapHeight: 50
   visibleWorldRadius: 16
+  zoomFollowsZone: 1
+  zoomPadding: 1.35
+  minVisibleRadius: 9
+  maxVisibleRadius: 45
+  zoomSpeed: 1.4
+  airdropColor: {r: 1, g: 0.85, b: 0.15, a: 1}
+  airdropMarkerSize: 16
+  directionArrowColor: {r: 1, g: 0.85, b: 0.15, a: 1}
+  directionArrowSize: 20
   minimapSize: 220
   cornerOffset: {x: 25, y: 25}
   squareMinimap: 1

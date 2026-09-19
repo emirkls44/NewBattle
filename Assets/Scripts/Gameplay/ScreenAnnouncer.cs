@@ -26,8 +26,22 @@ namespace NewBattle.Gameplay
         [SerializeField, Min(0f)] private float fadeOutSeconds = 0.9f;
 
         [Header("Gorunum")]
-        [Tooltip("En yuksek saydamsizlik. Videoda yazi tam beyaz degil, yari saydam.")]
-        [SerializeField, Range(0.1f, 1f)] private float peakAlpha = 0.72f;
+        [Tooltip("En yuksek saydamsizlik.")]
+        [SerializeField, Range(0.1f, 1f)] private float peakAlpha = 0.95f;
+
+        [Tooltip("Yazinin rengi.")]
+        [SerializeField] private Color textColor = Color.white;
+
+        /// <summary>
+        /// Yazinin cevresindeki koyu kontur.
+        ///
+        /// Konturssuz beyaz yazi, acik renkli zeminde (kum, kar, yol)
+        /// neredeyse gorunmuyor. Duyuru her zeminin uzerinde okunmali.
+        /// </summary>
+        [Tooltip("Yazinin cevresindeki koyu kontur. Acik zeminde okunurlugu saglar.")]
+        [SerializeField, Range(0f, 0.5f)] private float outlineWidth = 0.22f;
+
+        [SerializeField] private Color outlineColor = new(0f, 0f, 0f, 0.9f);
 
         [Tooltip("Ekran yuksekliginin yuzdesi olarak yazi boyutu.")]
         [SerializeField, Range(0.02f, 0.15f)] private float heightFraction = 0.062f;
@@ -124,8 +138,10 @@ namespace NewBattle.Gameplay
             _label.alignment = TextAlignmentOptions.Center;
             _label.enableWordWrapping = false;
             _label.raycastTarget = false;
-            _label.color = Color.white;
+            _label.color = textColor;
             _label.fontStyle = FontStyles.Bold;
+            _label.outlineWidth = outlineWidth;
+            _label.outlineColor = outlineColor;
 
             if (font != null)
                 _label.font = font;
@@ -150,6 +166,17 @@ namespace NewBattle.Gameplay
             // yazi orantisini korusun.
             _label.fontSize = Mathf.Max(18f, Screen.height * heightFraction);
             _labelRect.anchoredPosition = new Vector2(0f, Screen.height * verticalOffset * 0.5f);
+
+            // Inspector'dan degistirilen gorunum ayarlari her gosterimde
+            // yeniden uygulaniyor; Play modunda deneyip sonucu hemen gor.
+            _label.color = textColor;
+            _label.outlineWidth = outlineWidth;
+            _label.outlineColor = outlineColor;
+
+            if (font != null && _label.font != font)
+                _label.font = font;
+
+            Debug.Log($"[Duyuru] \"{message}\"");
         }
 
         private void Update()
