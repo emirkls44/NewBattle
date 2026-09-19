@@ -1,100 +1,132 @@
 using System.Collections.Generic;
-using System.IO;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 
 namespace NewBattle.EditorTools
 {
     /// <summary>
-    /// HUD rozetlerini DUZENLENEBILIR sahne nesneleri olarak kurar.
+    /// HUD rozetlerini DUZENLENEBILIR sahne nesnesi olarak kurar.
     ///
-    /// Neden bu arac var: HUD'un bir kismi calisma aninda koddan
-    /// uretiliyordu, dolayisiyla Inspector'da gorunmuyor ve elle
-    /// ayarlanamiyordu. Bu arac her parcayi gercek bir GameObject olarak
-    /// sahneye koyuyor; sonrasinda font, renk, arka plan, konum - hepsi
-    /// senin kontrolunde.
+    /// Her rozet iki parca:
+    ///   Rozet  -> Image   (arka plan; rengini, saydamligini, boyutunu sen ayarlarsin)
+    ///     Icon -> TMP     (emoji; fontunu, boyutunu, rengini sen ayarlarsin)
     ///
-    /// Arac calisma aninda HICBIR SEY yapmiyor. Bir kez basiyorsun,
-    /// sonra istedigini degistiriyorsun, arac bir daha karismiyor.
-    /// Isin bitince dosyayi silebilirsin.
+    /// Arac calisma aninda HICBIR SEY yapmiyor; bir kez kuruyor, sonra
+    /// karismiyor. Boylece Inspector'dan yaptigin her degisiklik kalici.
+    /// Isin bitince bu dosyayi silebilirsin.
     /// </summary>
     public class HudIconBuilder : EditorWindow
     {
-        private const string IconFolder = "Assets/GameArt/HudIcons";
+        private const string EmojiFontPath = "Assets/Fonts/Emoji SDF.asset";
 
         /// <summary>
-        /// Ikonlar neden emoji degil de gorsel:
-        ///
-        /// TextMeshPro, emoji karakterlerini (kisi, kurukafa, kalkan) ancak emoji destekli
-        /// bir font varligi varsa cizebiliyor. Normal bir metin fontunda o
-        /// karakterler yok; TMP eksik glif yerine baska bir glif koyuyor ve
-        /// ekranda anlamsiz isaretler cikiyor. Gorsel kullanmak bu sorunu
-        /// tamamen ortadan kaldiriyor ve istedigin PNG ile degistirmene
-        /// izin veriyor.
+        /// Emoji karakterleri kod noktasi olarak yaziliyor, kaynak dosyaya
+        /// dogrudan gomulmuyor: proje ASCII tutuluyor ve bazi editorler
+        /// yuzey disi karakterleri bozuyor.
         /// </summary>
-        private enum IconKind
-        {
-            Person,
-            Skull,
-            Cross,
-            Shield
-        }
+        private const int PersonCodePoint = 0x1F464;   // kisi
+        private const int SkullCodePoint = 0x1F480;    // kurukafa
+        private const int ShieldCodePoint = 0x1F6E1;   // kalkan
+        private const int PlusCodePoint = 0x2795;      // arti
 
+        private Color _backgroundColor = new(0f, 0f, 0f, 0.45f);
+        private float _badgeSize = 46f;
+        private float _iconFontSize = 26f;
         private Vector2 _scroll;
 
         [MenuItem("Tools/NewBattle/HUD Rozetleri", false, 21)]
         public static void Open()
         {
-            GetWindow<HudIconBuilder>("HUD Rozetleri").minSize = new Vector2(440f, 420f);
+            GetWindow<HudIconBuilder>("HUD Rozetleri").minSize = new Vector2(440f, 430f);
         }
 
         private void OnGUI()
         {
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
-            EditorGUILayout.LabelField("1 - Ikonlari uret", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Ortak ayarlar", EditorStyles.boldLabel);
+            _backgroundColor = EditorGUILayout.ColorField("Arka plan rengi", _backgroundColor);
+            _badgeSize = EditorGUILayout.Slider("Rozet boyutu", _badgeSize, 20f, 100f);
+            _iconFontSize = EditorGUILayout.Slider("Emoji boyutu", _iconFontSize, 8f, 60f);
+
             EditorGUILayout.HelpBox(
-                "Dort beyaz ikon uretir: kisi, kurukafa, arti, kalkan.\n\n" +
-                $"{IconFolder} klasorune PNG olarak kaydedilir. Begenmezsen " +
-                "ayni isimli dosyalarin uzerine kendi gorsellerini yaz ya da " +
-                "rozetlerdeki Sprite alanina baska bir gorsel surukle.",
+                "Bunlar sadece KURULUM anindaki baslangic degerleri. Kurduktan " +
+                "sonra her rozeti Inspector'dan ayri ayri degistirebilirsin.",
                 MessageType.None);
 
-            if (GUILayout.Button("Ikonlari Uret", GUILayout.Height(30f)))
-                BuildIcons();
+            TMP_FontAsset emojiFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(EmojiFontPath);
 
-            EditorGUILayout.Space(18f);
-            EditorGUILayout.LabelField("2 - Rozetleri kur", EditorStyles.boldLabel);
+            EditorGUILayout.Space(10f);
+
+            if (emojiFont == null)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Emoji fontu yok: {EmojiFontPath}\n\n" +
+                    "Rozetler yine de kurulur ama emoji yerine bos kare gorunur. " +
+                    "Fontu uretmek icin: Window > TextMeshPro > Font Asset Creator, " +
+                    "Source Font File = SegoeUIEmoji, Character Set = Custom Range, " +
+                    "aralik = 1F464,1F480,1F6E1,2795",
+                    MessageType.Warning);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox($"Emoji fontu bulundu: {emojiFont.name}", MessageType.Info);
+            }
+
+            if (GUILayout.Button("Emoji Fontunu Uret", GUILayout.Height(30f)))
+                BuildEmojiFont();
+
+            EditorGUILayout.Space(16f);
+            EditorGUILayout.LabelField("Kendi ikonlarin", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Sol ustteki KALAN / SKOR yazilarini kaldirir, yerlerine " +
-                "saydam siyah kare zeminli ikon rozetleri koyar.\n\n" +
-                "Alttaki can ve kalkan barlarindaki sayilari gizler, barlarin " +
-                "soluna ikon koyar.\n\n" +
-                "Hepsi normal sahne nesnesi: arka plan rengini, boyutu, " +
-                "konumu, fontu Inspector'dan degistirebilirsin.",
+                "Assets/GameArt/HudIcons klasorundeki PNG dosyalarini rozetlere " +
+                "yerlestirir. Emoji yazisini Image bileseniyle degistirir.\n\n" +
+                "Person -> kalan oyuncu,  Skull -> skor,\n" +
+                "Health -> can bari,      Shield -> kalkan bari\n\n" +
+                "Sonradan baska bir gorsel istersen Icon nesnesinin Source Image " +
+                "alanina surukle, yeter.",
                 MessageType.None);
 
-            if (GUILayout.Button("Rozetleri Kur", GUILayout.Height(34f)))
-                BuildBadges();
+            if (GUILayout.Button("Ikonlari Yerlestir", GUILayout.Height(34f)))
+                PlaceCustomIcons();
 
-            EditorGUILayout.Space(18f);
-            EditorGUILayout.LabelField("3 - Font kurtarma", EditorStyles.boldLabel);
+            EditorGUILayout.Space(16f);
+            EditorGUILayout.LabelField("Can ve kalkan barlari", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Ekranda anlamsiz karakterler (Cince gibi) goruyorsan, script " +
-                "ile uretilen font varliginin glif eslemesi bozulmus demektir.\n\n" +
-                "Bu dugme butun yazilari TextMeshPro'nun kendi varsayilan " +
-                "fontuna dondurur. Sonra istedigin fontu Unity'nin kendi " +
-                "araciyla uret: Window > TextMeshPro > Font Asset Creator.",
-                MessageType.Warning);
+                "Barlardaki sayilari gizler, barlarin soluna emoji rozeti koyar.\n\n" +
+                "Sayilar silinmiyor sadece kapatiliyor: LocalPlayerHUD onlara " +
+                "referans tutuyor, silinirse her karede bos referans kontrolu " +
+                "gerekirdi. Kapali nesneye yazmak zararsiz.",
+                MessageType.None);
+
+            if (GUILayout.Button("Can ve Kalkan Barini Kur", GUILayout.Height(34f)))
+                BuildBars(emojiFont);
+
+            EditorGUILayout.Space(16f);
+            EditorGUILayout.LabelField("Sol ust rozetler", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "KALAN / SKOR kelimelerini kaldirir, yerlerine emoji rozeti koyar. " +
+                "Sayilar rozetin sagina kayar.",
+                MessageType.None);
+
+            if (GUILayout.Button("Sol Ust Rozetleri Kur", GUILayout.Height(34f)))
+                BuildTopBadges(emojiFont);
+
+            EditorGUILayout.Space(16f);
+            EditorGUILayout.LabelField("Kurtarma", EditorStyles.boldLabel);
 
             if (GUILayout.Button("Yazilari Varsayilan Fonta Dondur"))
                 ResetFonts();
 
-            EditorGUILayout.Space(14f);
+            if (GUILayout.Button("Kurulan Rozetleri Sil"))
+                RemoveBadges();
+
+            EditorGUILayout.Space(10f);
 
             if (GUILayout.Button("Durumu Yaz"))
                 Report();
@@ -103,183 +135,322 @@ namespace NewBattle.EditorTools
         }
 
         // ------------------------------------------------------------------
-        // Ikon uretimi
+        // Kendi ikonlarin
         // ------------------------------------------------------------------
 
-        private static void BuildIcons()
+        private const string IconFolder = "Assets/GameArt/HudIcons";
+
+        /// <summary>Rozet adi -> o rozette duracak PNG dosyasinin adi.</summary>
+        private static readonly (string Badge, string Icon)[] IconMap =
         {
-            Directory.CreateDirectory(IconFolder);
+            ("AliveCountBadge", "Person"),
+            ("KillCountBadge", "Skull"),
+            ("HealthBarIcon", "Health"),
+            ("ShieldBarIcon", "Shield")
+        };
 
-            foreach (IconKind kind in System.Enum.GetValues(typeof(IconKind)))
+        /// <summary>
+        /// Rozetlerdeki emoji yazisini gorsele cevirir.
+        ///
+        /// Gorsel, fonta bagli olmadigi icin emoji yolundaki butun
+        /// sorunlardan (eksik glif, bozuk atlas, lisans) kurtuluyoruz.
+        /// Ustelik sonradan degistirmek tek surukleme.
+        /// </summary>
+        private static void PlaceCustomIcons()
+        {
+            List<string> log = new() { "=== IKONLAR YERLESTIRILIYOR ===" };
+
+            foreach ((string badgeName, string iconName) in IconMap)
             {
-                string path = $"{IconFolder}/{kind}.png";
-                File.WriteAllBytes(path, Draw(kind).EncodeToPNG());
-            }
+                string path = $"{IconFolder}/{iconName}.png";
 
-            AssetDatabase.Refresh();
+                Sprite sprite = EnsureSprite(path, log);
 
-            // Sprite olarak iceri alinmali, yoksa Image bileseni kullanamaz.
-            foreach (IconKind kind in System.Enum.GetValues(typeof(IconKind)))
-            {
-                string path = $"{IconFolder}/{kind}.png";
-
-                if (AssetImporter.GetAtPath(path) is not TextureImporter importer)
+                if (sprite == null)
                     continue;
 
+                if (!TryFind(badgeName, out RectTransform badge))
+                {
+                    log.Add($"  {badgeName} bulunamadi - once rozetleri kur.");
+                    continue;
+                }
+
+                ReplaceIcon(badge, sprite, log);
+            }
+
+            MarkSceneDirty();
+            Debug.Log(string.Join("\n", log));
+        }
+
+        /// <summary>
+        /// PNG'nin Sprite olarak iceri alindigindan emin olur.
+        ///
+        /// Varsayilan iceri alma tipi "Default"; Image bileseni o haliyle
+        /// dosyayi kabul etmiyor. Elle degistirmeyi unutmak, "gorsel neden
+        /// gorunmuyor" diye saatler kaybettiren klasik bir tuzak.
+        /// </summary>
+        private static Sprite EnsureSprite(string path, List<string> log)
+        {
+            if (AssetImporter.GetAtPath(path) is not TextureImporter importer)
+            {
+                log.Add($"  {path} bulunamadi.");
+                return null;
+            }
+
+            if (importer.textureType != TextureImporterType.Sprite || !importer.alphaIsTransparency)
+            {
                 importer.textureType = TextureImporterType.Sprite;
                 importer.alphaIsTransparency = true;
                 importer.mipmapEnabled = false;
                 importer.SaveAndReimport();
+                log.Add($"  {System.IO.Path.GetFileName(path)}: Sprite olarak ayarlandi");
             }
 
-            Debug.Log($"4 ikon uretildi: {IconFolder}");
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
+        private static void ReplaceIcon(RectTransform badge, Sprite sprite, List<string> log)
+        {
+            Transform existing = badge.Find("Icon");
+
+            if (existing != null)
+                Undo.DestroyObjectImmediate(existing.gameObject);
+
+            GameObject icon = new("Icon", typeof(RectTransform), typeof(Image));
+            RectTransform rect = icon.GetComponent<RectTransform>();
+            rect.SetParent(badge, false);
+
+            // Arka plani doldur ama kenardan biraz bosluk birak; ikon
+            // cercevenin tam dibine yapisirsa sikismis gorunuyor.
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(6f, 6f);
+            rect.offsetMax = new Vector2(-6f, -6f);
+
+            Image image = icon.GetComponent<Image>();
+            image.sprite = sprite;
+            image.color = Color.white;
+            image.raycastTarget = false;
+
+            // Kare olmayan gorseller ezilmesin.
+            image.preserveAspect = true;
+
+            Undo.RegisterCreatedObjectUndo(icon, "Ikon yerlestir");
+            log.Add($"  {badge.name}/Icon -> {sprite.name}");
+        }
+
+        // ------------------------------------------------------------------
+        // Emoji fontu
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// SegoeUIEmoji.ttf dosyasindan sadece gereken dort emojiyi iceren
+        /// bir TMP font varligi uretir ve rozetlere atar.
+        ///
+        /// Neden sadece dort karakter: Segoe UI Emoji binlerce glif tasiyor.
+        /// Hepsini atlasa basmak yuz megabaytlik bir doku ve uzun bir
+        /// uretim suresi demek. Bize dort tane lazim.
+        ///
+        /// Uretim sonrasi SONUC DOGRULANIYOR: her karakterin atlasa girip
+        /// girmedigi tek tek kontrol edilip konsola yaziliyor. Onceki
+        /// denemede font varligi sessizce bozuk uretilmis ve bunu ancak
+        /// ekranda anlamsiz karakterler gorunce anlamistik.
+        /// </summary>
+        private static void BuildEmojiFont()
+        {
+            const string sourcePath = "Assets/Fonts/SegoeUIEmoji.ttf";
+
+            Font source = AssetDatabase.LoadAssetAtPath<Font>(sourcePath);
+
+            if (source == null)
+            {
+                Debug.LogError(
+                    $"Font dosyasi bulunamadi: {sourcePath}\n" +
+                    "Windows'taki C:/Windows/Fonts/seguiemj.ttf dosyasini " +
+                    "Assets/Fonts/ icine SegoeUIEmoji.ttf adiyla kopyala.");
+                return;
+            }
+
+            uint[] wanted =
+            {
+                PersonCodePoint, SkullCodePoint, ShieldCodePoint, PlusCodePoint
+            };
+
+            TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(
+                source,
+                90,                       // ornekleme boyutu
+                9,                        // atlas dolgusu
+                GlyphRenderMode.SDFAA,
+                512, 512,
+                AtlasPopulationMode.Dynamic);
+
+            if (fontAsset == null)
+            {
+                Debug.LogError("Font varligi uretilemedi.");
+                return;
+            }
+
+            fontAsset.name = "Emoji SDF";
+
+            // Karakterleri simdi atlasa bas, sonra STATIK'e cevir. Dinamik
+            // kalsaydi glifler calisma aninda eklenmeye calisilir ve cihazda
+            // kaynak font bulunamazsa bos kare cikardi.
+            fontAsset.TryAddCharacters(wanted, out uint[] missing);
+            fontAsset.atlasPopulationMode = AtlasPopulationMode.Static;
+
+            if (AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(EmojiFontPath) != null)
+                AssetDatabase.DeleteAsset(EmojiFontPath);
+
+            AssetDatabase.CreateAsset(fontAsset, EmojiFontPath);
+
+            // Materyal ve atlas dokusu ALT VARLIK olmali; ayri dosya
+            // olurlarsa font tasindiginda referanslari kopuyor.
+            if (fontAsset.material != null)
+            {
+                fontAsset.material.name = "Emoji SDF Material";
+                AssetDatabase.AddObjectToAsset(fontAsset.material, fontAsset);
+            }
+
+            if (fontAsset.atlasTextures != null)
+            {
+                foreach (Texture2D atlas in fontAsset.atlasTextures)
+                {
+                    if (atlas == null)
+                        continue;
+
+                    atlas.name = "Emoji SDF Atlas";
+                    AssetDatabase.AddObjectToAsset(atlas, fontAsset);
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            // ---- Dogrulama ----
+            List<string> log = new() { "=== EMOJI FONTU ===", $"  Kaydedildi: {EmojiFontPath}" };
+
+            int ok = 0;
+
+            foreach (uint code in wanted)
+            {
+                bool has = fontAsset.characterLookupTable.ContainsKey(code);
+
+                if (has)
+                    ok++;
+
+                log.Add($"  U+{code:X4} {(has ? "VAR" : "YOK")}   {char.ConvertFromUtf32((int)code)}");
+            }
+
+            if (missing != null && missing.Length > 0)
+                log.Add($"  Atlasa eklenemeyen: {missing.Length} karakter");
+
+            log.Add(string.Empty);
+
+            if (ok == wanted.Length)
+            {
+                int assigned = AssignEmojiFont(fontAsset);
+                log.Add($"Dort emoji de hazir. {assigned} rozete atandi.");
+            }
+            else
+            {
+                log.Add(
+                    $"{wanted.Length - ok} emoji uretilemedi. Segoe UI Emoji renkli " +
+                    "katmanli bir font; bazi gliflerin duz cizgi hali olmayabiliyor. " +
+                    "Bu durumda emoji yerine PNG ikon kullanmamiz gerekir - soyle, " +
+                    "ikonlari cizip veririm.");
+            }
+
+            Debug.Log(string.Join("\n", log));
+        }
+
+        /// <summary>Kurulmus rozetlerin Icon yazilarina emoji fontunu atar.</summary>
+        private static int AssignEmojiFont(TMP_FontAsset fontAsset)
+        {
+            int assigned = 0;
+
+            foreach (TextMeshProUGUI label in Object.FindObjectsByType<TextMeshProUGUI>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (label.name != "Icon")
+                    continue;
+
+                Undo.RecordObject(label, "Emoji fontu ata");
+                label.font = fontAsset;
+                EditorUtility.SetDirty(label);
+                assigned++;
+            }
+
+            MarkSceneDirty();
+            return assigned;
+        }
+
+        // ------------------------------------------------------------------
+        // Barlar
+        // ------------------------------------------------------------------
+
+        private void BuildBars(TMP_FontAsset emojiFont)
+        {
+            List<string> log = new() { "=== CAN VE KALKAN BARI ===" };
+
+            HideValue("HealthValue", log);
+            HideValue("ShieldValue", log);
+
+            AttachBarBadge("HealthBar", PlusCodePoint, emojiFont, log);
+            AttachBarBadge("ShieldBar", ShieldCodePoint, emojiFont, log);
+
+            MarkSceneDirty();
+            Debug.Log(string.Join("\n", log));
         }
 
         /// <summary>
-        /// Ikonu piksel piksel cizer.
+        /// Barin SOL KENARININ disina rozet koyar.
         ///
-        /// Kenar yumusatma icin her piksel 2x2 orneklenip ortalamasi
-        /// aliniyor; tek ornekle cizilen egriler kucuk boyutta merdiven
-        /// basamagi gibi gorunuyor.
+        /// Konum, barin kendi olculerinden hesaplaniyor: barin sol kenari
+        /// (merkez - yarim genislik) bulunup rozet onun biraz soluna
+        /// aliniyor. Sabit bir sayi yazsaydik bar genisligi degistiginde
+        /// rozet barin uzerine binerdi.
         /// </summary>
-        private static Texture2D Draw(IconKind kind)
+        private void AttachBarBadge(string barName, int codePoint, TMP_FontAsset emojiFont,
+            List<string> log)
         {
-            const int size = 128;
-            Texture2D texture = new(size, size, TextureFormat.RGBA32, false);
-            Color32[] pixels = new Color32[size * size];
-
-            for (int y = 0; y < size; y++)
+            if (!TryFind(barName, out RectTransform bar))
             {
-                for (int x = 0; x < size; x++)
-                {
-                    float coverage = 0f;
-
-                    for (int sy = 0; sy < 2; sy++)
-                    {
-                        for (int sx = 0; sx < 2; sx++)
-                        {
-                            float u = (x + (sx + 0.5f) * 0.5f) / size;
-                            float v = (y + (sy + 0.5f) * 0.5f) / size;
-
-                            if (Inside(kind, u, 1f - v))
-                                coverage += 0.25f;
-                        }
-                    }
-
-                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)(coverage * 255f));
-                }
+                log.Add($"  {barName} bulunamadi.");
+                return;
             }
 
-            texture.SetPixels32(pixels);
-            texture.Apply();
-            return texture;
-        }
+            string badgeName = barName + "Icon";
 
-        /// <summary>Verilen nokta ikonun icinde mi. u,v 0..1, sol ust kose 0,0.</summary>
-        private static bool Inside(IconKind kind, float u, float v)
-        {
-            switch (kind)
+            if (TryFind(badgeName, out RectTransform _))
             {
-                case IconKind.Person:
-                {
-                    // Bas: daire. Govde: asagi dogru genisleyen yarim elips.
-                    if (Circle(u, v, 0.5f, 0.28f, 0.17f))
-                        return true;
-
-                    return v > 0.5f && v < 0.9f &&
-                           Ellipse(u, v, 0.5f, 0.95f, 0.30f, 0.45f);
-                }
-
-                case IconKind.Skull:
-                {
-                    // Kafatasi kubbesi + cene, uzerine iki carpi goz.
-                    bool body = Ellipse(u, v, 0.5f, 0.44f, 0.33f, 0.34f) ||
-                                (v > 0.6f && v < 0.84f && Mathf.Abs(u - 0.5f) < 0.17f);
-
-                    if (!body)
-                        return false;
-
-                    // Gozler: iki carpi, govdeden oyuluyor.
-                    if (Cross(u, v, 0.37f, 0.44f, 0.10f, 0.035f))
-                        return false;
-
-                    if (Cross(u, v, 0.63f, 0.44f, 0.10f, 0.035f))
-                        return false;
-
-                    return true;
-                }
-
-                case IconKind.Cross:
-                {
-                    const float arm = 0.34f;
-                    const float thick = 0.13f;
-
-                    return (Mathf.Abs(u - 0.5f) < thick && Mathf.Abs(v - 0.5f) < arm) ||
-                           (Mathf.Abs(v - 0.5f) < thick && Mathf.Abs(u - 0.5f) < arm);
-                }
-
-                case IconKind.Shield:
-                {
-                    // Ust kenar duz, yanlar asagi dogru daralip ucta birlesiyor.
-                    if (v < 0.18f || v > 0.9f)
-                        return false;
-
-                    float t = Mathf.InverseLerp(0.18f, 0.9f, v);
-                    float halfWidth = Mathf.Lerp(0.32f, 0.02f, t * t);
-
-                    return Mathf.Abs(u - 0.5f) < halfWidth;
-                }
+                log.Add($"  {badgeName} zaten var, dokunulmadi.");
+                return;
             }
 
-            return false;
-        }
+            float leftEdge = bar.anchoredPosition.x - bar.sizeDelta.x * 0.5f;
+            float size = Mathf.Max(_badgeSize * 0.75f, bar.sizeDelta.y * 1.4f);
 
-        private static bool Circle(float u, float v, float cx, float cy, float r)
-        {
-            float dx = u - cx;
-            float dy = v - cy;
-            return dx * dx + dy * dy < r * r;
-        }
+            RectTransform badge = CreateBadge(
+                badgeName, bar.parent, bar.anchorMin, bar.anchorMax, bar.pivot,
+                new Vector2(size, size),
+                new Vector2(leftEdge - size * 0.5f - 8f, bar.anchoredPosition.y),
+                codePoint, emojiFont, size * 0.6f);
 
-        private static bool Ellipse(float u, float v, float cx, float cy, float rx, float ry)
-        {
-            float dx = (u - cx) / rx;
-            float dy = (v - cy) / ry;
-            return dx * dx + dy * dy < 1f;
-        }
-
-        private static bool Cross(float u, float v, float cx, float cy, float arm, float thick)
-        {
-            float dx = u - cx;
-            float dy = v - cy;
-
-            float a = (dx + dy) * 0.7071f;
-            float b = (dx - dy) * 0.7071f;
-
-            return (Mathf.Abs(a) < thick && Mathf.Abs(b) < arm) ||
-                   (Mathf.Abs(b) < thick && Mathf.Abs(a) < arm);
+            log.Add($"  {badgeName} kuruldu  konum {badge.anchoredPosition}  boyut {size:0}");
         }
 
         // ------------------------------------------------------------------
-        // Rozetler
+        // Sol ust
         // ------------------------------------------------------------------
 
-        private static void BuildBadges()
+        private void BuildTopBadges(TMP_FontAsset emojiFont)
         {
-            List<string> log = new() { "=== HUD ROZETLERI ===" };
+            List<string> log = new() { "=== SOL UST ROZETLER ===" };
 
             ClearStatusPrefixes(log);
 
-            // Sol ust: kalan oyuncu ve skor
-            AttachBadge("AliveCount", IconKind.Person, log);
-            AttachBadge("KillCount", IconKind.Skull, log);
-
-            // Alt orta: can ve kalkan
-            HideValueText("HealthValue", log);
-            HideValueText("ShieldValue", log);
-
-            AttachBarIcon("HealthBar", IconKind.Cross, log);
-            AttachBarIcon("ShieldBar", IconKind.Shield, log);
+            AttachTopBadge("AliveCount", PersonCodePoint, emojiFont, log);
+            AttachTopBadge("KillCount", SkullCodePoint, emojiFont, log);
 
             MarkSceneDirty();
             Debug.Log(string.Join("\n", log));
@@ -287,7 +458,7 @@ namespace NewBattle.EditorTools
 
         /// <summary>
         /// "KALAN" ve "SKOR" kelimelerini kaldirir; geriye sadece sayi kalir.
-        /// Kelimeleri kodda degil ayarda tuttugumuz icin tek satirlik is.
+        /// Kelimeler kodda degil ayarda tutuldugu icin tek satirlik is.
         /// </summary>
         private static void ClearStatusPrefixes(List<string> log)
         {
@@ -312,25 +483,19 @@ namespace NewBattle.EditorTools
 
             so.ApplyModifiedProperties();
             EditorUtility.SetDirty(status);
-            log.Add("  KALAN / SKOR yazilari kaldirildi");
+            log.Add("  KALAN / SKOR kelimeleri kaldirildi");
         }
 
-        /// <summary>
-        /// Yazinin soluna saydam siyah kare zeminli bir ikon rozeti koyar.
-        ///
-        /// Rozet, yazinin KARDESI olarak ekleniyor (cocugu degil): boylece
-        /// yaziyi tasidiginda ya da sildiginde rozet etkilenmiyor, ikisini
-        /// ayri ayri konumlandirabiliyorsun.
-        /// </summary>
-        private static void AttachBadge(string textObjectName, IconKind kind, List<string> log)
+        private void AttachTopBadge(string labelName, int codePoint, TMP_FontAsset emojiFont,
+            List<string> log)
         {
-            if (!TryFind(textObjectName, out RectTransform label))
+            if (!TryFind(labelName, out RectTransform label))
             {
-                log.Add($"  {textObjectName} bulunamadi.");
+                log.Add($"  {labelName} bulunamadi.");
                 return;
             }
 
-            string badgeName = textObjectName + "Badge";
+            string badgeName = labelName + "Badge";
 
             if (TryFind(badgeName, out RectTransform _))
             {
@@ -338,87 +503,82 @@ namespace NewBattle.EditorTools
                 return;
             }
 
-            GameObject badge = new(badgeName, typeof(RectTransform), typeof(Image));
-            RectTransform rect = badge.GetComponent<RectTransform>();
-            rect.SetParent(label.parent, false);
-            rect.anchorMin = label.anchorMin;
-            rect.anchorMax = label.anchorMax;
-            rect.pivot = label.pivot;
-            rect.sizeDelta = new Vector2(46f, 46f);
-            rect.anchoredPosition = label.anchoredPosition + new Vector2(2f, -2f);
+            // Rozet, yazinin KARDESI olarak ekleniyor (cocugu degil): ikisini
+            // ayri ayri tasiyabilesin ve birini silmek digerini etkilemesin.
+            RectTransform badge = CreateBadge(
+                badgeName, label.parent, label.anchorMin, label.anchorMax, label.pivot,
+                new Vector2(_badgeSize, _badgeSize),
+                label.anchoredPosition,
+                codePoint, emojiFont, _iconFontSize);
 
-            Image background = badge.GetComponent<Image>();
-            background.color = new Color(0f, 0f, 0f, 0.45f);
-            background.raycastTarget = false;
+            // Sayi rozetin sagina kaysin, uzerine binmesin.
+            Undo.RecordObject(label, "Sayiyi kaydir");
+            label.anchoredPosition += new Vector2(_badgeSize + 10f, 0f);
+            EditorUtility.SetDirty(label);
 
-            GameObject icon = new("Icon", typeof(RectTransform), typeof(Image));
-            RectTransform iconRect = icon.GetComponent<RectTransform>();
-            iconRect.SetParent(rect, false);
-            iconRect.anchorMin = new Vector2(0.5f, 0.5f);
-            iconRect.anchorMax = new Vector2(0.5f, 0.5f);
-            iconRect.pivot = new Vector2(0.5f, 0.5f);
-            iconRect.anchoredPosition = Vector2.zero;
-            iconRect.sizeDelta = new Vector2(30f, 30f);
-
-            Image iconImage = icon.GetComponent<Image>();
-            iconImage.sprite = LoadIcon(kind);
-            iconImage.color = Color.white;
-            iconImage.raycastTarget = false;
-            iconImage.preserveAspect = true;
-
-            // Sayi rozetin sagina kayiyor, uzerine binmesin.
-            label.anchoredPosition += new Vector2(54f, 0f);
-
-            Undo.RegisterCreatedObjectUndo(badge, "HUD rozeti");
-            log.Add($"  {badgeName} olusturuldu ({kind})");
+            log.Add($"  {badgeName} kuruldu  konum {badge.anchoredPosition}");
         }
 
-        /// <summary>Barin soluna ikon koyar. Arka plani yok: bar zaten kendi zeminini tasiyor.</summary>
-        private static void AttachBarIcon(string barName, IconKind kind, List<string> log)
+        // ------------------------------------------------------------------
+        // Ortak
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Arka plan (Image) + emoji (TMP) ikilisini kurar.
+        ///
+        /// Ikisi ayri nesne: arka planin rengini degistirmek emojiyi,
+        /// emojinin boyutunu degistirmek arka plani etkilemiyor. Tek
+        /// nesnede birlestirseydik ikisini bagimsiz ayarlayamazdin.
+        /// </summary>
+        private RectTransform CreateBadge(string name, Transform parent,
+            Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot,
+            Vector2 size, Vector2 position,
+            int codePoint, TMP_FontAsset emojiFont, float fontSize)
         {
-            if (!TryFind(barName, out RectTransform bar))
-            {
-                log.Add($"  {barName} bulunamadi.");
-                return;
-            }
+            GameObject badge = new(name, typeof(RectTransform), typeof(Image));
+            RectTransform rect = badge.GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.pivot = pivot;
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
 
-            string iconName = barName + "Icon";
+            Image background = badge.GetComponent<Image>();
+            background.color = _backgroundColor;
+            background.raycastTarget = false;
 
-            if (TryFind(iconName, out RectTransform _))
-            {
-                log.Add($"  {iconName} zaten var, dokunulmadi.");
-                return;
-            }
+            GameObject icon = new("Icon", typeof(RectTransform));
+            RectTransform iconRect = icon.GetComponent<RectTransform>();
+            iconRect.SetParent(rect, false);
+            iconRect.anchorMin = Vector2.zero;
+            iconRect.anchorMax = Vector2.one;
+            iconRect.offsetMin = Vector2.zero;
+            iconRect.offsetMax = Vector2.zero;
 
-            GameObject icon = new(iconName, typeof(RectTransform), typeof(Image));
-            RectTransform rect = icon.GetComponent<RectTransform>();
-            rect.SetParent(bar.parent, false);
-            rect.anchorMin = bar.anchorMin;
-            rect.anchorMax = bar.anchorMax;
-            rect.pivot = bar.pivot;
+            TextMeshProUGUI label = icon.AddComponent<TextMeshProUGUI>();
+            label.text = char.ConvertFromUtf32(codePoint);
+            label.fontSize = fontSize;
+            label.alignment = TextAlignmentOptions.Center;
+            label.color = Color.white;
+            label.raycastTarget = false;
+            label.enableWordWrapping = false;
 
-            float height = Mathf.Max(22f, bar.sizeDelta.y * 1.6f);
-            rect.sizeDelta = new Vector2(height, height);
-            rect.anchoredPosition = bar.anchoredPosition - new Vector2(bar.sizeDelta.x * 0.5f + 8f, 0f);
+            if (emojiFont != null)
+                label.font = emojiFont;
 
-            Image image = icon.GetComponent<Image>();
-            image.sprite = LoadIcon(kind);
-            image.color = Color.white;
-            image.raycastTarget = false;
-            image.preserveAspect = true;
-
-            Undo.RegisterCreatedObjectUndo(icon, "Bar ikonu");
-            log.Add($"  {iconName} olusturuldu ({kind})");
+            Undo.RegisterCreatedObjectUndo(badge, "HUD rozeti");
+            return rect;
         }
 
         /// <summary>
         /// Bardaki sayiyi gizler.
         ///
-        /// Siliyor degil kapatiyoruz: LocalPlayerHUD bu yaziya referans
-        /// tutuyor, silinirse her karede bos referans kontrolu yapmasi
-        /// gerekirdi. Kapali nesneye yazmak zararsiz.
+        /// Silmiyoruz kapatiyoruz: LocalPlayerHUD bu yazilara referans
+        /// tutuyor. Kapali bir nesneye yazmak zararsiz, ama silinmis bir
+        /// referansa yazmak her karede kontrol gerektirirdi.
         /// </summary>
-        private static void HideValueText(string objectName, List<string> log)
+        private static void HideValue(string objectName, List<string> log)
         {
             if (!TryFind(objectName, out RectTransform rect))
             {
@@ -432,21 +592,46 @@ namespace NewBattle.EditorTools
             log.Add($"  {objectName} gizlendi");
         }
 
-        private static Sprite LoadIcon(IconKind kind)
-        {
-            return AssetDatabase.LoadAssetAtPath<Sprite>($"{IconFolder}/{kind}.png");
-        }
+        // ------------------------------------------------------------------
+        // Kurtarma
+        // ------------------------------------------------------------------
 
-        // ------------------------------------------------------------------
-        // Font kurtarma
-        // ------------------------------------------------------------------
+        private static void RemoveBadges()
+        {
+            int removed = 0;
+
+            foreach (string name in new[]
+                     {
+                         "AliveCountBadge", "KillCountBadge",
+                         "HealthBarIcon", "ShieldBarIcon"
+                     })
+            {
+                if (!TryFind(name, out RectTransform rect))
+                    continue;
+
+                Undo.DestroyObjectImmediate(rect.gameObject);
+                removed++;
+            }
+
+            foreach (string name in new[] { "HealthValue", "ShieldValue" })
+            {
+                if (TryFind(name, out RectTransform rect) && !rect.gameObject.activeSelf)
+                {
+                    Undo.RecordObject(rect.gameObject, "Sayiyi geri ac");
+                    rect.gameObject.SetActive(true);
+                }
+            }
+
+            MarkSceneDirty();
+            Debug.Log($"{removed} rozet silindi, sayilar geri acildi. " +
+                      "KALAN / SKOR kelimelerini istiyorsan Game_UI > Battle Status HUD " +
+                      "icindeki Alive Prefix / Kills Prefix alanlarina elle yaz.");
+        }
 
         private static void ResetFonts()
         {
-            TMP_FontAsset fallback = TMP_Settings.defaultFontAsset;
-
-            if (fallback == null)
-                fallback = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            TMP_FontAsset fallback = TMP_Settings.defaultFontAsset
+                                     ?? Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
 
             if (fallback == null)
             {
@@ -461,6 +646,13 @@ namespace NewBattle.EditorTools
             foreach (TextMeshProUGUI label in Object.FindObjectsByType<TextMeshProUGUI>(
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
+                // Emoji rozetlerine dokunma: onlarin fontu bilincli olarak farkli.
+                if (label.transform.parent != null && label.transform.parent.name.EndsWith("Badge"))
+                    continue;
+
+                if (label.transform.parent != null && label.transform.parent.name.EndsWith("Icon"))
+                    continue;
+
                 Undo.RecordObject(label, "Fontu sifirla");
                 label.font = fallback;
                 EditorUtility.SetDirty(label);
@@ -468,27 +660,34 @@ namespace NewBattle.EditorTools
             }
 
             MarkSceneDirty();
-            Debug.Log($"{changed} yazi '{fallback.name}' fontuna donduruldu.");
+            Debug.Log($"{changed} yazi '{fallback.name}' fontuna donduruldu " +
+                      "(emoji rozetleri haric).");
         }
 
         private static void Report()
         {
             List<string> log = new() { "=== HUD ROZET DURUMU ===" };
 
-            foreach (IconKind kind in System.Enum.GetValues(typeof(IconKind)))
-                log.Add($"  ikon {kind,-8}: {(LoadIcon(kind) != null ? "var" : "YOK")}");
+            TMP_FontAsset emojiFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(EmojiFontPath);
+            log.Add($"  Emoji fontu: {(emojiFont != null ? emojiFont.name : "YOK")}");
 
             foreach (string name in new[]
                      {
                          "AliveCountBadge", "KillCountBadge",
                          "HealthBarIcon", "ShieldBarIcon",
-                         "HealthValue", "ShieldValue"
+                         "HealthValue", "ShieldValue",
+                         "HealthBar", "ShieldBar"
                      })
             {
                 if (TryFind(name, out RectTransform rect))
-                    log.Add($"  {name,-18} var, acik: {rect.gameObject.activeSelf}");
+                {
+                    log.Add($"  {name,-17} var   acik: {rect.gameObject.activeSelf,-5} " +
+                            $"konum {rect.anchoredPosition}  boyut {rect.sizeDelta}");
+                }
                 else
-                    log.Add($"  {name,-18} yok");
+                {
+                    log.Add($"  {name,-17} yok");
+                }
             }
 
             Debug.Log(string.Join("\n", log));
