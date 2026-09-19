@@ -67,12 +67,14 @@
     <Compile Include="Assets\TutorialInfo\Scripts\Editor\ReadmeEditor.cs" />
     <Compile Include="Assets\Editor\ArtGen\LowPolyMeshBuilder.cs" />
     <Compile Include="Assets\Editor\ArtGen\GlbImporter.cs" />
+    <Compile Include="Assets\Editor\MapNavigationSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\ArtGenWindow.cs" />
     <Compile Include="Assets\Editor\ArtGen\CharacterFactory.cs" />
     <Compile Include="Assets\Editor\ArtGen\RestoreOldArena.cs" />
     <Compile Include="Assets\Editor\ArtGen\ArtGenIO.cs" />
     <Compile Include="Assets\Editor\ArtGen\ArtGenTags.cs" />
     <Compile Include="Assets\Editor\ArtGen\WorldScaleSync.cs" />
+    <Compile Include="Assets\Editor\PropPrefabBuilder.cs" />
     <Compile Include="Assets\Editor\ArtGen\IslandFactory.cs" />
     <Compile Include="Assets\Editor\ArtGen\PropFactory.cs" />
     <Compile Include="Assets\Editor\HudIconBuilder.cs" />
@@ -84,6 +86,7 @@
     <Compile Include="Assets\Editor\ArtGen\CombatSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\GameplaySetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\CharacterSwapWindow.cs" />
+    <Compile Include="Assets\Editor\PropScatterTool.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
