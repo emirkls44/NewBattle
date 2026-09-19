@@ -91,6 +91,18 @@ namespace NewBattle.EditorTools
             if (GUILayout.Button("Duyuru Nesnesini Sahneye Ekle"))
                 AddAnnouncer();
 
+            EditorGUILayout.Space(18f);
+            EditorGUILayout.LabelField("4 - Hasar sayisi", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Hasar sayilari da kendi kendine olusuyor, o yuzden Inspector'dan " +
+                "ayarlanamiyor. Bu dugme sahneye kalici ekler; font, boyut, renk, " +
+                "kontur ve suzulme hizini oradan degistirirsin.\n\n" +
+                "Play modunda degistirdiginde sonuc aninda gorunur.",
+                MessageType.None);
+
+            if (GUILayout.Button("Hasar Sayisini Sahneye Ekle"))
+                AddDamageNumbers();
+
             EditorGUILayout.Space(14f);
 
             if (GUILayout.Button("Durumu Yaz (degistirmez)"))
@@ -331,6 +343,46 @@ namespace NewBattle.EditorTools
             Debug.Log(fontAsset != null
                 ? "ScreenAnnouncer sahneye eklendi, font atandi."
                 : "ScreenAnnouncer sahneye eklendi. Once fontu hazirla, sonra tekrar bas.");
+        }
+
+        /// <summary>
+        /// Hasar sayisi havuzunu sahneye kalici olarak ekler.
+        ///
+        /// Sahnede olmasi sart degil - yoksa kendini olusturuyor - ama o
+        /// durumda Inspector'da gorunmedigi icin font ve renk ayarlanamiyor.
+        /// </summary>
+        private static void AddDamageNumbers()
+        {
+            DamageNumberPopup existing = Object.FindFirstObjectByType<DamageNumberPopup>(
+                FindObjectsInactive.Include);
+
+            if (existing == null)
+            {
+                GameObject host = new("DamageNumberPool");
+                existing = host.AddComponent<DamageNumberPopup>();
+                Undo.RegisterCreatedObjectUndo(host, "Hasar sayisi havuzu");
+            }
+
+            TMP_FontAsset fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+
+            if (fontAsset != null)
+            {
+                SerializedObject so = new(existing);
+                SerializedProperty fontProperty = so.FindProperty("font");
+
+                if (fontProperty != null)
+                {
+                    fontProperty.objectReferenceValue = fontAsset;
+                    so.ApplyModifiedProperties();
+                }
+            }
+
+            Selection.activeObject = existing.gameObject;
+            MarkSceneDirty();
+
+            Debug.Log(fontAsset != null
+                ? "DamageNumberPool sahneye eklendi, Titan One atandi. Inspector'dan ayarla."
+                : "DamageNumberPool sahneye eklendi. Once fontu hazirla, sonra tekrar bas.");
         }
 
         private static void Report()

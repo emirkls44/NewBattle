@@ -156,6 +156,10 @@ public class HealthController : NetworkBehaviour
     private void Rpc_ShowDamageNumber(float damage, bool shieldHit)
     {
         DamageNumberPopup.Show(transform.position, damage, shieldHit);
+
+        // Govdenin kendisi de tepki versin: hasar sayisi karakterin ustunde
+        // belirirken goz nisan alirken govdede oluyor.
+        NewBattle.Gameplay.HitFlash.Play(gameObject);
     }
 
     private void Die()

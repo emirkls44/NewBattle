@@ -46,6 +46,9 @@ public class PlayerShooting : NetworkBehaviour
 
     /// <summary>Bu karede kamera zaten sarsildi mi (saccma tekrarini engeller).</summary>
     private int _lastShakeFrame = -1;
+
+    /// <summary>Bu karede kovan zaten firlatildi mi.</summary>
+    private int _lastCasingFrame = -1;
     private readonly Collider[] _meleeHits = new Collider[16];
     private readonly RaycastHit[] _rifleHits = new RaycastHit[32];
 
@@ -268,6 +271,17 @@ public class PlayerShooting : NetworkBehaviour
 
         WeaponDefinition weapon = _loadout != null ? _loadout.CurrentWeapon : null;
         ShakeOwnCamera(weapon != null ? weapon.shakeStrength : 0.15f);
+
+        // Kovan HERKESTE gorunmeli - dusmanin ates ettigini kovanindan da
+        // anlayabilmelisin. O yuzden sarsintinin aksine yetki kontrolu yok,
+        // sadece saccma tekrarini engelleyen kare kontrolu var.
+        if (_lastCasingFrame != Time.frameCount)
+        {
+            _lastCasingFrame = Time.frameCount;
+
+            Vector3 aim = endPoint - origin;
+            ShellCasingPool.Eject(origin, aim, transform.position.y);
+        }
     }
 
     /// <summary>
