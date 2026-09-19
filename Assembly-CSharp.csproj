@@ -101,6 +101,7 @@
     <Compile Include="Assets\Scripts\DropMapClickArea.cs" />
     <Compile Include="Assets\Scripts\PlayerIdleState.cs" />
     <Compile Include="Assets\Scripts\MobileMaterialOptimizer.cs" />
+    <Compile Include="Assets\Scripts\Gameplay\ScreenAnnouncer.cs" />
     <Compile Include="Assets\Scripts\BattleMatchController.cs" />
     <Compile Include="Assets\Scripts\NetworkManager.cs" />
     <Compile Include="Assets\Scripts\Gameplay\PlayerRingIndicator.cs" />

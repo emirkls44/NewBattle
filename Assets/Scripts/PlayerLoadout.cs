@@ -112,9 +112,17 @@ public class PlayerLoadout : NetworkBehaviour
         ApplyVisualState();
     }
 
+    /// <summary>
+    /// Yumruga gecmeyi ister.
+    ///
+    /// Menzilli silah tasiyorken bu istek KARSILIKSIZ kalir: silah alan
+    /// oyuncu bir daha yumruga donemiyor. Boylece "silahi birakip yumrukla
+    /// daha hizli kosayim" gibi bir oyun kirici tercih olusmuyor ve sag ust
+    /// paneldeki silah gostergesi mac boyunca sabit kaliyor.
+    /// </summary>
     public void SelectFist()
     {
-        if (HasInputAuthority)
+        if (HasInputAuthority && !HasRangedWeapon)
             Rpc_RequestSlot(0);
     }
 
@@ -212,10 +220,18 @@ public class PlayerLoadout : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void Rpc_RequestSlot(int slot)
     {
+        // Yumruga donus kurali burada da uygulaniyor, sadece SelectFist'te
+        // degil. Oradaki kontrol istemcide calisiyor; degistirilmis bir
+        // istemci bu RPC'yi dogrudan gonderip kurali atlayabilirdi.
         if (slot == 0)
-            WeaponId = FistWeaponId;
+        {
+            if (!HasRangedWeapon)
+                WeaponId = FistWeaponId;
+        }
         else if (HasRangedWeapon)
+        {
             WeaponId = StowedWeaponId;
+        }
 
         ApplyVisualState();
     }

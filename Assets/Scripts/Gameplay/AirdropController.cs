@@ -35,6 +35,9 @@ namespace NewBattle.Gameplay
         [Header("Teshis")]
         [SerializeField] private bool logDrops = true;
 
+        [Tooltip("Sandik birakildiginda ekranin ortasinda beliren yazi.")]
+        [SerializeField] private string dropAnnouncement = "Yeni Tedarik Paketi";
+
         [Networked] private int DropsReleased { get; set; }
         [Networked] private int LastTriggeredStage { get; set; }
         [Networked] private TickTimer PendingDropTimer { get; set; }
@@ -112,8 +115,18 @@ namespace NewBattle.Gameplay
 
             DropsReleased++;
 
+            // Duyuru sunucuda degil, HER istemcide gorunmeli: sandik
+            // haritanin obur ucuna duserse bile oyuncu haberdar olsun.
+            Rpc_AnnounceDrop();
+
             if (logDrops)
                 Debug.Log($"[Airdrop] Sandik birakildi: {groundPoint}");
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void Rpc_AnnounceDrop()
+        {
+            ScreenAnnouncer.Show(dropAnnouncement);
         }
 
         /// <summary>

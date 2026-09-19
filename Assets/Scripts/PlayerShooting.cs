@@ -43,6 +43,9 @@ public class PlayerShooting : NetworkBehaviour
     private PlayerLoadout _loadout;
     private HealthController _ownHealth;
     private Animator _animator;
+
+    /// <summary>Bu karede kamera zaten sarsildi mi (saccma tekrarini engeller).</summary>
+    private int _lastShakeFrame = -1;
     private readonly Collider[] _meleeHits = new Collider[16];
     private readonly RaycastHit[] _rifleHits = new RaycastHit[32];
 
@@ -254,11 +257,38 @@ public class PlayerShooting : NetworkBehaviour
     {
         if (_animator != null)
             _animator.SetTrigger(PunchHash);
+
+        ShakeOwnCamera(0.12f);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_ShowShot(Vector3 origin, Vector3 endPoint, bool hitSomething, Color tracerColor)
     {
         ShotTracer.Show(origin, endPoint, hitSomething, tracerColor);
+
+        WeaponDefinition weapon = _loadout != null ? _loadout.CurrentWeapon : null;
+        ShakeOwnCamera(weapon != null ? weapon.shakeStrength : 0.15f);
+    }
+
+    /// <summary>
+    /// Sadece SILAHI TUTAN oyuncunun kendi kamerasini sarsar.
+    ///
+    /// Iki koruma var:
+    ///   - HasInputAuthority: bu mermiyi ben attiysam sarsilirim. Olmasaydi
+    ///     haritadaki herkesin her atisi benim ekranimi titretirdi.
+    ///   - Kare kontrolu: saccma atan silahlar (pompali gibi) tek atista
+    ///     birden fazla Rpc_ShowShot gonderiyor. Her biri sarsinti eklerse
+    ///     tek bir pompali atisi ekrani okunmaz hale getirir.
+    /// </summary>
+    private void ShakeOwnCamera(float strength)
+    {
+        if (!HasInputAuthority || strength <= 0f)
+            return;
+
+        if (_lastShakeFrame == Time.frameCount)
+            return;
+
+        _lastShakeFrame = Time.frameCount;
+        CameraFollow.Shake(strength);
     }
 }

@@ -52,6 +52,17 @@ namespace NewBattle.Gameplay
         public Color tracerColor = new(1f, 0.93f, 0.55f, 1f);
 
         /// <summary>
+        /// Bu silah ates ettiginde kameraya eklenen sarsinti (0..1).
+        ///
+        /// Atis hizina gore ayarlanmali: seri ates eden bir silahta yuksek
+        /// deger sarsintiyi biriktirip ekrani okunmaz hale getirir. Kabaca
+        /// "tek atista hissedilir ama rahatsiz etmeyen" bir deger dogru;
+        /// seri ateste birikme zaten siddeti kendisi buyutuyor.
+        /// </summary>
+        [Tooltip("Ates ederken kameranin ne kadar sarsilacagi. Seri ateste birikir.")]
+        [Range(0f, 1f)] public float shakeStrength = 0.18f;
+
+        /// <summary>
         /// Varsayilan silah seti. Prefab'da dizi bos birakilirsa bu kullanilir,
         /// boylece proje hicbir Inspector ayari yapilmadan calisir.
         ///
