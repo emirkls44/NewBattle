@@ -29,6 +29,13 @@ namespace NewBattle.EditorTools
     {
         private const string OutputFolder = "Assets/Prefabs/Props";
 
+        /// <summary>
+        /// Disaridan gelen modellerin durdugu klasor. Tek dugmeyle tarama
+        /// buradan yapiliyor, boylece Project penceresinde dosya aramaya
+        /// gerek kalmiyor.
+        /// </summary>
+        private const string ImportFolder = "Assets/GameArt/Imported/Props";
+
         /// <summary>Prop'un oyundaki rolu. Collider ve etiketi bu belirliyor.</summary>
         private enum PropKind
         {
@@ -176,12 +183,30 @@ namespace NewBattle.EditorTools
 
             GameObject[] models = SelectedModels();
 
+            GameObject[] pending = PendingImports();
+
+            using (new EditorGUI.DisabledScope(pending.Length == 0))
+            {
+                if (GUILayout.Button(
+                        $"Yeni gelen modelleri prefab yap ({pending.Length})",
+                        GUILayout.Height(34f)))
+                {
+                    BuildAll(pending, forceNew: true);
+                }
+            }
+
+            EditorGUILayout.LabelField(
+                ImportFolder + " icinde prefab'i olmayan modeller.",
+                EditorStyles.miniLabel);
+
+            EditorGUILayout.Space(10f);
+
             string verb = _mode == Mode.NewPrefab ? "Kur" : "Collider Ekle";
 
             using (new EditorGUI.DisabledScope(models.Length == 0))
             {
                 if (GUILayout.Button($"{verb} ({models.Length} secili)", GUILayout.Height(34f)))
-                    BuildAll(models);
+                    BuildAll(models, forceNew: false);
             }
 
             if (models.Length == 0)
@@ -227,18 +252,55 @@ namespace NewBattle.EditorTools
             return found.ToArray();
         }
 
-        private void BuildAll(GameObject[] models)
+        /// <summary>
+        /// Prefab'i henuz uretilmemis modelleri bulur.
+        ///
+        /// Zaten prefab'i olanlari listeye almiyoruz: dugmenin yanindaki
+        /// sayi "kac is kaldi" demek olmali, yoksa her basista ayni
+        /// modeller icin "zaten var, atlandi" satirlari dolar.
+        /// </summary>
+        private static GameObject[] PendingImports()
+        {
+            if (!AssetDatabase.IsValidFolder(ImportFolder))
+                return System.Array.Empty<GameObject>();
+
+            string[] guids = AssetDatabase.FindAssets(
+                "t:Model", new[] { ImportFolder });
+
+            List<GameObject> pending = new();
+
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+                if (model == null)
+                    continue;
+
+                string target = $"{OutputFolder}/{CleanName(model.name)}.prefab";
+
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(target) != null)
+                    continue;
+
+                pending.Add(model);
+            }
+
+            return pending.ToArray();
+        }
+
+        private void BuildAll(GameObject[] models, bool forceNew)
         {
             EnsureFolder(OutputFolder);
 
             StringBuilder log = new();
             log.AppendLine("=== PROP KURULUMU ===");
 
+            bool newPrefab = forceNew || _mode == Mode.NewPrefab;
             int made = 0;
 
             foreach (GameObject model in models)
             {
-                string path = _mode == Mode.NewPrefab
+                string path = newPrefab
                     ? Build(model, log)
                     : PatchInPlace(model, log);
 
