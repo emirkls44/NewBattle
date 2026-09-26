@@ -3,11 +3,18 @@ using UnityEngine;
 namespace NewBattle.ArtGen
 {
     /// <summary>
-    /// Yerde duran toplanabilir esyalarin ve silahlarin low-poly modelleri.
+    /// Yerde duran toplanabilir esyalarin ve silahlarin modelleri.
     ///
-    /// Tum silahlar +Z yonune bakacak sekilde, namlu ucu +Z'de olacak bicimde uretilir.
-    /// Boylece karakterin elindeki WeaponSocket'e dogrudan (identity rotation ile)
-    /// takilabilirler ve MuzzlePoint namlu ucuna denk gelir.
+    /// Stil: "yumusak low-poly". Kutular pahli, silindir ve kureler yumusak
+    /// golgeli; oranlar hafif tombul. Keskin yuzlu eski modellerin yerine
+    /// oyuncak gibi okunan, ustten bakinca silueti net sekiller.
+    ///
+    /// Olcu: gercek metre. Yerdeki boyut pickup prefabindaki olcekle ayarlanir
+    /// (bkz. LootVisualSetup); ayni mesh karakterin elinde de kullanildigi icin
+    /// modeli burada buyutmek elindeki silahi da buyuturdu.
+    ///
+    /// Tum silahlar +Z yonune bakar, namlu ucu +Z'dedir. Boylece karakterin
+    /// WeaponSocket'ine dogrudan (identity rotation ile) takilabilirler.
     /// </summary>
     public static class LootFactory
     {
@@ -27,6 +34,9 @@ namespace NewBattle.ArtGen
             Parachute
         }
 
+        /// <summary>Yumusak yuzeylerin cevre bolumu. Ustten bakista cokgen gorunmeyecek kadar.</summary>
+        private const int RoundSides = 14;
+
         public static Mesh Build(LootKind kind)
         {
             LowPolyMeshBuilder builder = new();
@@ -34,8 +44,8 @@ namespace NewBattle.ArtGen
             switch (kind)
             {
                 case LootKind.AmmoPack: BuildAmmoPack(builder); break;
-                case LootKind.SmallShield: BuildShieldFlask(builder, 0.78f, ToonPalette.ShieldSmall); break;
-                case LootKind.BigShield: BuildShieldFlask(builder, 1.12f, ToonPalette.ShieldBig); break;
+                case LootKind.SmallShield: BuildShieldFlask(builder, 0.85f, ToonPalette.ShieldSmall); break;
+                case LootKind.BigShield: BuildShieldFlask(builder, 1.15f, ToonPalette.ShieldBig); break;
                 case LootKind.MedKit: BuildMedKit(builder); break;
                 case LootKind.Pistol: BuildPistol(builder); break;
                 case LootKind.Smg: BuildSmg(builder); break;
@@ -52,86 +62,91 @@ namespace NewBattle.ArtGen
 
         #region Sarf malzemeleri
 
-        /// <summary>Ayakta duran altin mermi demeti - referans gorsellerdeki sari kume.</summary>
+        /// <summary>Ayakta duran tombul mermi kumesi - referans gorsellerdeki sari demet.</summary>
         private static void BuildAmmoPack(LowPolyMeshBuilder builder)
         {
-            // 2 sira x 3 mermi, hafif kaydirmali dizilim.
-            float bulletRadius = 0.035f;
-            float bulletHeight = 0.115f;
-            float spacing = 0.075f;
+            const float radius = 0.036f;
+            const float rimHeight = 0.018f;
+            const float bodyHeight = 0.1f;
 
-            for (int row = 0; row < 2; row++)
+            // On sira 3, arka sira 2 mermi. Arka sira biraz uzun: ustten bakinca
+            // kume tek bir blok gibi degil, tek tek mermi olarak okunur.
+            (float x, float z, float extra)[] bullets =
             {
-                int columns = row == 0 ? 3 : 2;
-                float z = row * spacing * 0.86f - 0.03f;
+                (-0.075f, -0.035f, 0f),
+                (0f, -0.035f, 0f),
+                (0.075f, -0.035f, 0f),
+                (-0.0375f, 0.035f, 0.015f),
+                (0.0375f, 0.035f, 0.015f)
+            };
 
-                for (int column = 0; column < columns; column++)
-                {
-                    float x = (column - (columns - 1) * 0.5f) * spacing;
-                    Vector3 basePoint = new(x, 0f, z);
+            foreach ((float x, float z, float extra) in bullets)
+            {
+                Vector3 basePoint = new(x, 0f, z);
+                float height = bodyHeight + extra;
 
-                    builder.AddCylinder(basePoint, bulletRadius, bulletRadius, bulletHeight, 8,
-                        ToonPalette.AmmoGold);
-                    builder.AddCylinder(basePoint + Vector3.up * bulletHeight,
-                        bulletRadius, bulletRadius * 0.45f, 0.045f, 8, ToonPalette.AmmoTip);
-                    // Kovan dibindeki koyu halka, formu okunakli kiliyor.
-                    builder.AddCylinder(basePoint, bulletRadius * 1.08f, bulletRadius * 1.08f, 0.016f, 8,
-                        ToonPalette.AmmoGoldDark);
-                }
+                // Kovan dibindeki koyu halka formu okunakli kiliyor.
+                builder.AddSmoothCylinder(basePoint, radius * 1.1f, radius * 1.1f, rimHeight, RoundSides,
+                    ToonPalette.AmmoGoldDark);
+                builder.AddSmoothCylinder(basePoint + Vector3.up * rimHeight, radius, radius, height, RoundSides,
+                    ToonPalette.AmmoGold, capBottom: false, capTop: false);
+                // Yuvarlak uc: kurenin alt yarisi govdenin icinde kalir.
+                builder.AddSmoothSphere(basePoint + Vector3.up * (rimHeight + height), radius, RoundSides, 8,
+                    ToonPalette.AmmoTip, new Vector3(1f, 1.6f, 1f));
             }
         }
 
-        /// <summary>Kalkan sisesi. scale ile kucuk/buyuk varyanti uretilir.</summary>
+        /// <summary>Tombul kalkan iksiri. scale ile kucuk/buyuk varyanti uretilir.</summary>
         private static void BuildShieldFlask(LowPolyMeshBuilder builder, float scale, Color liquid)
         {
             builder.Push();
             builder.Scale(scale);
 
-            // Govde: asagisi genis, yukarisi daralan sise.
-            builder.AddCylinder(new Vector3(0f, 0f, 0f), 0.085f, 0.098f, 0.055f, 9, ToonPalette.ShieldGlass);
-            builder.AddCylinder(new Vector3(0f, 0.055f, 0f), 0.098f, 0.088f, 0.115f, 9, liquid);
-            builder.AddCylinder(new Vector3(0f, 0.17f, 0f), 0.088f, 0.042f, 0.06f, 9, ToonPalette.ShieldGlass);
-            // Boyun + mantar
-            builder.AddCylinder(new Vector3(0f, 0.23f, 0f), 0.038f, 0.038f, 0.05f, 8, ToonPalette.ShieldGlass);
-            builder.AddCylinder(new Vector3(0f, 0.275f, 0f), 0.046f, 0.042f, 0.035f, 8, ToonPalette.PotionCork);
-            // Etiket
-            builder.AddBox(new Vector3(0f, 0.10f, 0.094f), new Vector3(0.10f, 0.07f, 0.012f),
-                ToonPalette.MedkitWhite);
+            builder.AddSmoothSphere(new Vector3(0f, 0.1f, 0f), 0.1f, 16, 10, liquid, new Vector3(1f, 0.95f, 1f));
+            // Parlama noktasi: kamera guneyden (-Z) bakiyor, isik oraya duser.
+            builder.AddSmoothSphere(new Vector3(-0.045f, 0.145f, -0.062f), 0.018f, 10, 6, ToonPalette.MedkitWhite);
+
+            builder.AddSmoothCylinder(new Vector3(0f, 0.18f, 0f), 0.036f, 0.033f, 0.06f, RoundSides,
+                ToonPalette.ShieldGlass);
+            builder.AddSmoothCylinder(new Vector3(0f, 0.235f, 0f), 0.043f, 0.043f, 0.04f, RoundSides,
+                ToonPalette.PotionCork);
 
             builder.Pop();
         }
 
         private static void BuildMedKit(LowPolyMeshBuilder builder)
         {
-            Vector3 size = new(0.26f, 0.15f, 0.19f);
+            Vector3 size = new(0.28f, 0.16f, 0.2f);
 
-            builder.AddBox(new Vector3(0f, size.y * 0.5f, 0f), size, ToonPalette.MedkitRed);
-            // Kapak ayrimi
-            builder.AddBox(new Vector3(0f, size.y * 0.82f, 0f),
-                new Vector3(size.x * 1.02f, 0.035f, size.z * 1.02f), ToonPalette.MedkitDark);
-            // Ust ve on yuzdeki beyaz hac
-            AddCross(builder, new Vector3(0f, size.y + 0.006f, 0f), Vector3.right, Vector3.forward, 0.10f, 0.03f);
-            AddCross(builder, new Vector3(0f, size.y * 0.42f, size.z * 0.5f + 0.006f), Vector3.right, Vector3.up, 0.075f, 0.024f);
-            // Sap
-            builder.AddBox(new Vector3(0f, size.y + 0.03f, -size.z * 0.18f),
-                new Vector3(0.09f, 0.045f, 0.022f), ToonPalette.MedkitDark);
+            builder.AddRoundedBox(new Vector3(0f, size.y * 0.5f, 0f), size, 0.04f, ToonPalette.MedkitRed, 3);
+
+            // Kapak cizgisi: govdeyi saran ince, biraz koyu serit.
+            builder.AddRoundedBox(new Vector3(0f, size.y * 0.7f, 0f),
+                new Vector3(size.x + 0.006f, 0.02f, size.z + 0.006f), 0.01f, ToonPalette.MedkitDark);
+
+            // Ustte ve onde beyaz hac. Ustteki ustten bakista, ondeki kameranin
+            // egik bakisinda gorunur.
+            AddCross(builder, new Vector3(0f, size.y + 0.004f, 0f), horizontal: true, 0.12f, 0.036f);
+            AddCross(builder, new Vector3(0f, size.y * 0.42f, -size.z * 0.5f - 0.004f), horizontal: false,
+                0.066f, 0.022f);
         }
 
-        private static void AddCross(LowPolyMeshBuilder builder, Vector3 center, Vector3 axisA, Vector3 axisB,
+        private static void AddCross(LowPolyMeshBuilder builder, Vector3 center, bool horizontal,
             float length, float thickness)
         {
-            // Iki eksen boyunca birbirini kesen iki ince kutu = hac.
-            Vector3 a = Abs(axisA);
-            Vector3 b = Abs(axisB);
-            Vector3 depth = Abs(Vector3.Cross(axisA, axisB).normalized) * 0.016f;
+            const float depth = 0.014f;
+            float radius = thickness * 0.35f;
 
-            builder.AddBox(center, a * length + b * thickness + depth, ToonPalette.MedkitWhite);
-            builder.AddBox(center, a * thickness + b * length + depth, ToonPalette.MedkitWhite);
-        }
-
-        private static Vector3 Abs(Vector3 value)
-        {
-            return new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
+            if (horizontal)
+            {
+                builder.AddRoundedBox(center, new Vector3(length, depth, thickness), radius, ToonPalette.MedkitWhite, 1);
+                builder.AddRoundedBox(center, new Vector3(thickness, depth, length), radius, ToonPalette.MedkitWhite, 1);
+            }
+            else
+            {
+                builder.AddRoundedBox(center, new Vector3(length, thickness, depth), radius, ToonPalette.MedkitWhite, 1);
+                builder.AddRoundedBox(center, new Vector3(thickness, length, depth), radius, ToonPalette.MedkitWhite, 1);
+            }
         }
 
         #endregion
@@ -147,152 +162,147 @@ namespace NewBattle.ArtGen
             Color body, Color accent, bool hasStock, bool hasMagazine, bool hasScope,
             float magazineLength = 0.14f, float gripAngle = 18f)
         {
-            float bodyWidth = 0.062f;
+            const float bodyWidth = 0.066f;
 
-            // Ana govde (receiver)
-            builder.AddBox(new Vector3(0f, 0f, 0f), new Vector3(bodyWidth, bodyHeight, bodyLength), body);
-            builder.AddBox(new Vector3(0f, bodyHeight * 0.42f, bodyLength * 0.1f),
-                new Vector3(bodyWidth * 0.75f, bodyHeight * 0.3f, bodyLength * 0.55f), ToonPalette.GunBodyLight);
+            // Ana govde (receiver) ve ust kapak
+            builder.AddRoundedBox(Vector3.zero, new Vector3(bodyWidth, bodyHeight, bodyLength), 0.02f, body);
+            builder.AddRoundedBox(new Vector3(0f, bodyHeight * 0.42f, bodyLength * 0.1f),
+                new Vector3(bodyWidth * 0.78f, bodyHeight * 0.34f, bodyLength * 0.55f), 0.012f,
+                ToonPalette.GunBodyLight);
 
-            // Namlu
-            float barrelStart = bodyLength * 0.5f;
+            // Namlu ve ucundaki renkli halka - gorsellerdeki turuncu detay.
+            float barrelStart = bodyLength * 0.5f - 0.01f;
             builder.Push();
             builder.Translate(0f, bodyHeight * 0.1f, barrelStart);
             builder.RotateEuler(90f, 0f, 0f);
-            builder.AddCylinder(Vector3.zero, barrelRadius, barrelRadius * 0.92f, barrelLength, 8, body);
+            builder.AddSmoothCylinder(Vector3.zero, barrelRadius, barrelRadius * 0.94f, barrelLength, RoundSides, body);
+            builder.AddSmoothCylinder(new Vector3(0f, barrelLength * 0.82f, 0f), barrelRadius * 1.35f,
+                barrelRadius * 1.35f, barrelLength * 0.18f + 0.008f, RoundSides, accent);
             builder.Pop();
-
-            // Namlu ucu aksani - gorsellerdeki turuncu detay
-            builder.AddBox(new Vector3(0f, bodyHeight * 0.1f, barrelStart + barrelLength * 0.86f),
-                new Vector3(barrelRadius * 2.5f, barrelRadius * 2.5f, barrelLength * 0.16f), accent);
 
             // Kabza
             builder.Push();
             builder.Translate(0f, -bodyHeight * 0.45f, -bodyLength * 0.22f);
             builder.RotateEuler(gripAngle, 0f, 0f);
-            builder.AddTaperedBox(new Vector3(0f, -0.065f, 0f),
-                new Vector3(bodyWidth * 0.82f, 0.14f, 0.055f),
-                new Vector2(bodyWidth * 0.82f, 0.065f), ToonPalette.GunGrip);
+            builder.AddRoundedBox(new Vector3(0f, -0.06f, 0f), new Vector3(bodyWidth * 0.82f, 0.13f, 0.058f), 0.02f,
+                ToonPalette.GunGrip);
             builder.Pop();
 
             // Tetik korugu
-            builder.AddBox(new Vector3(0f, -bodyHeight * 0.55f, -bodyLength * 0.08f),
-                new Vector3(bodyWidth * 0.5f, 0.05f, 0.075f), ToonPalette.GunGrip);
+            builder.AddRoundedBox(new Vector3(0f, -bodyHeight * 0.55f, -bodyLength * 0.06f),
+                new Vector3(bodyWidth * 0.45f, 0.045f, 0.075f), 0.012f, ToonPalette.GunGrip, 1);
 
             if (hasMagazine)
             {
                 builder.Push();
-                builder.Translate(0f, -bodyHeight * 0.5f, bodyLength * 0.02f);
+                builder.Translate(0f, -bodyHeight * 0.5f, bodyLength * 0.04f);
                 builder.RotateEuler(-8f, 0f, 0f);
-                builder.AddTaperedBox(new Vector3(0f, -magazineLength * 0.5f, 0f),
-                    new Vector3(bodyWidth * 0.68f, magazineLength, 0.055f),
-                    new Vector2(bodyWidth * 0.62f, 0.05f), accent);
+                builder.AddRoundedBox(new Vector3(0f, -magazineLength * 0.5f, 0f),
+                    new Vector3(bodyWidth * 0.66f, magazineLength, 0.058f), 0.018f, accent);
                 builder.Pop();
             }
 
             if (hasStock)
             {
-                builder.AddTaperedBox(new Vector3(0f, -bodyHeight * 0.05f, -bodyLength * 0.5f - 0.075f),
-                    new Vector3(bodyWidth * 0.8f, bodyHeight * 0.95f, 0.15f),
-                    new Vector2(bodyWidth * 0.8f, bodyHeight * 1.25f), body);
-                builder.AddBox(new Vector3(0f, -bodyHeight * 0.1f, -bodyLength * 0.5f - 0.155f),
-                    new Vector3(bodyWidth * 0.85f, bodyHeight * 1.35f, 0.035f), ToonPalette.GunGrip);
+                builder.AddRoundedBox(new Vector3(0f, -bodyHeight * 0.05f, -bodyLength * 0.5f - 0.075f),
+                    new Vector3(bodyWidth * 0.8f, bodyHeight * 1.05f, 0.16f), 0.022f, body);
+                builder.AddRoundedBox(new Vector3(0f, -bodyHeight * 0.08f, -bodyLength * 0.5f - 0.16f),
+                    new Vector3(bodyWidth * 0.86f, bodyHeight * 1.3f, 0.035f), 0.012f, ToonPalette.GunGrip);
             }
 
             if (hasScope)
             {
-                builder.AddBox(new Vector3(0f, bodyHeight * 0.75f, bodyLength * 0.12f),
-                    new Vector3(bodyWidth * 0.35f, 0.045f, 0.06f), ToonPalette.GunGrip);
+                builder.AddRoundedBox(new Vector3(0f, bodyHeight * 0.72f, bodyLength * 0.12f),
+                    new Vector3(bodyWidth * 0.35f, 0.04f, 0.06f), 0.01f, ToonPalette.GunGrip, 1);
+
                 builder.Push();
                 builder.Translate(0f, bodyHeight * 1.05f, bodyLength * 0.12f);
                 builder.RotateEuler(90f, 0f, 0f);
-                builder.AddCylinder(new Vector3(0f, -0.11f, 0f), 0.034f, 0.034f, 0.22f, 8, ToonPalette.GunGrip);
-                builder.Pop();
-                // Mercek: durbunun on ucunde mavi disk.
-                builder.Push();
-                builder.Translate(0f, bodyHeight * 1.05f, bodyLength * 0.12f + 0.105f);
-                builder.RotateEuler(90f, 0f, 0f);
-                builder.AddCylinder(Vector3.zero, 0.030f, 0.030f, 0.012f, 8, ToonPalette.Window);
+                builder.AddSmoothCylinder(new Vector3(0f, -0.11f, 0f), 0.034f, 0.034f, 0.22f, RoundSides,
+                    ToonPalette.GunGrip);
+                // Mercek: durbunun on ucunde acik mavi disk.
+                builder.AddSmoothCylinder(new Vector3(0f, 0.108f, 0f), 0.029f, 0.029f, 0.01f, RoundSides,
+                    ToonPalette.ScopeLens);
                 builder.Pop();
             }
             else
             {
                 // Basit nisangah
-                builder.AddBox(new Vector3(0f, bodyHeight * 0.68f, bodyLength * 0.38f),
-                    new Vector3(0.012f, 0.038f, 0.014f), ToonPalette.GunGrip);
+                builder.AddRoundedBox(new Vector3(0f, bodyHeight * 0.66f, bodyLength * 0.38f),
+                    new Vector3(0.016f, 0.036f, 0.018f), 0.006f, ToonPalette.GunGrip, 1);
             }
         }
 
         private static void BuildPistol(LowPolyMeshBuilder builder)
         {
-            BuildGun(builder, 0.20f, 0.075f, 0.10f, 0.021f,
+            BuildGun(builder, 0.2f, 0.078f, 0.1f, 0.022f,
                 ToonPalette.GunBody, ToonPalette.GunAccent,
                 hasStock: false, hasMagazine: false, hasScope: false, gripAngle: 22f);
         }
 
         private static void BuildSmg(LowPolyMeshBuilder builder)
         {
-            BuildGun(builder, 0.26f, 0.082f, 0.16f, 0.022f,
+            BuildGun(builder, 0.26f, 0.084f, 0.16f, 0.023f,
                 ToonPalette.GunBody, ToonPalette.GunAccent,
                 hasStock: false, hasMagazine: true, hasScope: false, magazineLength: 0.17f);
         }
 
         private static void BuildShotgun(LowPolyMeshBuilder builder)
         {
-            BuildGun(builder, 0.30f, 0.085f, 0.30f, 0.030f,
-                ToonPalette.GunBody, ToonPalette.WallWood,
+            BuildGun(builder, 0.3f, 0.088f, 0.3f, 0.031f,
+                ToonPalette.GunBody, ToonPalette.GunWood,
                 hasStock: true, hasMagazine: false, hasScope: false);
 
-            // Cift namlu hissi veren alt tup
+            // Cift namlu hissi veren alt tup ve pompa kolu
             builder.Push();
             builder.Translate(0f, -0.028f, 0.15f);
             builder.RotateEuler(90f, 0f, 0f);
-            builder.AddCylinder(Vector3.zero, 0.024f, 0.024f, 0.26f, 8, ToonPalette.GunBodyLight);
+            builder.AddSmoothCylinder(Vector3.zero, 0.025f, 0.025f, 0.26f, RoundSides, ToonPalette.GunBodyLight);
             builder.Pop();
-            // Pompa kolu
-            builder.AddBox(new Vector3(0f, -0.028f, 0.22f), new Vector3(0.058f, 0.05f, 0.09f), ToonPalette.WallWood);
+            builder.AddRoundedBox(new Vector3(0f, -0.028f, 0.22f), new Vector3(0.062f, 0.054f, 0.1f), 0.02f,
+                ToonPalette.GunWood);
         }
 
         private static void BuildAssaultRifle(LowPolyMeshBuilder builder)
         {
-            BuildGun(builder, 0.34f, 0.085f, 0.26f, 0.023f,
+            BuildGun(builder, 0.34f, 0.088f, 0.26f, 0.024f,
                 ToonPalette.GunBody, ToonPalette.GunAccent,
                 hasStock: true, hasMagazine: true, hasScope: false, magazineLength: 0.16f);
 
             // On el kundagi
-            builder.AddBox(new Vector3(0f, 0.005f, 0.26f), new Vector3(0.05f, 0.052f, 0.14f),
+            builder.AddRoundedBox(new Vector3(0f, 0.005f, 0.26f), new Vector3(0.054f, 0.056f, 0.14f), 0.018f,
                 ToonPalette.GunBodyLight);
         }
 
         private static void BuildSniper(LowPolyMeshBuilder builder)
         {
-            BuildGun(builder, 0.38f, 0.082f, 0.40f, 0.020f,
+            BuildGun(builder, 0.38f, 0.084f, 0.4f, 0.021f,
                 ToonPalette.GunBody, ToonPalette.GunAccent,
                 hasStock: true, hasMagazine: true, hasScope: true, magazineLength: 0.11f);
 
             // Bipod
-            builder.Push();
-            builder.Translate(0f, -0.04f, 0.42f);
-            builder.RotateEuler(0f, 0f, 28f);
-            builder.AddCylinder(new Vector3(0f, -0.09f, 0f), 0.009f, 0.009f, 0.09f, 6, ToonPalette.Metal);
-            builder.Pop();
-            builder.Push();
-            builder.Translate(0f, -0.04f, 0.42f);
-            builder.RotateEuler(0f, 0f, -28f);
-            builder.AddCylinder(new Vector3(0f, -0.09f, 0f), 0.009f, 0.009f, 0.09f, 6, ToonPalette.Metal);
-            builder.Pop();
+            foreach (float angle in new[] { 28f, -28f })
+            {
+                builder.Push();
+                builder.Translate(0f, -0.04f, 0.42f);
+                builder.RotateEuler(0f, 0f, angle);
+                builder.AddSmoothCylinder(new Vector3(0f, -0.09f, 0f), 0.01f, 0.01f, 0.09f, 8, ToonPalette.GunGrip);
+                builder.Pop();
+            }
         }
 
         /// <summary>Airdrop kutusundan cikan efsanevi silah: altin govde, daha iri hatlar.</summary>
         private static void BuildLegendaryRifle(LowPolyMeshBuilder builder)
         {
-            BuildGun(builder, 0.40f, 0.098f, 0.32f, 0.028f,
+            BuildGun(builder, 0.4f, 0.1f, 0.32f, 0.029f,
                 ToonPalette.GunLegendary, ToonPalette.GunLegendaryDark,
-                hasStock: true, hasMagazine: true, hasScope: true, magazineLength: 0.20f);
+                hasStock: true, hasMagazine: true, hasScope: true, magazineLength: 0.2f);
 
             // Govdeyi saran koyu bantlar, altin uzerinde kontrast yaratir.
-            builder.AddBox(new Vector3(0f, 0f, 0.06f), new Vector3(0.07f, 0.105f, 0.03f), ToonPalette.GunGrip);
-            builder.AddBox(new Vector3(0f, 0f, -0.10f), new Vector3(0.07f, 0.105f, 0.03f), ToonPalette.GunGrip);
+            builder.AddRoundedBox(new Vector3(0f, 0f, 0.06f), new Vector3(0.072f, 0.108f, 0.03f), 0.012f,
+                ToonPalette.GunGrip, 1);
+            builder.AddRoundedBox(new Vector3(0f, 0f, -0.1f), new Vector3(0.072f, 0.108f, 0.03f), 0.012f,
+                ToonPalette.GunGrip, 1);
         }
 
         #endregion
@@ -303,45 +313,38 @@ namespace NewBattle.ArtGen
         {
             Vector3 size = new(0.95f, 0.62f, 0.78f);
             float bodyHeight = size.y * 0.66f;
+            float lidHeight = size.y * 0.3f;
+            float lidCenter = bodyHeight + lidHeight * 0.4f;
 
-            // Govde
-            builder.AddBox(new Vector3(0f, bodyHeight * 0.5f, 0f),
-                new Vector3(size.x, bodyHeight, size.z), ToonPalette.CrateGreen);
+            builder.AddRoundedBox(new Vector3(0f, bodyHeight * 0.5f, 0f),
+                new Vector3(size.x, bodyHeight, size.z), 0.07f, ToonPalette.CrateGreen, 3);
 
-            // Kapak: hafif kubbeli gorunsun diye iki kademeli kutu.
-            builder.AddTaperedBox(new Vector3(0f, bodyHeight + size.y * 0.13f, 0f),
-                new Vector3(size.x * 1.02f, size.y * 0.26f, size.z * 1.02f),
-                new Vector2(size.x * 0.86f, size.z * 0.86f), ToonPalette.CrateGreenDark);
+            // Kapak: govdeden biraz tasan, yumusak koseli kapak.
+            builder.AddRoundedBox(new Vector3(0f, lidCenter, 0f),
+                new Vector3(size.x * 1.03f, lidHeight, size.z * 1.03f), 0.07f, ToonPalette.CrateGreenDark, 3);
 
-            // Kayislar
+            // Kayislar ve tokalar
             foreach (float x in new[] { -size.x * 0.28f, size.x * 0.28f })
             {
-                builder.AddBox(new Vector3(x, bodyHeight * 0.5f, size.z * 0.5f + 0.012f),
-                    new Vector3(0.10f, bodyHeight * 1.02f, 0.03f), ToonPalette.CrateStrap);
-                builder.AddBox(new Vector3(x, bodyHeight * 0.5f, -size.z * 0.5f - 0.012f),
-                    new Vector3(0.10f, bodyHeight * 1.02f, 0.03f), ToonPalette.CrateStrap);
-                builder.AddBox(new Vector3(x, bodyHeight + size.y * 0.13f, 0f),
-                    new Vector3(0.10f, size.y * 0.30f, size.z * 1.04f), ToonPalette.CrateStrap);
-                // Toka
-                builder.AddBox(new Vector3(x, bodyHeight * 0.62f, size.z * 0.5f + 0.028f),
-                    new Vector3(0.07f, 0.07f, 0.025f), ToonPalette.CrateMetal);
-            }
-
-            // Kose demirleri
-            foreach (float x in new[] { -1f, 1f })
-            {
-                foreach (float z in new[] { -1f, 1f })
+                foreach (float side in new[] { -1f, 1f })
                 {
-                    builder.AddBox(new Vector3(x * size.x * 0.48f, bodyHeight * 0.5f, z * size.z * 0.48f),
-                        new Vector3(0.06f, bodyHeight * 1.01f, 0.06f), ToonPalette.CrateMetal);
+                    builder.AddRoundedBox(new Vector3(x, bodyHeight * 0.5f, side * (size.z * 0.5f + 0.01f)),
+                        new Vector3(0.1f, bodyHeight * 0.98f, 0.03f), 0.012f, ToonPalette.CrateStrap, 1);
                 }
+
+                builder.AddRoundedBox(new Vector3(x, lidCenter + 0.01f, 0f),
+                    new Vector3(0.1f, lidHeight * 1.02f, size.z * 1.05f), 0.02f, ToonPalette.CrateStrap);
+                builder.AddRoundedBox(new Vector3(x, bodyHeight * 0.6f, -size.z * 0.5f - 0.028f),
+                    new Vector3(0.07f, 0.07f, 0.025f), 0.01f, ToonPalette.CrateMetal, 1);
             }
 
-            // Ust yuzeydeki isaret: ucgen uc + govde = stilize "!" / hedef isareti.
-            builder.AddBox(new Vector3(0f, bodyHeight + size.y * 0.27f, 0.02f),
-                new Vector3(0.10f, 0.02f, 0.26f), ToonPalette.CrateMark);
-            builder.AddBox(new Vector3(0f, bodyHeight + size.y * 0.27f, -0.20f),
-                new Vector3(0.10f, 0.02f, 0.09f), ToonPalette.CrateMark);
+            // Ust yuzeydeki isaret: kalin bir "!" - ustten bakista sandigin
+            // tedarik paketi oldugu hemen okunur.
+            float top = lidCenter + lidHeight * 0.5f + 0.004f;
+            builder.AddRoundedBox(new Vector3(0f, top, 0.04f), new Vector3(0.1f, 0.02f, 0.24f), 0.01f,
+                ToonPalette.CrateMark, 1);
+            builder.AddRoundedBox(new Vector3(0f, top, -0.17f), new Vector3(0.1f, 0.02f, 0.09f), 0.01f,
+                ToonPalette.CrateMark, 1);
         }
 
         private static void BuildParachute(LowPolyMeshBuilder builder)

@@ -93,6 +93,42 @@ namespace NewBattle.ArtGen
             AddTriangle(a, c, d, color);
         }
 
+        /// <summary>
+        /// Normalleri elle verilen ucgen. Yuvarlak yuzeyler (silindir govdesi,
+        /// kure, pah) komsu ucgenlerle ayni normali paylasinca yumusak golgelenir.
+        /// Sarim yonu AddTriangle ile ayni olmali: normaller disari bakar.
+        /// </summary>
+        public void AddSmoothTriangle(Vector3 a, Vector3 b, Vector3 c,
+            Vector3 normalA, Vector3 normalB, Vector3 normalC, Color color)
+        {
+            Vector3 ta = _matrix.MultiplyPoint3x4(a);
+            Vector3 tb = _matrix.MultiplyPoint3x4(b);
+            Vector3 tc = _matrix.MultiplyPoint3x4(c);
+
+            if (Vector3.Cross(tb - ta, tc - ta).sqrMagnitude < 1e-12f)
+                return;
+
+            // Olcekli bir matriste normal, noktayla ayni matrisle donusturulmez;
+            // ters-devrigi gerekir, yoksa basik bir kurede normaller egilir.
+            Matrix4x4 normalMatrix = _matrix.inverse.transpose;
+
+            int baseIndex = _vertices.Count;
+            PushVertex(ta, normalMatrix.MultiplyVector(normalA).normalized, color);
+            PushVertex(tb, normalMatrix.MultiplyVector(normalB).normalized, color);
+            PushVertex(tc, normalMatrix.MultiplyVector(normalC).normalized, color);
+
+            _triangles.Add(baseIndex);
+            _triangles.Add(baseIndex + 1);
+            _triangles.Add(baseIndex + 2);
+        }
+
+        public void AddSmoothQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d,
+            Vector3 normalA, Vector3 normalB, Vector3 normalC, Vector3 normalD, Color color)
+        {
+            AddSmoothTriangle(a, b, c, normalA, normalB, normalC, color);
+            AddSmoothTriangle(a, c, d, normalA, normalC, normalD, color);
+        }
+
         private void PushVertex(Vector3 position, Vector3 normal, Color color)
         {
             _vertices.Add(position);
@@ -140,12 +176,133 @@ namespace NewBattle.ArtGen
             Vector3 t2 = center + new Vector3(tx, hy, tz);
             Vector3 t3 = center + new Vector3(-tx, hy, tz);
 
-            AddQuad(b0, b3, b2, b1, color); // alt
-            AddQuad(t0, t1, t2, t3, color); // ust
-            AddQuad(b0, b1, t1, t0, color); // -z
-            AddQuad(b1, b2, t2, t1, color); // +x
-            AddQuad(b2, b3, t3, t2, color); // +z
-            AddQuad(b3, b0, t0, t3, color); // -x
+            // Unity'de on yuz, disaridan bakinca saat yonunde dizilen yuzdur
+            // (GlbImporter da glTF'i bu kurala cevirir). Onceki surum bu yuzleri
+            // ters diziyordu: kutu disaridan bakinca icini gosteriyordu - ust yuz
+            // kirpiliyor, yerine tabanin ic yuzu gorunuyordu.
+            AddQuad(b0, b1, b2, b3, color); // alt
+            AddQuad(t0, t3, t2, t1, color); // ust
+            AddQuad(b0, t0, t1, b1, color); // -z
+            AddQuad(b1, t1, t2, b2, color); // +x
+            AddQuad(b2, t2, t3, b3, color); // +z
+            AddQuad(b3, t3, t0, b0, color); // -x
+        }
+
+        /// <summary>
+        /// Kenar ve koseleri yuvarlatilmis kutu: "oyuncak" hissinin temel sekli.
+        ///
+        /// Kup yuzeyindeki her nokta, kutunun radius kadar iceri cekilmis
+        /// cekirdegine gore disari itilir. Duz yuzler tam duz kalir (normal = yuz
+        /// normali), sadece pah seridi yumusak golgelenir; buyuk yuzlerde
+        /// istenmeyen golge gecisi olusmaz.
+        /// </summary>
+        public void AddRoundedBox(Vector3 center, Vector3 size, float radius, Color color, int bevelSegments = 2)
+        {
+            Vector3 half = size * 0.5f;
+            float r = Mathf.Clamp(radius, 0f, Mathf.Min(half.x, Mathf.Min(half.y, half.z)) * 0.999f);
+
+            if (r <= 0.0001f)
+            {
+                AddBox(center, size, color);
+                return;
+            }
+
+            Vector3 core = half - Vector3.one * r;
+            float[] xs = BevelSamples(half.x, r, bevelSegments);
+            float[] ys = BevelSamples(half.y, r, bevelSegments);
+            float[] zs = BevelSamples(half.z, r, bevelSegments);
+
+            // Her yuz: sabit eksen, iki gezen eksen. Sira, yuzun disa bakmasini saglar.
+            AddRoundedFace(center, core, r, color, 0, 1, xs, ys, zs);  // +X
+            AddRoundedFace(center, core, r, color, 0, -1, xs, ys, zs); // -X
+            AddRoundedFace(center, core, r, color, 1, 1, xs, ys, zs);  // +Y
+            AddRoundedFace(center, core, r, color, 1, -1, xs, ys, zs); // -Y
+            AddRoundedFace(center, core, r, color, 2, 1, xs, ys, zs);  // +Z
+            AddRoundedFace(center, core, r, color, 2, -1, xs, ys, zs); // -Z
+        }
+
+        /// <summary>
+        /// Bir eksen boyunca ornek noktalari: pah bolgesinde acisal olarak esit
+        /// aralikli, duz bolgede sadece iki uc. Kup-kure eslemesinde bir yuzun
+        /// kenari pahin 45 derecesine denk gelir; iki komsu yuz birlikte 90'i tamamlar.
+        /// </summary>
+        private static float[] BevelSamples(float half, float radius, int segments)
+        {
+            segments = Mathf.Max(1, segments);
+            float flat = half - radius;
+            List<float> samples = new();
+
+            for (int i = segments; i >= 1; i--)
+            {
+                float angle = 45f * i / segments * Mathf.Deg2Rad;
+                samples.Add(-flat - radius * Mathf.Tan(angle));
+            }
+
+            samples.Add(-flat);
+
+            if (flat > 0.0001f)
+                samples.Add(flat);
+
+            for (int i = 1; i <= segments; i++)
+            {
+                float angle = 45f * i / segments * Mathf.Deg2Rad;
+                samples.Add(flat + radius * Mathf.Tan(angle));
+            }
+
+            return samples.ToArray();
+        }
+
+        private void AddRoundedFace(Vector3 center, Vector3 core, float radius, Color color,
+            int axis, int sign, float[] xs, float[] ys, float[] zs)
+        {
+            float[][] samples = { xs, ys, zs };
+
+            // Dortgen a -> b boyunca v'de, a -> c boyunca u+v'de ilerler; on yuz
+            // normali Cross(v, u) yonundedir. Donguler (u = eksen+1, v = eksen+2)
+            // icin Cross(v, u) = -eksen; arti yuzde eksenleri degistirip disari
+            // baktiriyoruz.
+            int u = (axis + 1) % 3;
+            int v = (axis + 2) % 3;
+            if (sign > 0)
+                (u, v) = (v, u);
+
+            float[] us = samples[u];
+            float[] vs = samples[v];
+            float faceCoordinate = sign * (core[axis] + radius);
+
+            Vector3[,] points = new Vector3[us.Length, vs.Length];
+            Vector3[,] normals = new Vector3[us.Length, vs.Length];
+
+            for (int i = 0; i < us.Length; i++)
+            {
+                for (int j = 0; j < vs.Length; j++)
+                {
+                    Vector3 onCube = Vector3.zero;
+                    onCube[axis] = faceCoordinate;
+                    onCube[u] = us[i];
+                    onCube[v] = vs[j];
+
+                    Vector3 inner = new(
+                        Mathf.Clamp(onCube.x, -core.x, core.x),
+                        Mathf.Clamp(onCube.y, -core.y, core.y),
+                        Mathf.Clamp(onCube.z, -core.z, core.z));
+
+                    Vector3 normal = (onCube - inner).normalized;
+                    points[i, j] = center + inner + normal * radius;
+                    normals[i, j] = normal;
+                }
+            }
+
+            for (int i = 0; i < us.Length - 1; i++)
+            {
+                for (int j = 0; j < vs.Length - 1; j++)
+                {
+                    AddSmoothQuad(
+                        points[i, j], points[i, j + 1], points[i + 1, j + 1], points[i + 1, j],
+                        normals[i, j], normals[i, j + 1], normals[i + 1, j + 1], normals[i + 1, j],
+                        color);
+                }
+            }
         }
 
         /// <summary>Ust yuzu sivri olan ucgen prizma: klasik besik cati.</summary>
@@ -163,11 +320,12 @@ namespace NewBattle.ArtGen
             Vector3 ridgeFront = center + new Vector3(0f, hy, -hz);
             Vector3 ridgeBack = center + new Vector3(0f, hy, hz);
 
-            AddQuad(b0, b3, b2, b1, color);                // taban
-            AddTriangle(b0, b1, ridgeFront, color);        // on alinlik
-            AddTriangle(b2, b3, ridgeBack, color);         // arka alinlik
-            AddQuad(b1, b2, ridgeBack, ridgeFront, color); // sag egim
-            AddQuad(b3, b0, ridgeFront, ridgeBack, color); // sol egim
+            // Sarim yonu AddTaperedBox'taki duzeltmeyle ayni: disaridan saat yonu.
+            AddQuad(b0, b1, b2, b3, color);                // taban
+            AddTriangle(b0, ridgeFront, b1, color);        // on alinlik
+            AddTriangle(b2, ridgeBack, b3, color);         // arka alinlik
+            AddQuad(b1, ridgeFront, ridgeBack, b2, color); // sag egim
+            AddQuad(b3, ridgeBack, ridgeFront, b0, color); // sol egim
         }
 
         #endregion
@@ -195,18 +353,119 @@ namespace NewBattle.ArtGen
                 Vector3 p2 = topCenter + dt1;
                 Vector3 p3 = topCenter + dt0;
 
+                // Disaridan saat yonu (bkz. AddTaperedBox). Aci arttikca nokta
+                // ustten bakista saat yonunun TERSINE ilerler; bu yuzden sira
+                // p0 -> p3 -> p2 -> p1.
                 if (radiusTop <= 0.0001f)
-                    AddTriangle(p0, p1, topCenter, color);
+                    AddTriangle(p0, topCenter, p1, color);
                 else if (radiusBottom <= 0.0001f)
-                    AddTriangle(baseCenter, p2, p3, color);
+                    AddTriangle(baseCenter, p3, p2, color);
                 else
-                    AddQuad(p0, p1, p2, p3, color);
+                    AddQuad(p0, p3, p2, p1, color);
 
                 if (capBottom && radiusBottom > 0.0001f)
-                    AddTriangle(baseCenter, p1, p0, color);
+                    AddTriangle(baseCenter, p0, p1, color);
 
                 if (capTop && radiusTop > 0.0001f)
-                    AddTriangle(topCenter, p3, p2, color);
+                    AddTriangle(topCenter, p2, p3, color);
+            }
+        }
+
+        /// <summary>
+        /// Govdesi yumusak golgelenen silindir / koni. Kapaklar duz kalir, boylece
+        /// kenar hala okunur ama govde "yuvarlak" gorunur. Mermi, namlu, sise icin.
+        /// </summary>
+        public void AddSmoothCylinder(Vector3 baseCenter, float radiusBottom, float radiusTop, float height,
+            int sides, Color color, bool capBottom = true, bool capTop = true)
+        {
+            sides = Mathf.Max(3, sides);
+            Vector3 topCenter = baseCenter + Vector3.up * height;
+
+            for (int i = 0; i < sides; i++)
+            {
+                float a0 = (float)i / sides * Mathf.PI * 2f;
+                float a1 = (float)(i + 1) / sides * Mathf.PI * 2f;
+
+                Vector3 d0 = new(Mathf.Cos(a0), 0f, Mathf.Sin(a0));
+                Vector3 d1 = new(Mathf.Cos(a1), 0f, Mathf.Sin(a1));
+
+                Vector3 p0 = baseCenter + d0 * radiusBottom;
+                Vector3 p1 = baseCenter + d1 * radiusBottom;
+                Vector3 p2 = topCenter + d1 * radiusTop;
+                Vector3 p3 = topCenter + d0 * radiusTop;
+
+                // Egimli govdede normal biraz yukari (ya da asagi) bakar.
+                float slope = radiusBottom - radiusTop;
+                Vector3 n0 = (d0 * height + Vector3.up * slope).normalized;
+                Vector3 n1 = (d1 * height + Vector3.up * slope).normalized;
+
+                if (radiusTop <= 0.0001f)
+                    AddSmoothTriangle(p0, topCenter, p1, n0, (n0 + n1).normalized, n1, color);
+                else if (radiusBottom <= 0.0001f)
+                    AddSmoothTriangle(baseCenter, p3, p2, (n0 + n1).normalized, n0, n1, color);
+                else
+                    AddSmoothQuad(p0, p3, p2, p1, n0, n0, n1, n1, color);
+
+                if (capBottom && radiusBottom > 0.0001f)
+                    AddTriangle(baseCenter, p0, p1, color);
+
+                if (capTop && radiusTop > 0.0001f)
+                    AddTriangle(topCenter, p2, p3, color);
+            }
+        }
+
+        /// <summary>Yumusak golgelenen kure / elipsoit. squash ile basiklastirilabilir.</summary>
+        public void AddSmoothSphere(Vector3 center, float radius, int segments, int rings, Color color,
+            Vector3? squash = null)
+        {
+            segments = Mathf.Max(4, segments);
+            rings = Mathf.Max(2, rings);
+
+            Vector3 shape = squash ?? Vector3.one;
+            Vector3[,] grid = new Vector3[rings + 1, segments + 1];
+            Vector3[,] normals = new Vector3[rings + 1, segments + 1];
+
+            for (int ring = 0; ring <= rings; ring++)
+            {
+                float phi = Mathf.PI * ring / rings;
+
+                for (int seg = 0; seg <= segments; seg++)
+                {
+                    float theta = Mathf.PI * 2f * (seg % segments) / segments;
+                    Vector3 unit = new(
+                        Mathf.Sin(phi) * Mathf.Cos(theta),
+                        Mathf.Cos(phi),
+                        Mathf.Sin(phi) * Mathf.Sin(theta));
+
+                    grid[ring, seg] = center + Vector3.Scale(unit, shape) * radius;
+
+                    // Elipsoidin normali: birim yon, sekil olcusune bolunur.
+                    normals[ring, seg] = new Vector3(unit.x / shape.x, unit.y / shape.y, unit.z / shape.z).normalized;
+                }
+            }
+
+            // AddSphere ile ayni sira: disaridan saat yonu.
+            for (int ring = 0; ring < rings; ring++)
+            {
+                for (int seg = 0; seg < segments; seg++)
+                {
+                    Vector3 a = grid[ring, seg];
+                    Vector3 b = grid[ring, seg + 1];
+                    Vector3 c = grid[ring + 1, seg + 1];
+                    Vector3 d = grid[ring + 1, seg];
+
+                    Vector3 na = normals[ring, seg];
+                    Vector3 nb = normals[ring, seg + 1];
+                    Vector3 nc = normals[ring + 1, seg + 1];
+                    Vector3 nd = normals[ring + 1, seg];
+
+                    if (ring == 0)
+                        AddSmoothTriangle(a, c, d, na, nc, nd, color);
+                    else if (ring == rings - 1)
+                        AddSmoothTriangle(a, b, c, na, nb, nc, color);
+                    else
+                        AddSmoothQuad(a, b, c, d, na, nb, nc, nd, color);
+                }
             }
         }
 
@@ -344,6 +603,8 @@ namespace NewBattle.ArtGen
 
         public Mesh Build(string meshName, bool optimize = true)
         {
+            WeldIdenticalVertices();
+
             Mesh mesh = new()
             {
                 name = meshName,
@@ -367,6 +628,61 @@ namespace NewBattle.ArtGen
 
             mesh.UploadMeshData(false);
             return mesh;
+        }
+
+        /// <summary>
+        /// Konumu, normali, rengi ve kemigi BIREBIR ayni olan vertexleri birlestirir.
+        ///
+        /// Her ucgen kendi vertexlerini urettigi icin bir dortgenin iki ucgeni ayni
+        /// koseyi iki kez tasir; yumusak yuzeylerde komsu ucgenler de ayni vertexi
+        /// tekrarlar. Birlestirmek goruntuyu degistirmez (ayni veri ayni sonucu
+        /// verir) ama yuvarlak modellerde vertex sayisini yaklasik dortte birine indirir.
+        /// Farkli normalli koseler - keskin kenarlar - ayri kalir.
+        /// </summary>
+        private void WeldIdenticalVertices()
+        {
+            Dictionary<(Vector3Int, Vector3Int, Color32, int), int> lookup = new();
+            List<Vector3> vertices = new(_vertices.Count);
+            List<Vector3> normals = new(_vertices.Count);
+            List<Color> colors = new(_vertices.Count);
+            List<BoneWeight> boneWeights = new(_boneWeights.Count);
+            int[] remap = new int[_vertices.Count];
+
+            for (int i = 0; i < _vertices.Count; i++)
+            {
+                int bone = _usesBones && i < _boneWeights.Count ? _boneWeights[i].boneIndex0 : 0;
+                var key = (
+                    Vector3Int.RoundToInt(_vertices[i] * 100000f),
+                    Vector3Int.RoundToInt(_normals[i] * 10000f),
+                    (Color32)_colors[i],
+                    bone);
+
+                if (!lookup.TryGetValue(key, out int index))
+                {
+                    index = vertices.Count;
+                    lookup[key] = index;
+                    vertices.Add(_vertices[i]);
+                    normals.Add(_normals[i]);
+                    colors.Add(_colors[i]);
+
+                    if (_usesBones && i < _boneWeights.Count)
+                        boneWeights.Add(_boneWeights[i]);
+                }
+
+                remap[i] = index;
+            }
+
+            for (int i = 0; i < _triangles.Count; i++)
+                _triangles[i] = remap[_triangles[i]];
+
+            _vertices.Clear();
+            _vertices.AddRange(vertices);
+            _normals.Clear();
+            _normals.AddRange(normals);
+            _colors.Clear();
+            _colors.AddRange(colors);
+            _boneWeights.Clear();
+            _boneWeights.AddRange(boneWeights);
         }
 
         #endregion

@@ -43,6 +43,7 @@ public class PlayerShooting : NetworkBehaviour
     private PlayerLoadout _loadout;
     private HealthController _ownHealth;
     private Animator _animator;
+    private CharacterAnimationDriver _animationDriver;
 
     /// <summary>Bu karede kamera zaten sarsildi mi (saccma tekrarini engeller).</summary>
     private int _lastShakeFrame = -1;
@@ -89,6 +90,7 @@ public class PlayerShooting : NetworkBehaviour
         _loadout = GetComponent<PlayerLoadout>();
         _ownHealth = GetComponent<HealthController>();
         _animator = GetComponentInChildren<Animator>();
+        _animationDriver = GetComponent<CharacterAnimationDriver>();
     }
 
     public void ProcessShooting(Vector2 aimInput)
@@ -281,6 +283,11 @@ public class PlayerShooting : NetworkBehaviour
 
             Vector3 aim = endPoint - origin;
             ShellCasingPool.Eject(origin, aim, transform.position.y);
+
+            // Geri tepme de kare basina bir kez: saccmanin her tanesi govdeyi
+            // ayri ayri itseydi pompali tek atista karakteri devirirdi.
+            if (_animationDriver != null)
+                _animationDriver.PlayFireKick();
         }
     }
 

@@ -22,10 +22,12 @@ public class HealthController : NetworkBehaviour
     private ChangeDetector _changeDetector;
     private NewBattle.Gameplay.PlayerPresence _presence;
     private PlayerCombatStats _ownStats;
+    private CharacterAnimationDriver _animationDriver;
 
     public override void Spawned()
     {
         _changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
+        _animationDriver = GetComponent<CharacterAnimationDriver>();
 
         if (HasStateAuthority)
         {
@@ -160,6 +162,9 @@ public class HealthController : NetworkBehaviour
         // Govdenin kendisi de tepki versin: hasar sayisi karakterin ustunde
         // belirirken goz nisan alirken govdede oluyor.
         NewBattle.Gameplay.HitFlash.Play(gameObject);
+
+        if (_animationDriver != null)
+            _animationDriver.PlayHitFlinch();
     }
 
     private void Die()

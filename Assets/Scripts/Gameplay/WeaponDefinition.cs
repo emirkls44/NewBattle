@@ -51,6 +51,9 @@ namespace NewBattle.Gameplay
         [Tooltip("Iz efektinin rengi. Airdrop silahi icin farkli bir renk secmek iyi olur.")]
         public Color tracerColor = new(1f, 0.93f, 0.55f, 1f);
 
+        [Tooltip("Karakterin elinde gorunen model. Bos birakilirsa prefabdaki model kalir.")]
+        public Mesh heldMesh;
+
         /// <summary>
         /// Bu silah ates ettiginde kameraya eklenen sarsinti (0..1).
         ///

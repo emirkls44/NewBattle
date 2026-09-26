@@ -33,6 +33,8 @@ public class PlayerLoadout : NetworkBehaviour
     private PlayerShooting _shooting;
     private PlayerController _playerController;
     private Animator _animator;
+    private MeshFilter _heldMeshFilter;
+    private int _shownHeldWeaponId = -1;
     private static readonly int HasWeaponHash = Animator.StringToHash("HasWeapon");
 
     #region Eski arayuz (HUD ve pickup'lar bunlari kullaniyor)
@@ -91,7 +93,10 @@ public class PlayerLoadout : NetworkBehaviour
         _animator = GetComponentInChildren<Animator>();
 
         if (rifleVisual != null)
+        {
+            _heldMeshFilter = rifleVisual.GetComponentInChildren<MeshFilter>(true);
             rifleVisual.SetActive(false);
+        }
     }
 
     public override void Spawned()
@@ -243,10 +248,29 @@ public class PlayerLoadout : NetworkBehaviour
         if (rifleVisual != null && rifleVisual.activeSelf != rangedSelected)
             rifleVisual.SetActive(rangedSelected);
 
+        if (rangedSelected)
+            ApplyHeldMesh();
+
         if (_animator != null)
             _animator.SetBool(HasWeaponHash, rangedSelected);
 
         if (HasStateAuthority && _playerController != null)
             _playerController.hasWeapon = rangedSelected;
+    }
+
+    /// <summary>
+    /// Eldeki silahin modelini tanimdaki heldMesh ile degistirir. Tek bir
+    /// gorsel nesne tum silahlara hizmet eder; sadece mesh'i degisir.
+    /// </summary>
+    private void ApplyHeldMesh()
+    {
+        if (_heldMeshFilter == null || _shownHeldWeaponId == WeaponId)
+            return;
+
+        _shownHeldWeaponId = WeaponId;
+
+        WeaponDefinition weapon = CurrentWeapon;
+        if (weapon != null && weapon.heldMesh != null)
+            _heldMeshFilter.sharedMesh = weapon.heldMesh;
     }
 }

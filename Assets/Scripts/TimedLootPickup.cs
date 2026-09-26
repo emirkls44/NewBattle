@@ -8,23 +8,31 @@ public abstract class TimedLootPickup : NetworkBehaviour
     [Header("Yesil Halka")]
     [SerializeField, Min(0.05f)] private float collectionSeconds = 1f;
     [SerializeField, Min(0.2f)] private float collectionRadius = 1.25f;
-    [SerializeField, Min(0.01f)] private float ringWidth = 0.055f;
     [SerializeField] private float ringWorldHeight = 0.04f;
     [Tooltip("Pickup'in merkezinden zemine olan mesafe. Loot havada durdugu icin " +
              "halkayi biraz asagi indirmek gerekir.")]
     [SerializeField] private float ringGroundOffset = -0.55f;
     [SerializeField] private Color progressColor = new Color(0.2f, 1f, 0.08f, 1f);
+    [Tooltip("Toplama alanini gosteren halkanin rengi.")]
+    [SerializeField] private Color ringColor = new Color(1f, 1f, 1f, 0.8f);
 
     [Tooltip("Beyaz halka ancak yerel oyuncu bu mesafedeyken cizilir. " +
              "Haritadaki tum loot'larin halkasi ayni anda gorunurse ekran " +
              "beyaz cemberlerden gorunmez hale gelir.")]
     [SerializeField, Min(0.5f)] private float ringVisibleDistance = 4.5f;
+
+    [Header("Parilti")]
+    [Tooltip("Esyanin altindaki yumusak leke. Esyanin turunu uzaktan belli eder: " +
+             "kirmizi can, mavi kalkan, sari mermi. Alfa 0 kapatir.")]
+    [SerializeField] private Color glowColor = new Color(1f, 1f, 1f, 0.3f);
+    [SerializeField, Min(0.1f)] private float glowRadius = 0.85f;
+
     [Networked, Capacity(32)] private NetworkDictionary<NetworkId, float> Progress => default;
     private static readonly HashSet<TimedLootPickup> Active = new();
     private readonly List<NetworkId> _remove = new();
     private readonly HashSet<NetworkId> _eligible = new();
-    private LineRenderer _white, _green;
-    private Material _material;
+    private MeshRenderer _track, _fill, _glow;
+    private MaterialPropertyBlock _block;
     private GameObject _rings;
     private LobbyCountdownController _lobby;
     private bool _consumed;
@@ -39,32 +47,29 @@ public abstract class TimedLootPickup : NetworkBehaviour
         foreach (var lobby in FindObjectsByType<LobbyCountdownController>(FindObjectsSortMode.None))
             if (lobby.Runner == Runner) { _lobby = lobby; break; }
         _rings = new GameObject(name + "_LootRings");
-        // Pickup'in altina bagli olsun: LineRenderer zaten world-space
-        // calistigi icin konum degismez, ama nesne artik sahne kokunde
-        // basibos durmaz ve pickup ile birlikte taranabilir.
-        _rings.transform.SetParent(transform, true);
-        var shader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (shader == null) shader = Shader.Find("Sprites/Default");
-        if (shader == null) return;
-        _material = new Material(shader);
-        _white = MakeRing("WhiteRing", new Color(0.8f, 0.85f, 0.8f));
-        _green = MakeRing("GreenProgress", progressColor);
+        // Pickup'in altina bagli olsun: nesne sahne kokunde basibos durmaz ve
+        // pickup ile birlikte yok olur. Konum ve donus her karede dunyaya gore
+        // yeniden yaziliyor (bkz. Render).
+        _rings.transform.SetParent(transform, false);
+
+        // Halka ve parilti paylasilan overlay materyaliyle ciziliyor. Eskiden her
+        // loot iki LineRenderer ve iki materyal kopyasi uretiyordu; 60 loot'lu
+        // bir haritada bu 120 materyal demekti.
+        _block = new MaterialPropertyBlock();
+        _glow = CreateOverlay("LootGlow", NewBattle.Gameplay.OverlayMeshLibrary.SoftDisc, 0f, glowRadius);
+        _track = CreateOverlay("LootRing", NewBattle.Gameplay.OverlayMeshLibrary.SoftRing, 0.004f, collectionRadius);
+        _fill = CreateOverlay("LootProgress", NewBattle.Gameplay.OverlayMeshLibrary.SoftRing, 0.008f, collectionRadius);
     }
 
-    private LineRenderer MakeRing(string label, Color color)
+    private MeshRenderer CreateOverlay(string label, Mesh mesh, float lift, float radius)
     {
-        var go = new GameObject(label);
-        go.transform.SetParent(_rings.transform);
-        var line = go.AddComponent<LineRenderer>();
-        // Separate material colors also work with URP shaders which ignore vertex colors.
-        line.material = new Material(_material);
-        line.material.color = color;
-        line.startColor = line.endColor = color;
-        line.startWidth = line.endWidth = ringWidth;
-        line.useWorldSpace = true;
-        line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        line.receiveShadows = false;
-        return line;
+        MeshRenderer overlay = NewBattle.Gameplay.OverlayMeshLibrary.CreateOverlayObject(
+            label, mesh, _rings.transform, new Vector3(0f, lift, 0f), radius);
+
+        // Airdrop sandigi gibi havadan gelen loot'ta ilk Render'a kadar
+        // gorunmesin; halka yere inmeden anlamsiz.
+        overlay.enabled = false;
+        return overlay;
     }
 
     private bool Eligible(PlayerLoadout player)
@@ -135,7 +140,7 @@ public abstract class TimedLootPickup : NetworkBehaviour
 
     public override void Render()
     {
-        if (_white == null || _green == null) return;
+        if (_rings == null || _track == null || _fill == null || _glow == null) return;
         float progress = 0;
         var registry = NewBattle.Gameplay.PlayerRegistry.All;
         for (int i = 0; i < registry.Count; i++)
@@ -154,8 +159,43 @@ public abstract class TimedLootPickup : NetworkBehaviour
         // "toplamaya baslayabilirsin" isareti.
         bool nearLocalPlayer = IsLocalPlayerNear();
 
-        Draw(_white, nearLocalPlayer ? 1f : 0f, 0f);
-        Draw(_green, progress, 0.008f);
+        // Halka pickup'in KENDI yuksekligine gore cizilir. Onceki surum mutlak
+        // dunya Y'si kullaniyordu (y = 0.04); duz prototip arenada dogruydu ama
+        // yukseltili bir haritada tepedeki loot'un halkasi yerin metrelerce
+        // altinda kaliyor ve hic gorunmuyordu.
+        //
+        // Donus ve olcek de dunyaya sabitlenir: pickup olcekli ya da egik olsa
+        // bile halka yere duz yatan, dogru yaricapli bir daire kalir.
+        Transform rings = _rings.transform;
+        Vector3 position = transform.position;
+        rings.SetPositionAndRotation(
+            new Vector3(position.x, position.y + ringGroundOffset + ringWorldHeight, position.z),
+            Quaternion.identity);
+        Vector3 parentScale = transform.lossyScale;
+        rings.localScale = new Vector3(
+            1f / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
+            1f / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)),
+            1f / Mathf.Max(0.0001f, Mathf.Abs(parentScale.z)));
+
+        SetOverlay(_glow, glowColor, glowColor.a > 0.001f ? 1f : 0f);
+        SetOverlay(_track, ringColor, nearLocalPlayer ? 1f : 0f);
+        SetOverlay(_fill, progressColor, progress);
+    }
+
+    /// <summary>fill 0 ise gizler; aksi halde radyal dolumu ve rengi yazar.</summary>
+    private void SetOverlay(MeshRenderer overlay, Color color, float fill)
+    {
+        bool visible = fill > 0f;
+
+        if (overlay.enabled != visible)
+            overlay.enabled = visible;
+
+        if (!visible)
+            return;
+
+        _block.SetColor(NewBattle.Gameplay.OverlayMeshLibrary.BaseColorId, color);
+        _block.SetFloat(NewBattle.Gameplay.OverlayMeshLibrary.FillId, fill);
+        overlay.SetPropertyBlock(_block);
     }
 
     /// <summary>Yerel oyuncu halkanin gorunecegi mesafede mi.</summary>
@@ -172,35 +212,13 @@ public abstract class TimedLootPickup : NetworkBehaviour
         return delta.sqrMagnitude <= ringVisibleDistance * ringVisibleDistance;
     }
 
-    private void Draw(LineRenderer line, float fraction, float lift)
-    {
-        line.enabled = fraction > 0;
-        if (!line.enabled) return;
-        int steps = Mathf.Max(1, Mathf.CeilToInt(64 * fraction));
-        line.positionCount = steps + 1;
-        // Halka pickup'in KENDI yuksekligine gore cizilir. Onceki surum mutlak
-        // dunya Y'si kullaniyordu (y = 0.04); duz prototip arenada dogruydu ama
-        // yukseltili bir haritada tepedeki loot'un halkasi yerin metrelerce
-        // altinda kaliyor ve hic gorunmuyordu.
-        Vector3 center = new Vector3(
-            transform.position.x,
-            transform.position.y + ringGroundOffset + ringWorldHeight + lift,
-            transform.position.z);
-        for (int i = 0; i <= steps; i++)
-        {
-            float angle = i / (float)steps * fraction * Mathf.PI * 2;
-            line.SetPosition(i, center + new Vector3(Mathf.Sin(angle), 0, Mathf.Cos(angle)) * collectionRadius);
-        }
-    }
     public override void Despawned(NetworkRunner runner, bool hasState) { Cleanup(); }
     private void OnDestroy() { Cleanup(); }
     private void Cleanup()
     {
         Active.Remove(this);
-        if (_white != null) Destroy(_white.sharedMaterial);
-        if (_green != null) Destroy(_green.sharedMaterial);
+        // Materyal paylasilan overlay materyali; burada yok edilmez.
         if (_rings != null) Destroy(_rings);
-        if (_material != null) Destroy(_material);
-        _rings = null; _white = _green = null; _material = null;
+        _rings = null; _track = _fill = _glow = null;
     }
 }

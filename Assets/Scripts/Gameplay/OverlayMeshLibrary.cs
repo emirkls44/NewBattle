@@ -18,6 +18,8 @@ namespace NewBattle.Gameplay
 
         private static Mesh _ringMesh;
         private static Mesh _discMesh;
+        private static Mesh _softRingMesh;
+        private static Mesh _softDiscMesh;
         private static Mesh _footprintMesh;
         private static Material _overlayMaterial;
 
@@ -29,6 +31,16 @@ namespace NewBattle.Gameplay
 
         /// <summary>Dolu daire. Yumusak gecisli golge / vurgu lekesi icin.</summary>
         public static Mesh Disc => _discMesh ??= BuildRing(0f, 1f, 32);
+
+        /// <summary>
+        /// Ince, kenarlari yumusak halka. Ic ve dis kenar alfasi sifira iner;
+        /// keskin cizgi yerine hafif bulanik, "cizilmis" degil "parlayan" bir halka.
+        /// Loot toplama halkasi bunu kullanir.
+        /// </summary>
+        public static Mesh SoftRing => _softRingMesh ??= BuildSoftRing(0.9f, 1f, 64);
+
+        /// <summary>Merkezden kenara sonen daire: esyanin altindaki renkli parilti.</summary>
+        public static Mesh SoftDisc => _softDiscMesh ??= BuildSoftDisc(32);
 
         public static Mesh Footprint => _footprintMesh ??= BuildFootprint();
 
@@ -134,6 +146,85 @@ namespace NewBattle.Gameplay
             }
 
             Mesh mesh = new() { name = solid ? "OverlayDisc" : "OverlayRing" };
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uvs);
+            mesh.SetColors(colors);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>
+        /// Dort sirali halka: ic kenar (alfa 0), iki dolu sira (alfa 1), dis kenar
+        /// (alfa 0). UV.x yine aciyi tasir; radyal dolum Ring ile ayni calisir.
+        /// </summary>
+        private static Mesh BuildSoftRing(float innerRadius, float outerRadius, int segments)
+        {
+            segments = Mathf.Max(8, segments);
+
+            float feather = (outerRadius - innerRadius) * 0.3f;
+            float[] radii = { innerRadius, innerRadius + feather, outerRadius - feather, outerRadius };
+            float[] alphas = { 0f, 1f, 1f, 0f };
+
+            return BuildRadialStrip("OverlaySoftRing", radii, alphas, segments);
+        }
+
+        /// <summary>Merkezde dolu, kenara dogru yumusakca sonen daire.</summary>
+        private static Mesh BuildSoftDisc(int segments)
+        {
+            // Dogrusal sonme kenarda "halka" gibi okunuyor; ortada genis bir dolu
+            // bolge ve dista hizli sonme daha yumusak bir leke veriyor.
+            float[] radii = { 0f, 0.35f, 0.7f, 1f };
+            float[] alphas = { 1f, 0.8f, 0.35f, 0f };
+
+            return BuildRadialStrip("OverlaySoftDisc", radii, alphas, segments);
+        }
+
+        private static Mesh BuildRadialStrip(string meshName, float[] radii, float[] alphas, int segments)
+        {
+            int rows = radii.Length;
+            int columns = segments + 1;
+
+            Vector3[] vertices = new Vector3[rows * columns];
+            Vector2[] uvs = new Vector2[rows * columns];
+            Color[] colors = new Color[rows * columns];
+            int[] triangles = new int[(rows - 1) * segments * 6];
+
+            for (int row = 0; row < rows; row++)
+            {
+                for (int i = 0; i <= segments; i++)
+                {
+                    float t = (float)i / segments;
+                    float angle = -t * Mathf.PI * 2f + Mathf.PI * 0.5f;
+                    int index = row * columns + i;
+
+                    vertices[index] = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radii[row];
+                    uvs[index] = new Vector2(t, (float)row / (rows - 1));
+                    colors[index] = new Color(1f, 1f, 1f, alphas[row]);
+                }
+            }
+
+            int triangle = 0;
+
+            for (int row = 0; row < rows - 1; row++)
+            {
+                for (int i = 0; i < segments; i++)
+                {
+                    int inner = row * columns + i;
+                    int outer = inner + columns;
+
+                    // BuildRing ile ayni sarim: ustten bakinca on yuz.
+                    triangles[triangle++] = inner;
+                    triangles[triangle++] = outer;
+                    triangles[triangle++] = outer + 1;
+
+                    triangles[triangle++] = inner;
+                    triangles[triangle++] = outer + 1;
+                    triangles[triangle++] = inner + 1;
+                }
+            }
+
+            Mesh mesh = new() { name = meshName };
             mesh.SetVertices(vertices);
             mesh.SetUVs(0, uvs);
             mesh.SetColors(colors);

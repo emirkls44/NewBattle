@@ -58,31 +58,35 @@ namespace NewBattle.ArtGen
         public static readonly Color Metal = Hex("#8D959C");
 
         // --- Loot ---
-        public static readonly Color AmmoGold = Hex("#F2B233");
-        public static readonly Color AmmoGoldDark = Hex("#D1901E");
-        public static readonly Color AmmoTip = Hex("#B87333");
-        public static readonly Color MedkitRed = Hex("#E24A3C");
-        public static readonly Color MedkitDark = Hex("#B8352A");
-        public static readonly Color MedkitWhite = Hex("#FAFAFA");
-        public static readonly Color ShieldSmall = Hex("#63CDF5");
-        public static readonly Color ShieldBig = Hex("#2C84E0");
-        public static readonly Color ShieldGlass = Hex("#C8ECFA");
-        public static readonly Color PotionCork = Hex("#8A5A33");
+        // Yumusak stil: doygun ama "temiz" renkler. Koyu tonlar siyaha degil
+        // ayni rengin daha koyusuna kayar; boylece toon golgesinde kirli durmaz.
+        public static readonly Color AmmoGold = Hex("#FFC53D");
+        public static readonly Color AmmoGoldDark = Hex("#E39B2B");
+        public static readonly Color AmmoTip = Hex("#F08A3E");
+        public static readonly Color MedkitRed = Hex("#FF5E57");
+        public static readonly Color MedkitDark = Hex("#E0443F");
+        public static readonly Color MedkitWhite = Hex("#FFFFFF");
+        public static readonly Color ShieldSmall = Hex("#5CCBFF");
+        public static readonly Color ShieldBig = Hex("#2F8CFF");
+        public static readonly Color ShieldGlass = Hex("#DDF4FF");
+        public static readonly Color PotionCork = Hex("#C98A55");
+        public static readonly Color ScopeLens = Hex("#7FD4FF");
 
-        public static readonly Color GunBody = Hex("#3A4046");
-        public static readonly Color GunBodyLight = Hex("#525A62");
-        public static readonly Color GunAccent = Hex("#E2853C");
-        public static readonly Color GunGrip = Hex("#2B2F34");
-        public static readonly Color GunLegendary = Hex("#E3B23C");
-        public static readonly Color GunLegendaryDark = Hex("#B98C22");
+        public static readonly Color GunBody = Hex("#4A515B");
+        public static readonly Color GunBodyLight = Hex("#6A737E");
+        public static readonly Color GunAccent = Hex("#FF9F1C");
+        public static readonly Color GunGrip = Hex("#30353C");
+        public static readonly Color GunWood = Hex("#C98A55");
+        public static readonly Color GunLegendary = Hex("#FFCE4A");
+        public static readonly Color GunLegendaryDark = Hex("#E0A22A");
 
-        public static readonly Color CrateGreen = Hex("#5D7A46");
-        public static readonly Color CrateGreenDark = Hex("#486036");
-        public static readonly Color CrateStrap = Hex("#8A5A33");
-        public static readonly Color CrateMetal = Hex("#C9CDD1");
-        public static readonly Color CrateMark = Hex("#F2B233");
-        public static readonly Color ParachuteA = Hex("#7B3FA0");
-        public static readonly Color ParachuteB = Hex("#E3B23C");
+        public static readonly Color CrateGreen = Hex("#6FAF6A");
+        public static readonly Color CrateGreenDark = Hex("#58935A");
+        public static readonly Color CrateStrap = Hex("#C28A55");
+        public static readonly Color CrateMetal = Hex("#E6EAEE");
+        public static readonly Color CrateMark = Hex("#FFC53D");
+        public static readonly Color ParachuteA = Hex("#A66BE6");
+        public static readonly Color ParachuteB = Hex("#FFD35C");
 
         // --- Karakter ---
         public static readonly Color SkinLight = Hex("#F3C6A0");

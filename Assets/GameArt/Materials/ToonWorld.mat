@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: ToonWorld
-  m_Shader: {fileID: 4800000, guid: df403596ec85bb140a6a570efdf1e7d4, type: 3}
+  m_Shader: {fileID: 4800000, guid: 43173933a5a9a4e4890ee551545fc9ee, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -22,14 +22,30 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _Ambient: 0.55
+    - _DstBlend: 0
+    - _Gloss: 0.1
+    - _GlossSize: 24
+    - _RimPower: 3
+    - _RimStrength: 0.16
     - _ShadeBands: 2
     - _ShadeSoftness: 0.06
+    - _ShadeThreshold: -0.05
+    - _ShadowStrength: 0.8
+    - _SrcBlend: 1
+    - _Surface: 0
+    - _VertexColorStrength: 1
+    - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _RimColor: {r: 1, g: 1, b: 1, a: 1}
     - _ShadowTint: {r: 0.62, g: 0.68, b: 0.85, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
