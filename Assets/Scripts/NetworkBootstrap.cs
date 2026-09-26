@@ -42,6 +42,8 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private bool useFixedSessionName;
     [SerializeField] private string sessionName = "NewBattlePrototype";
     [SerializeField, Range(2, 32)] private int maxPlayers = 16;
+    [Tooltip("Botlarla Oyna modunda sen dahil kac kisi olacagi. 16 = sen + 15 bot.")]
+    [SerializeField, Range(2, 32)] private int botMatchPlayers = 16;
 
     [Header("Haritalar")]
     [Tooltip("Bos birakilirsa mevcut sahne tek harita olarak kullanilir.")]
@@ -67,6 +69,12 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     {
         get
         {
+            // Bot macinda baska insan katilamaz (tek kisilik oturum); kapasite
+            // dogrudan "kac botla oynuyorum" sorusunun cevabi. maxPlayers online
+            // odalar icin ayri tutuluyor.
+            if (SelectedMode == BattleGameMode.Bots)
+                return Mathf.Clamp(botMatchPlayers, 2, 32);
+
             // Harita kendi kapasitesini soyluyorsa o kazanir: kucuk bir harita
             // 32 kisiyi kaldiramaz, buyuk bir harita 8 kisiyle bos kalir.
             int baseCapacity = HasMapList && SelectedMapIndex < maps.Length && maps[SelectedMapIndex].capacity >= 2

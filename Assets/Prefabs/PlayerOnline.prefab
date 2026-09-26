@@ -552,12 +552,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f15aaebe0779d6747a39860c12a57b59, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TrainingBot
+  moveSpeedMultiplier: 0.88
   stoppingDistance: 2.02
-  targetSearchInterval: 0.95
-  attackEnabled: 1
-  attackDistance: 1.8
   separationRadius: 1.1
   separationWeight: 1.5
+  repathInterval: 0.6
+  thinkInterval: 0.25
+  sightRange: 16
+  sightBlockers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  attackEnabled: 1
+  attackDistance: 1.8
+  preferredRangeRatio: 0.3
+  aimErrorDegrees: 7
+  reactionSeconds: {x: 0.35, y: 0.7}
+  burstSeconds: {x: 0.6, y: 1.2}
+  burstPauseSeconds: {x: 0.25, y: 0.6}
+  lootSearchRadius: 26
+  lootGiveUpSeconds: 3.5
+  zoneLookaheadSeconds: 12
 --- !u!114 &2147592686916387975
 MonoBehaviour:
   m_ObjectHideFlags: 0

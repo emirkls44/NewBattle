@@ -5,6 +5,7 @@ public class RecoveryPickup : TimedLootPickup
     [SerializeField] private RecoveryType recoveryType = RecoveryType.Health;
     [SerializeField, Min(1f)] private float amount = 25f;
     [SerializeField, Min(0f)] private float fullTolerance = 0.01f;
+    public RecoveryType Type => recoveryType;
     protected override bool CanCollect(PlayerLoadout player)
     {
         var health = player.GetComponent<HealthController>();

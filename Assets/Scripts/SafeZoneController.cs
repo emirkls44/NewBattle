@@ -54,12 +54,12 @@ public class SafeZoneController : NetworkBehaviour
     [Tooltip("Sinir seridinin rengi. Alan disi zaten pus ile kizarir; serit " +
              "bunun uzerine oturan daha parlak, daha doygun bir bant.")]
     [SerializeField] private Color boundaryColor = new(1f, 0.44f, 0.42f, 0.9f);
-    [Tooltip("Seridin DUNYA birimi cinsinden genisligi. Karakter capi ~1 birim; " +
-             "3 birim uzaktan secilebilen kalin bir bant verir.")]
-    [SerializeField, Min(0.1f)] private float boundaryWidth = 3f;
+    [Tooltip("Seridin DUNYA birimi cinsinden genisligi. Sonraki alanin beyaz cizgisiyle " +
+             "ayni kalinlik (1.6) iki cizgiyi ayni aileden gosterir.")]
+    [SerializeField, Min(0.1f)] private float boundaryWidth = 1.6f;
     [Tooltip("Kenarlarin ne kadarinin silinerek yumusayacagi. 0 = keskin kenarli " +
              "bant, 0.5 = yarisi gecise ayrilmis yumusak bant.")]
-    [SerializeField, Range(0f, 0.9f)] private float boundaryEdgeSoftness = 0.4f;
+    [SerializeField, Range(0f, 0.9f)] private float boundaryEdgeSoftness = 0.12f;
     /// <summary>
     /// Cemberin kac parcadan cizilecegi.
     ///
@@ -100,6 +100,12 @@ public class SafeZoneController : NetworkBehaviour
     [SerializeField] private bool followGround = true;
     [SerializeField] private LayerMask groundMask = ~0;
     [SerializeField, Min(10f)] private float groundSampleFrom = 300f;
+    [Tooltip("Zemin sayilmasi icin bir yuzeyin en az bu kadar genis olmasi gerekir (metre). " +
+             "Agac, kaya, sandik gibi nesneler bundan kucuk kalir; serit onlarin ustune cikmaz.")]
+    [SerializeField, Min(0.5f)] private float minGroundSpan = 6f;
+    [Tooltip("En alttaki temastan en fazla bu kadar yukaridaki genis yuzey zemin sayilir. " +
+             "Zemin altinda kalan yardimci duzlemler seridi gommesin, catilar da zemin sayilmasin.")]
+    [SerializeField, Min(0f)] private float maxGroundStep = 1.5f;
 
     [Header("Ekran Tehlike Efekti")]
     [SerializeField] private Color dangerScreenColor = new(0.75f, 0.02f, 0.02f, 1f);
@@ -290,12 +296,18 @@ public class SafeZoneController : NetworkBehaviour
     /// <summary>
     /// Tek bir noktanin ZEMIN yuksekligi.
     ///
-    /// NEDEN en ALTTAKI temas: asagi dogru atilan bir isin yalniz zemine
-    /// degil, zeminin uzerinde duran her seye carpar - agac tepesi, kaya,
-    /// cadir brandasi. Ilk temasi kabul edersek cemberin o segmenti agacin
-    /// tepesine tirmanir; alan cizgisinin nesnelerin uzerinden gecmesinin
-    /// sebebi tam olarak buydu. Dikey bir isinda zemin her zaman en alttaki
-    /// temastir, cunku diger her sey onun ustunde durur.
+    /// Asagi dogru atilan bir isin yalniz zemine degil, zeminin uzerinde duran
+    /// her seye carpar - agac tepesi, kaya, cadir brandasi. Ilk temasi kabul
+    /// edersek cemberin o segmenti agacin tepesine tirmanir.
+    ///
+    /// Onceki kural "en alttaki temas"ti; agaclari cozuyordu ama haritada
+    /// gorunen zeminin ALTINDA duran yardimci bir duzlem (Ground, y = -0.2)
+    /// oldugunda serit ve pus o duzleme iniyor, gorunen zeminin icine gomuluyordu.
+    ///
+    /// Simdiki kural: en alttaki temastan maxGroundStep kadar yukariya kadar
+    /// olan GENIS yuzeylerin (en az minGroundSpan) en ustu. Zemin kutulari
+    /// genis ve alcak oldugu icin secilir; agac, kaya ve sandik dar oldugu icin
+    /// secilmez; catilar maxGroundStep'ten yuksekte kaldigi icin secilmez.
     ///
     /// Bu yontem haritadaki nesneleri ayri bir layer'a tasimayi gerektirmez:
     /// kullanici disaridan hazir bir arazi paketi attiginda da calisir.
@@ -327,19 +339,44 @@ public class SafeZoneController : NetworkBehaviour
         for (int i = 0; i < hitCount; i++)
             lowest = Mathf.Min(lowest, _groundHits[i].point.y);
 
-        height = lowest;
-        _lastGroundHeight = lowest;
+        float ground = lowest;
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = _groundHits[i];
+
+            if (hit.point.y <= ground || hit.point.y > lowest + maxGroundStep)
+                continue;
+
+            if (IsGroundLike(hit))
+                ground = hit.point.y;
+        }
+
+        height = ground;
+        _lastGroundHeight = ground;
 
         // Referans, haritada bulunan ILK gecerli yukseklik. Sonraki
         // orneklemelerle guncellenmiyor; guncellenseydi zemin disindaki
         // noktalar yine kayan bir degere baglanirdi.
         if (!_hasReferenceGround)
         {
-            _referenceGroundHeight = lowest;
+            _referenceGroundHeight = ground;
             _hasReferenceGround = true;
         }
 
         return true;
+    }
+
+    /// <summary>Yukari bakan, genis bir yuzey mi (zemin kutusu, arazi) - agac ya da kaya degil.</summary>
+    private bool IsGroundLike(RaycastHit hit)
+    {
+        if (hit.normal.y < 0.7f)
+            return false;
+
+        if (hit.collider is TerrainCollider)
+            return true;
+
+        Vector3 size = hit.collider.bounds.size;
+        return size.x >= minGroundSpan && size.z >= minGroundSpan;
     }
 
     private float GroundHeightAt(int segment)

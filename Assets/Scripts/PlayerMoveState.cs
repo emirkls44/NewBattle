@@ -52,7 +52,7 @@ public class PlayerMoveState : PlayerStateBase
         );
         moveDirection.Normalize();
 
-        Vector3 movement = moveDirection * moveSpeed * Runner.DeltaTime;
+        Vector3 movement = moveDirection * (moveSpeed * stateMachine.MoveSpeedMultiplier * Runner.DeltaTime);
 
         // Transform tasimak yerine CharacterController kullanarak carpismalari koru.
         if (_characterController != null && _characterController.enabled)

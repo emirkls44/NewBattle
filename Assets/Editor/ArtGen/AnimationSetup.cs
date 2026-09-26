@@ -38,7 +38,13 @@ namespace NewBattle.ArtGen
         private const string ArmedRunClip = "Run_and_Shoot";
         private const string BackpedalClip = "Walk_Backward_with_Bow_1";
         private const string DeathClip = "falling_down";
-        private const string RifleIdleClip = "Rifle Aiming Idle";
+
+        /// <summary>
+        /// Silah tutus pozu. Bu FBX'teki "Rifle Aiming Idle" (Scene take'i) tek
+        /// karelik, tamamen sabit bir poz - modelin T-pose'u. Gercek nisan alma
+        /// animasyonu Mixamo'nun "mixamo.com" take'inde.
+        /// </summary>
+        private const string RifleIdleClip = "mixamo.com";
         private const string PunchClip = "Right Hook";
 
         /// <summary>
@@ -251,9 +257,16 @@ namespace NewBattle.ArtGen
                 (clips[WalkClip], WalkSpeed, 1.15f),
                 (clips[RunClip], RunSpeed, 1f));
 
+            // Blend tree kliplerin SURESINI de agirliga gore karistirir. Nisan
+            // bekleme klibi 3.1 sn, kosu 0.57 sn: ikisi arasindaki her hizda adim
+            // temposu uzun klibe dogru yavasliyordu (nisan alirken hiz 5'e tam
+            // ulasmadigi icin tam hizda bile). Kosu klibini 1 m/s'ye de koymak,
+            // hareket ettigi surece bekleme klibini karisimin disinda tutuyor.
             AnimatorState armed = AddLocomotion(controller, "ArmedLocomotion", new Vector3(300f, 120f, 0f),
                 (clips[BackpedalClip], -RunSpeed, 2f),
+                (clips[BackpedalClip], -1f, 1f),
                 (clips[RifleIdleClip], 0f, 1f),
+                (clips[ArmedRunClip], 1f, 0.75f),
                 (clips[ArmedRunClip], RunSpeed, 1f));
 
             machine.defaultState = unarmed;

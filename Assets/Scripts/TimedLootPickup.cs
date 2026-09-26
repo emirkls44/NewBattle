@@ -39,6 +39,18 @@ public abstract class TimedLootPickup : NetworkBehaviour
     protected abstract bool CanCollect(PlayerLoadout player);
     protected abstract void GiveTo(PlayerLoadout player);
 
+    /// <summary>Haritada su an duran, henuz alinmamis butun loot'lar. Bot yapay zekasi okur.</summary>
+    public static IReadOnlyCollection<TimedLootPickup> AllActive => Active;
+
+    /// <summary>Toplamak icin loot'un bu kadar yakininda beklemek gerekir.</summary>
+    public float CollectionRadius => collectionRadius;
+
+    /// <summary>Bu oyuncu bu loot'u su an alabilir mi (alinmamis ve isine yarar).</summary>
+    public bool IsUsefulFor(PlayerLoadout player)
+    {
+        return !_consumed && Object != null && Object.IsValid && player != null && CanCollect(player);
+    }
+
     public override void Spawned()
     {
         _consumed = false;

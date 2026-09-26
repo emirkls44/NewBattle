@@ -50,7 +50,7 @@ public class PlayerHide : PlayerStateBase
 
         // PlayerMoveState ile ayni yaklasim: transform'u dogrudan itmek yerine
         // CharacterController kullan, yoksa oyuncu calidayken duvardan gecebiliyor.
-        Vector3 movement = moveDirection * (moveSpeed * Runner.DeltaTime);
+        Vector3 movement = moveDirection * (moveSpeed * stateMachine.MoveSpeedMultiplier * Runner.DeltaTime);
 
         if (_characterController != null && _characterController.enabled)
             _characterController.Move(movement);

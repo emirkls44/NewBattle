@@ -12,6 +12,15 @@ public class PlayerStateMachine : NetworkBehaviour
     // Alt state'lerin erisebilecegi merkezi Animator referansi
     public Animator Animator { get; private set; }
 
+    /// <summary>
+    /// Yurume state'lerinin hizini carpar. Botlar bunu 1'in altina ceker ki
+    /// gercek oyuncu onlardan biraz hizli kosabilsin (kacabilsin, yetisebilsin).
+    ///
+    /// Aga yazilmiyor: botun hareketini sadece host simule ediyor, digerleri
+    /// sonucu NetworkTransform'dan okuyor. Gercek oyuncuda hep 1.
+    /// </summary>
+    public float MoveSpeedMultiplier { get; set; } = 1f;
+
     public override void Spawned()
     {
         _states = GetComponents<PlayerStateBase>();

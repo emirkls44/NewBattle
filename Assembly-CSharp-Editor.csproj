@@ -68,10 +68,12 @@
     <Compile Include="Assets\Editor\ArtGen\LootVisualSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\LowPolyMeshBuilder.cs" />
     <Compile Include="Assets\Editor\ArtGen\GlbImporter.cs" />
+    <Compile Include="Assets\Editor\MobileBuildSetup.cs" />
     <Compile Include="Assets\Editor\MapNavigationSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\ArtGenWindow.cs" />
     <Compile Include="Assets\Editor\ArtGen\CharacterFactory.cs" />
     <Compile Include="Assets\Editor\ArtGen\RestoreOldArena.cs" />
+    <Compile Include="Assets\Editor\ArtGen\ZoneLineSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\ArtGenIO.cs" />
     <Compile Include="Assets\Editor\ArtGen\ArtGenTags.cs" />
     <Compile Include="Assets\Editor\ArtGen\WorldScaleSync.cs" />

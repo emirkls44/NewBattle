@@ -198,6 +198,7 @@ MonoBehaviour:
   useFixedSessionName: 0
   sessionName: NewBattlePrototype
   maxPlayers: 2
+  botMatchPlayers: 16
   maps: []
   playerPrefab:
     RawGuidValue: f49277fef334f1c429b5716c12296f9c
@@ -8743,9 +8744,9 @@ MonoBehaviour:
     shrinkSeconds: 8
   damageInterval: 1
   damagePerInterval: 5
-  boundaryColor: {r: 1, g: 0.44, b: 0.42, a: 0.9}
-  boundaryWidth: 4.7999997
-  boundaryEdgeSoftness: 0.4
+  boundaryColor: {r: 1, g: 0.44, b: 0.42, a: 0.95}
+  boundaryWidth: 1.6
+  boundaryEdgeSoftness: 0.12
   boundarySegments: 256
   boundaryHeight: 0.12
   nextBoundaryColor: {r: 1, g: 1, b: 1, a: 0.95}
@@ -8760,6 +8761,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   groundSampleFrom: 300
+  minGroundSpan: 6
+  maxGroundStep: 1.5
   dangerScreenColor: {r: 0.75, g: 0.02, b: 0.02, a: 1}
   dangerBaseAlpha: 0.035
   dangerPulseAlpha: 0.16
