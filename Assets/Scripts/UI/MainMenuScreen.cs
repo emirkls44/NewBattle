@@ -10,7 +10,7 @@ namespace NewBattle.UI
     /// Ana menu ekrani (Battlelands tarzi).
     ///
     /// Eski NetworkMenuUI + MainMenuFlow ikilisinin yerini alir. Gorunum
-    /// "Tools > NewBattle > Menu > 1 - Ana Menuyu Kur" ile sahneye kurulur;
+    /// "Tools > NewBattle > Menu > Kur" ile sahneye kurulur;
     /// sonrasinda yerlesimi, renkleri ve yazilari Inspector'dan degistirmek
     /// serbest - bu script sadece degerleri doldurur ve butonlari dinler.
     /// </summary>
@@ -50,7 +50,9 @@ namespace NewBattle.UI
         [SerializeField, Min(0)] private int onlinePlayers = 1;
 
         [Header("Mod")]
-        [Tooltip("OYNA'ya basilinca baslayacak mod. Asama 2'de mod secim ekrani gelecek.")]
+        [Tooltip("OYNA'ya basinca acilan oyun modu penceresi.")]
+        [SerializeField] private ModeSelectPanel modePanel;
+        [Tooltip("Pencere yoksa OYNA dogrudan bu modla baslar.")]
         [SerializeField] private BattleGameMode defaultMode = BattleGameMode.Bots;
         [SerializeField] private string defaultModeLabel = "SOLO";
 
@@ -96,6 +98,14 @@ namespace NewBattle.UI
                 }
             }
 
+            if (modePanel != null)
+            {
+                modePanel.Initialize();
+                modePanel.PlayRequested += OnModePlayRequested;
+                modePanel.SelectionChanged += OnModeSelectionChanged;
+                modePanel.LockedPressed += OnLockedModePressed;
+            }
+
             PlayerName = LoadOrCreatePlayerName();
             PlayerProgress.Changed += Refresh;
             Refresh();
@@ -121,6 +131,13 @@ namespace NewBattle.UI
         {
             PlayerProgress.Changed -= Refresh;
 
+            if (modePanel != null)
+            {
+                modePanel.PlayRequested -= OnModePlayRequested;
+                modePanel.SelectionChanged -= OnModeSelectionChanged;
+                modePanel.LockedPressed -= OnLockedModePressed;
+            }
+
             if (_bootstrap == null)
                 return;
 
@@ -143,7 +160,9 @@ namespace NewBattle.UI
             SetText(xpText, $"{xp} / {xpForNextLevel}");
             SetText(nextLevelText, (level + 1).ToString());
             SetText(onlineText, $"{onlinePlayers} Online Savaşçılar");
-            SetText(modeChipText, defaultModeLabel);
+            SetText(modeChipText, modePanel != null && modePanel.Selected != null
+                ? modePanel.Selected.shortLabel
+                : defaultModeLabel);
 
             if (xpFill != null)
             {
@@ -169,6 +188,7 @@ namespace NewBattle.UI
                 return;
 
             toastText.text = message;
+            toastGroup.transform.SetAsLastSibling(); // mod penceresinin de ustunde
 
             if (_toastRoutine != null)
                 StopCoroutine(_toastRoutine);
@@ -178,7 +198,26 @@ namespace NewBattle.UI
 
         private void OnPlayPressed()
         {
-            StartMatch(defaultMode);
+            if (modePanel != null)
+                modePanel.Open();
+            else
+                StartMatch(defaultMode);
+        }
+
+        private void OnModePlayRequested(ModeSelectPanel.ModeOption option)
+        {
+            modePanel.Hide();
+            StartMatch(option.mode);
+        }
+
+        private void OnModeSelectionChanged(ModeSelectPanel.ModeOption option)
+        {
+            SetText(modeChipText, option.shortLabel);
+        }
+
+        private void OnLockedModePressed(ModeSelectPanel.ModeOption option)
+        {
+            ShowToast("YAKINDA!");
         }
 
         private void HandleConnectionCompleted(bool success)

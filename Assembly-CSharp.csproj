@@ -128,6 +128,7 @@
     <Compile Include="Assets\Scripts\MainMenuFlow.cs" />
     <Compile Include="Assets\Scripts\PlayerCombatStats.cs" />
     <Compile Include="Assets\Scripts\Gameplay\PlayerRegistry.cs" />
+    <Compile Include="Assets\Scripts\UI\ModeSelectPanel.cs" />
     <Compile Include="Assets\Scripts\HealthController.cs" />
     <Compile Include="Assets\Scripts\Gameplay\AirdropController.cs" />
     <Compile Include="Assets\Scripts\EnemyController.cs" />

@@ -84,7 +84,7 @@ namespace NewBattle.EditorTools
 
             if (_library == null)
             {
-                EditorGUILayout.HelpBox("Kütüphane yok. 'Tools > NewBattle > Menü > 2 - Lobi Animasyonlarını Kur' çalıştır.", MessageType.Warning);
+                EditorGUILayout.HelpBox("Kütüphane yok. 'Tools > NewBattle > Menü > Kur' çalıştır.", MessageType.Warning);
                 EditorGUILayout.EndScrollView();
                 return;
             }

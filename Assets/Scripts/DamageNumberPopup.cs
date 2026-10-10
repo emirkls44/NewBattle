@@ -111,7 +111,7 @@ public class DamageNumberPopup : MonoBehaviour
             TextMeshPro text = popup.AddComponent<TextMeshPro>();
             text.alignment = TextAlignmentOptions.Center;
             text.sortingOrder = 100;
-            text.enableWordWrapping = false;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
 
             // Yazinin kendi RectTransform'u genis olmali, yoksa uc haneli
             // hasar ("100") satir sonuna sikisip kayboluyor.

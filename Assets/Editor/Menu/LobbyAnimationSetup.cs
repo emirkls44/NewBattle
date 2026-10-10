@@ -4,15 +4,13 @@ using System.Linq;
 using NewBattle.Progression;
 using NewBattle.UI;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace NewBattle.EditorTools
 {
     /// <summary>
     /// Lobi animasyon kutuphanesini olusturur ve menudeki karaktere baglar.
-    /// "1 - Ana Menuyu Kur" bunu kendisi de cagirir; bu menu ogesi, menu
-    /// zaten kuruluysa sadece animasyon sistemini eklemek icindir.
+    /// "Tools > NewBattle > Menü > Kur" tarafindan cagrilir.
     /// </summary>
     public static class LobbyAnimationSetup
     {
@@ -20,33 +18,6 @@ namespace NewBattle.EditorTools
 
         private const string MergedClipsPath = "Assets/Arts/Character_V2_Animator/Meshy_AI_Tie_Guy_biped_Meshy_Merged_Animations.fbx";
         private const string RifleIdlePath = "Assets/Arts/Character_V2_Animator/Meshy_AI_Tie_Guy_biped_Character_output@Rifle Aiming Idle.fbx";
-
-        [MenuItem("Tools/NewBattle/Menü/2 - Lobi Animasyonlarını Kur", false, 2)]
-        public static void Setup()
-        {
-            if (EditorApplication.isPlaying)
-            {
-                EditorUtility.DisplayDialog("Lobi Animasyonları", "Önce Play modunu kapat.", "Tamam");
-                return;
-            }
-
-            LobbyAnimationLibrary library = EnsureLibrary();
-
-            MenuCharacterStage stage = Object.FindFirstObjectByType<MenuCharacterStage>(FindObjectsInactive.Include);
-            if (stage == null)
-            {
-                Debug.LogError("Lobi Animasyonları: önce 'Tools > NewBattle > Menü > 1 - Ana Menüyü Kur' çalıştır.");
-                return;
-            }
-
-            Attach(stage, library);
-            EditorSceneManager.MarkSceneDirty(stage.gameObject.scene);
-            EditorSceneManager.SaveScene(stage.gameObject.scene);
-
-            Selection.activeObject = library;
-            EditorGUIUtility.PingObject(library);
-            Debug.Log("Lobi animasyonları kuruldu. Default animasyonu seçili dosyadan değiştirebilirsin.");
-        }
 
         public static LobbyAnimationLibrary EnsureLibrary()
         {

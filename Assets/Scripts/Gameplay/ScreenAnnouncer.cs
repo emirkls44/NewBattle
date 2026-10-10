@@ -144,7 +144,7 @@ namespace NewBattle.Gameplay
 
             _label = textObject.AddComponent<TextMeshProUGUI>();
             _label.alignment = TextAlignmentOptions.Center;
-            _label.enableWordWrapping = false;
+            _label.textWrappingMode = TextWrappingModes.NoWrap;
             _label.raycastTarget = false;
             _label.color = textColor;
             _label.fontStyle = FontStyles.Bold;

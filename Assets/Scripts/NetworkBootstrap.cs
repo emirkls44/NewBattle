@@ -65,6 +65,9 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public BattleGameMode SelectedMode { get; private set; } = BattleGameMode.Bots;
     public static BattleGameMode ActiveMode { get; private set; } = BattleGameMode.Bots;
 
+    /// <summary>Squad modunda (menude "Rastgele Ikili") bir takimdaki oyuncu sayisi.</summary>
+    public const int SquadTeamSize = 2;
+
     public int MatchCapacity
     {
         get
@@ -82,7 +85,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 : maxPlayers;
 
             return SelectedMode == BattleGameMode.Squad
-                ? Mathf.Clamp(baseCapacity / 4 * 4, 8, 32)
+                ? Mathf.Clamp(baseCapacity / SquadTeamSize * SquadTeamSize, 8, 32)
                 : Mathf.Clamp(baseCapacity, 2, 32);
         }
     }
@@ -277,7 +280,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             counts.TryGetValue(stats.TeamId, out int count);
             counts[stats.TeamId] = count + 1;
         }
-        int teamSize = SelectedMode == BattleGameMode.Squad ? 4 : 1;
+        int teamSize = SelectedMode == BattleGameMode.Squad ? SquadTeamSize : 1;
         for (int id = 0; id < MatchCapacity; id++)
             if (!counts.TryGetValue(id, out int count) || count < teamSize) return id;
         return MatchCapacity;

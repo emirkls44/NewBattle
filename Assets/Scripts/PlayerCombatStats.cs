@@ -24,8 +24,8 @@ public class PlayerCombatStats : NetworkBehaviour
 
         if (NetworkBootstrap.ActiveMode == BattleGameMode.Squad)
         {
-            // PlayerRef 1-4 = takim 0, 5-8 = takim 1, ...
-            TeamId = Mathf.Max(0, (Object.InputAuthority.RawEncoded - 1) / 4);
+            // Ikili: PlayerRef 1-2 = takim 0, 3-4 = takim 1, ...
+            TeamId = Mathf.Max(0, (Object.InputAuthority.RawEncoded - 1) / NetworkBootstrap.SquadTeamSize);
             return;
         }
 

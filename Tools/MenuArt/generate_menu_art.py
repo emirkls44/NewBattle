@@ -356,8 +356,62 @@ def battlepass_badge():
     save_rgba(img, size, "battlepass_badge.png")
 
 
+def icon_person():
+    m, d, s = canvas(128)
+    person(d, s, .50, .08, 1.45)
+    save_mask(m, 128, "icon_person.png")
+
+
+def mode_header():
+    """Oyun modu penceresinin ustundeki manzara: gokyuzu, bulut, ada, ucak."""
+    w, h = 640, 360
+    S = 2
+    img = Image.new("RGBA", (w * S, h * S))
+    px = img.load()
+    top, bottom = (92, 186, 246), (190, 232, 252)
+    for y in range(h * S):
+        t = y / (h * S - 1)
+        c = tuple(int(top[i] + (bottom[i] - top[i]) * t) for i in range(3)) + (255,)
+        for x in range(w * S):
+            px[x, y] = c
+    d = ImageDraw.Draw(img)
+
+    def e(x0, y0, x1, y1, color):
+        d.ellipse((x0 * S, y0 * S, x1 * S, y1 * S), fill=color)
+
+    # gunes
+    e(470, 40, 560, 130, (255, 236, 150, 255))
+    # bulutlar
+    for cx, cy, sc in ((120, 80, 1.0), (380, 120, 0.8), (560, 190, 0.7)):
+        for dx, dy, r in ((-40, 8, 30), (0, 0, 40), (42, 10, 28), (20, 18, 30)):
+            e(cx + (dx - r) * sc, cy + (dy - r) * sc, cx + (dx + r) * sc, cy + (dy + r) * sc, (255, 255, 255, 235))
+    # ada: kum ve yesil tepeler
+    e(-120, 250, 760, 520, (247, 214, 138, 255))
+    e(-60, 268, 330, 470, (120, 196, 92, 255))
+    e(300, 280, 700, 480, (102, 180, 80, 255))
+    e(150, 300, 480, 470, (140, 210, 104, 255))
+    # agaclar
+    for tx, ty in ((80, 285), (230, 300), (430, 296), (560, 300)):
+        d.rectangle(((tx - 4) * S, ty * S, (tx + 4) * S, (ty + 26) * S), fill=(120, 80, 40, 255))
+        e(tx - 22, ty - 26, tx + 22, ty + 10, (60, 150, 60, 255))
+    # ucak
+    plane = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    pd = ImageDraw.Draw(plane)
+    cx, cy = 300 * S, 70 * S
+    pd.rounded_rectangle((cx - 90 * S, cy - 14 * S, cx + 90 * S, cy + 14 * S), 14 * S, fill=(90, 110, 130, 255))
+    pd.polygon([(cx - 20 * S, cy), (cx + 30 * S, cy), (cx - 10 * S, cy + 70 * S), (cx - 40 * S, cy + 70 * S)], fill=(70, 90, 110, 255))
+    pd.polygon([(cx - 20 * S, cy), (cx + 30 * S, cy), (cx - 10 * S, cy - 70 * S), (cx - 40 * S, cy - 70 * S)], fill=(70, 90, 110, 255))
+    pd.polygon([(cx - 90 * S, cy), (cx - 70 * S, cy), (cx - 90 * S, cy - 34 * S), (cx - 104 * S, cy - 34 * S)], fill=(70, 90, 110, 255))
+    plane = plane.rotate(8, resample=Image.BICUBIC, center=(cx, cy))
+    img.alpha_composite(plane)
+    img.resize((w, h), Image.LANCZOS).save(os.path.join(OUT, "mode_header.png"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    icon_person()
+    mode_header()
+    vertical_gradient("bg_blue.png", (64, 170, 244), (110, 200, 252))
     rounded_panel()
     circle()
     gold_background()

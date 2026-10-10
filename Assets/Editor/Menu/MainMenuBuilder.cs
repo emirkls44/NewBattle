@@ -32,6 +32,7 @@ namespace NewBattle.EditorTools
         private const string CharacterPrefabPath = "Assets/Arts/Characters/Character_V2/Prefabs/Character_V2_Test.prefab";
 
         public const string RootName = "AnaMenu";
+        private const string ModePanelName = "OyunModuEkrani";
         private const string StageName = "MenuKarakterSahnesi";
         private static readonly Vector3 StagePosition = new(5000f, -2000f, 5000f);
 
@@ -68,12 +69,22 @@ namespace NewBattle.EditorTools
         private static Material _shadowMaterial;
         private static readonly List<Button> ComingSoon = new();
 
-        [MenuItem("Tools/NewBattle/Menü/1 - Ana Menüyü Kur", false, 1)]
-        public static void Build()
+        [MenuItem("Tools/NewBattle/Menü/Kur (eksik parçaları ekler)", false, 1)]
+        public static void Install() => Run(rebuild: false);
+
+        [MenuItem("Tools/NewBattle/Menü/Baştan Kur (elle yapılan değişiklikler gider)", false, 2)]
+        public static void Rebuild() => Run(rebuild: true);
+
+        /// <summary>
+        /// Menunun eksik parcalarini kurar. Var olan parcalara dokunmaz; yeni
+        /// bir asama geldiginde sadece o asamanin parcasi eklenir ve senin
+        /// Inspector'dan yaptigin ayarlar korunur.
+        /// </summary>
+        private static void Run(bool rebuild)
         {
             if (EditorApplication.isPlaying)
             {
-                EditorUtility.DisplayDialog("Ana Menü", "Önce Play modunu kapat.", "Tamam");
+                EditorUtility.DisplayDialog("Menü", "Önce Play modunu kapat.", "Tamam");
                 return;
             }
 
@@ -87,43 +98,84 @@ namespace NewBattle.EditorTools
             Canvas canvas = FindGameCanvas();
             if (canvas == null)
             {
-                Debug.LogError("Ana Menü: Game_UI canvas'i bulunamadi.");
+                Debug.LogError("Menü: Game_UI canvas'i bulunamadi.");
                 return;
             }
 
-            Transform existing = canvas.transform.Find(RootName);
+            Transform root = canvas.transform.Find(RootName);
             GameObject existingStage = GameObject.Find(StageName);
-            if (existing != null || existingStage != null)
+
+            if (rebuild && (root != null || existingStage != null))
             {
-                bool rebuild = EditorUtility.DisplayDialog(
-                    "Ana Menü",
-                    "AnaMenu zaten kurulu. Silip baştan kurulsun mu?\n\nElle yaptığın değişiklikler gider.",
+                bool confirmed = EditorUtility.DisplayDialog(
+                    "Menü",
+                    "Menü silinip baştan kurulsun mu?\n\nInspector'dan yaptığın değişiklikler gider.",
                     "Baştan Kur", "Vazgeç");
 
-                if (!rebuild)
+                if (!confirmed)
                     return;
-
-                if (existing != null)
-                    Undo.DestroyObjectImmediate(existing.gameObject);
-                if (existingStage != null)
-                    Undo.DestroyObjectImmediate(existingStage);
             }
 
-            Undo.SetCurrentGroupName("Ana Menüyü Kur");
+            Undo.SetCurrentGroupName("Menüyü Kur");
             int undoGroup = Undo.GetCurrentGroup();
+            var added = new List<string>();
 
-            DisableLegacyMenu(canvas);
-            (Camera stageCamera, Transform turntable) = BuildCharacterStage();
-            GameObject root = BuildMenu(canvas.transform, stageCamera, turntable);
-            LobbyAnimationSetup.Attach(root.GetComponentInChildren<MenuCharacterStage>(true), LobbyAnimationSetup.EnsureLibrary());
+            if (rebuild && root != null)
+            {
+                Undo.DestroyObjectImmediate(root.gameObject);
+                root = null;
+            }
+
+            if (root == null)
+            {
+                if (existingStage != null)
+                    Undo.DestroyObjectImmediate(existingStage);
+
+                DisableLegacyMenu(canvas);
+                (Camera stageCamera, Transform turntable) = BuildCharacterStage();
+                root = BuildMenu(canvas.transform, stageCamera, turntable).transform;
+                added.Add("Ana menü");
+            }
+
+            MainMenuScreen screen = root.GetComponent<MainMenuScreen>();
+            MenuCharacterStage stage = root.GetComponentInChildren<MenuCharacterStage>(true);
+
+            if (stage != null && stage.LobbyAnimator == null)
+            {
+                LobbyAnimationSetup.Attach(stage, LobbyAnimationSetup.EnsureLibrary());
+                added.Add("Lobi animasyonları");
+            }
+
+            if (screen != null && root.Find(ModePanelName) == null)
+            {
+                ComingSoon.Clear();
+                ModeSelectPanel panel = BuildModePanel((RectTransform)root);
+                var serialized = new SerializedObject(screen);
+                serialized.FindProperty("modePanel").objectReferenceValue = panel;
+                AppendButtons(serialized.FindProperty("comingSoonButtons"), ComingSoon);
+                serialized.ApplyModifiedProperties();
+                added.Add("Oyun modu ekranı");
+            }
 
             Undo.CollapseUndoOperations(undoGroup);
 
             EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
             EditorSceneManager.SaveScene(canvas.gameObject.scene);
-            Selection.activeGameObject = root;
+            Selection.activeGameObject = root.gameObject;
 
-            Debug.Log("Ana Menü kuruldu ve sahne kaydedildi. Play'e basıp deneyebilirsin.");
+            string message = added.Count > 0
+                ? "Eklendi: " + string.Join(", ", added) + ".\nSahne kaydedildi; Play'e basıp deneyebilirsin."
+                : "Her şey zaten kurulu, eklenecek bir şey yok.";
+            EditorUtility.DisplayDialog("Menü", message, "Tamam");
+        }
+
+        private static void AppendButtons(SerializedProperty list, List<Button> buttons)
+        {
+            foreach (Button button in buttons)
+            {
+                list.arraySize++;
+                list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = button;
+            }
         }
 
         // ------------------------------------------------------------------
@@ -668,6 +720,248 @@ namespace NewBattle.EditorTools
                 list.GetArrayElementAtIndex(i).objectReferenceValue = ComingSoon[i];
 
             serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ------------------------------------------------------------------
+        // ASAMA 2: Oyun modu penceresi
+        // ------------------------------------------------------------------
+
+        // Battlelands'teki gibi: ekrani enine kaplayan uc sutun. Orta sutun
+        // yan sutunlardan biraz daha uzun; CEVRIMICI OYNA alt kenarina biner.
+        private const float PanelBottom = 0.18f;
+        private const float SidePanelTop = 0.853f;
+        private const float CenterPanelTop = 0.91f;
+
+        private static ModeSelectPanel BuildModePanel(RectTransform root)
+        {
+            RectTransform panelRoot = NewRect(ModePanelName, root);
+            Undo.RegisterCreatedObjectUndo(panelRoot.gameObject, "Oyun modu ekrani");
+            Stretch(panelRoot, 0f, 0f, 0f, 0f);
+            CanvasGroup group = panelRoot.gameObject.AddComponent<CanvasGroup>();
+            group.alpha = 0f;
+
+            RectTransform backdrop = NewRect("Karartma", panelRoot);
+            Stretch(backdrop, 0f, 0f, 0f, 0f);
+            Image backdropImage = AddImage(backdrop, null, new Color(0f, 0f, 0f, 0.6f), raycast: true);
+            Button backdropButton = backdrop.gameObject.AddComponent<Button>();
+            backdropButton.targetGraphic = backdropImage;
+            backdropButton.transition = Selectable.Transition.None;
+
+            RectTransform window = NewRect("Pencere", panelRoot);
+            Stretch(window, 0f, 0f, 0f, 0f);
+
+            BuildDoubleXpColumn(window);
+            List<ModeRow> rows = BuildModeColumn(window, out Button playButton);
+            Button closeButton = BuildTipsColumn(window, out TextMeshProUGUI tipText);
+
+            ModeSelectPanel panel = panelRoot.gameObject.AddComponent<ModeSelectPanel>();
+            var serialized = new SerializedObject(panel);
+            serialized.FindProperty("playButton").objectReferenceValue = playButton;
+            serialized.FindProperty("closeButton").objectReferenceValue = closeButton;
+            serialized.FindProperty("backdropButton").objectReferenceValue = backdropButton;
+            serialized.FindProperty("tipText").objectReferenceValue = tipText;
+            serialized.FindProperty("group").objectReferenceValue = group;
+            serialized.FindProperty("window").objectReferenceValue = window;
+
+            SerializedProperty options = serialized.FindProperty("options");
+            options.arraySize = rows.Count;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                ModeRow row = rows[i];
+                SerializedProperty item = options.GetArrayElementAtIndex(i);
+                item.FindPropertyRelative("id").stringValue = row.Id;
+                item.FindPropertyRelative("shortLabel").stringValue = row.ShortLabel;
+                item.FindPropertyRelative("mode").enumValueIndex = (int)row.Mode;
+                item.FindPropertyRelative("locked").boolValue = row.Locked;
+                item.FindPropertyRelative("button").objectReferenceValue = row.Button;
+                item.FindPropertyRelative("background").objectReferenceValue = row.Background;
+                item.FindPropertyRelative("label").objectReferenceValue = row.Label;
+                item.FindPropertyRelative("icon").objectReferenceValue = row.Icon;
+                item.FindPropertyRelative("checkBox").objectReferenceValue = row.CheckBox;
+                item.FindPropertyRelative("checkMark").objectReferenceValue = row.CheckMark;
+                item.FindPropertyRelative("lockMark").objectReferenceValue = row.LockMark;
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            panelRoot.gameObject.SetActive(false);
+            return panel;
+        }
+
+        private sealed class ModeRow
+        {
+            public string Id, ShortLabel;
+            public BattleGameMode Mode;
+            public bool Locked;
+            public Button Button;
+            public Image Background, Icon, CheckBox;
+            public TextMeshProUGUI Label;
+            public GameObject CheckMark, LockMark;
+        }
+
+        private static RectTransform Column(RectTransform window, string name, int index, float top)
+        {
+            RectTransform column = NewRect(name, window);
+            column.anchorMin = new Vector2(index / 3f, PanelBottom);
+            column.anchorMax = new Vector2((index + 1) / 3f, top);
+            column.offsetMin = Vector2.zero;
+            column.offsetMax = Vector2.zero;
+            return column;
+        }
+
+        private static TextMeshProUGUI ColumnTitle(RectTransform column, string title, float size)
+        {
+            TextMeshProUGUI text = AddText(column, "Baslik", title, size, Color.white, TextAlignmentOptions.Center, shadow: true);
+            text.rectTransform.anchorMin = new Vector2(0f, 1f);
+            text.rectTransform.anchorMax = Vector2.one;
+            text.rectTransform.pivot = new Vector2(0.5f, 1f);
+            text.rectTransform.offsetMin = new Vector2(24f, -130f);
+            text.rectTransform.offsetMax = new Vector2(-24f, -24f);
+            return text;
+        }
+
+        private static void BuildDoubleXpColumn(RectTransform window)
+        {
+            RectTransform column = Column(window, "SolPanel", 0, SidePanelTop);
+            AddImage(column, Sprite("bg_teal"), Color.white, raycast: true).type = Image.Type.Simple;
+            ColumnTitle(column, "İKİ KAT XP", 78f);
+
+            TextMeshProUGUI hint = AddText(column, "Aciklama", "Bir reklam izle. Çift XP al!", 36f, Color.white, TextAlignmentOptions.Center, shadow: true);
+            Place(hint.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -140f), new Vector2(560f, 60f));
+
+            Image skull = AddIcon(column, "Kafatasi", "icon_skull", new Color(0.92f, 0.96f, 0.95f, 1f), new Vector2(0.5f, 0.52f), Vector2.zero, 210f);
+            TextMeshProUGUI twoX = AddText(skull.transform, "2x", "2x", 54f, Hex("#5E7C78"), TextAlignmentOptions.Center);
+            Place(twoX.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 62f), new Vector2(120f, 60f));
+
+            Button activate = AddButton(column, "EtkinlestirButonu", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(0f, 120f), new Vector2(380f, 104f), Green, GreenLip);
+            TextMeshProUGUI label = AddText(Face(activate), "Yazi", "Etkinleştir", 52f, Color.white, TextAlignmentOptions.Center, shadow: true);
+            Stretch(label.rectTransform, 12f, 12f, 0f, 4f);
+            ComingSoon.Add(activate);
+
+            RectTransform track = NewRect("Ilerleme", column);
+            Place(track, new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(400f, 34f));
+            AddImage(track, Sprite("ui_round"), new Color(0f, 0f, 0f, 0.35f)).pixelsPerUnitMultiplier = 2.4f;
+            for (int i = 0; i < 3; i++)
+            {
+                RectTransform slot = NewRect($"Adim{i + 1}", track);
+                Place(slot, new Vector2(i / 2f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2((1 - i) * 30f, 0f), new Vector2(54f, 54f));
+                AddImage(slot, Sprite("ui_circle"), Hex("#2F3C44"));
+                AddIcon(slot, "Ikon", "icon_skull", new Color(1f, 1f, 1f, 0.45f), new Vector2(0.5f, 0.5f), Vector2.zero, 32f);
+            }
+        }
+
+        private static List<ModeRow> BuildModeColumn(RectTransform window, out Button playButton)
+        {
+            RectTransform column = Column(window, "OrtaPanel", 1, CenterPanelTop);
+            AddImage(column, null, Hex("#FDB927"), raycast: true);
+
+            RectTransform header = NewRect("Manzara", column);
+            header.anchorMin = new Vector2(0f, 0.47f);
+            header.anchorMax = Vector2.one;
+            header.offsetMin = Vector2.zero;
+            header.offsetMax = Vector2.zero;
+            AddImage(header, Sprite("mode_header"), Color.white).type = Image.Type.Simple;
+            ColumnTitle(header, "Oyun modu", 78f);
+
+            RectTransform list = NewRect("Secenekler", column);
+            list.anchorMin = new Vector2(0.5f, 0f);
+            list.anchorMax = new Vector2(0.5f, 0.47f);
+            list.offsetMin = new Vector2(-200f, 0f);
+            list.offsetMax = new Vector2(200f, 0f);
+            VerticalLayoutGroup layout = list.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(0, 0, 26, 0);
+            layout.spacing = 14f;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            var rows = new List<ModeRow>
+            {
+                ModeOptionRow(list, "solo", "SOLO", "SOLO", "icon_person", BattleGameMode.Bots, locked: false),
+                ModeOptionRow(list, "rastgele_ikili", "RASTGELE İKİLİ", "İKİLİ", "icon_friends", BattleGameMode.Squad, locked: false),
+                ModeOptionRow(list, "arkadas_ikilisi", "ARKADAŞ İKİLİSİ", "ARKADAŞ", "icon_friends", BattleGameMode.Squad, locked: true)
+            };
+
+            // Orta panelin alt kenarina binen buyuk yesil buton.
+            playButton = AddButton(window, "CevrimiciOynaButonu", new Vector2(0.5f, PanelBottom), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, -6f), new Vector2(400f, 118f), Green, GreenLip, lipHeight: 10f);
+            TextMeshProUGUI playLabel = AddText(Face(playButton), "Yazi", "ÇEVRİMİÇİ OYNA", 54f, Color.white, TextAlignmentOptions.Center, shadow: true);
+            Stretch(playLabel.rectTransform, 16f, 16f, 0f, 4f);
+
+            return rows;
+        }
+
+        private static ModeRow ModeOptionRow(RectTransform list, string id, string title, string shortLabel, string icon,
+            BattleGameMode mode, bool locked)
+        {
+            RectTransform row = NewRect($"Secenek_{id}", list);
+            row.sizeDelta = new Vector2(400f, 84f);
+
+            Image background = AddImage(row, Sprite("ui_round"), Hex("#DEDEDE"), raycast: true);
+            background.pixelsPerUnitMultiplier = 2.2f;
+            Button button = row.gameObject.AddComponent<Button>();
+            button.targetGraphic = background;
+            button.transition = Selectable.Transition.None; // renkleri ModeSelectPanel boyar
+            row.gameObject.AddComponent<UIPressScale>();
+
+            Image iconImage = AddIcon(row, "Ikon", icon, Color.white, new Vector2(0f, 0.5f), new Vector2(44f, 0f), 52f);
+
+            TextMeshProUGUI label = AddText(row, "Yazi", title, 38f, Color.white, TextAlignmentOptions.Left);
+            Stretch(label.rectTransform, 82f, 92f, 0f, 2f);
+
+            RectTransform box = NewRect("Kutu", row);
+            Place(box, new Vector2(1f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-46f, 0f), new Vector2(58f, 58f));
+            Image boxImage = AddImage(box, Sprite("ui_round"), Color.white);
+            boxImage.pixelsPerUnitMultiplier = 3f;
+
+            Image check = AddIcon(box, "Tik", "icon_check", GreenLip, new Vector2(0.5f, 0.5f), Vector2.zero, 44f);
+            Image lockIcon = AddIcon(box, "Kilit", "icon_lock", Hex("#55555C"), new Vector2(0.5f, 0.5f), Vector2.zero, 34f);
+            lockIcon.gameObject.SetActive(locked);
+
+            return new ModeRow
+            {
+                Id = id,
+                ShortLabel = shortLabel,
+                Mode = mode,
+                Locked = locked,
+                Button = button,
+                Background = background,
+                Icon = iconImage,
+                Label = label,
+                CheckBox = boxImage,
+                CheckMark = check.gameObject,
+                LockMark = lockIcon.gameObject
+            };
+        }
+
+        private static Button BuildTipsColumn(RectTransform window, out TextMeshProUGUI tipText)
+        {
+            RectTransform column = Column(window, "SagPanel", 2, SidePanelTop);
+            AddImage(column, Sprite("bg_blue"), Color.white, raycast: true).type = Image.Type.Simple;
+            ColumnTitle(column, "Savaş İpuçları", 74f);
+
+            tipText = AddText(column, "Ipucu", "Arkadaşlarını Arkadaş İkilisi'ne çağır ve onlarla oyna!", 40f, Color.white,
+                TextAlignmentOptions.Top, shadow: true);
+            tipText.textWrappingMode = TextWrappingModes.Normal;
+            tipText.rectTransform.anchorMin = new Vector2(0f, 1f);
+            tipText.rectTransform.anchorMax = Vector2.one;
+            tipText.rectTransform.pivot = new Vector2(0.5f, 1f);
+            tipText.rectTransform.offsetMin = new Vector2(48f, -330f);
+            tipText.rectTransform.offsetMax = new Vector2(-48f, -140f);
+
+            AddIcon(column, "Siluet", "icon_friends", new Color(1f, 1f, 1f, 0.6f), new Vector2(0.5f, 0f), new Vector2(0f, 150f), 280f);
+
+            RectTransform close = NewRect("KapatButonu", column);
+            Place(close, Vector2.one, Vector2.one, new Vector2(-18f, -18f), new Vector2(78f, 78f));
+            Image closeImage = AddImage(close, Sprite("icon_close"), Color.white, raycast: true);
+            closeImage.type = Image.Type.Simple;
+            closeImage.preserveAspect = true;
+            Button closeButton = close.gameObject.AddComponent<Button>();
+            closeButton.targetGraphic = closeImage;
+            close.gameObject.AddComponent<UIPressScale>();
+            return closeButton;
         }
 
         // ------------------------------------------------------------------
