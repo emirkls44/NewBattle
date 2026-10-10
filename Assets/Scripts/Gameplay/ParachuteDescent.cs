@@ -36,6 +36,11 @@ namespace NewBattle.Gameplay
         [Tooltip("Irtifanin ne kadari serbest dususte yenilsin.")]
         [SerializeField, Range(0.3f, 0.9f)] private float freefallAltitudeShare = 0.68f;
 
+        [Header("Ucus")]
+        [Tooltip("Oyuncu secilen noktanin tam ustunde degil, bu kadar uzaktan baslayip " +
+                 "serbest dususte noktaya suzulur (harita merkezi tarafindan gelir).")]
+        [SerializeField, Min(0f)] private float flightDistance = 18f;
+
         [Header("Yonlendirme")]
         [Tooltip("Parasutteyken joystick ile saniyede kac metre kayabilir.")]
         [SerializeField, Min(0f)] private float driftSpeed = 6f;
@@ -49,12 +54,33 @@ namespace NewBattle.Gameplay
         [SerializeField] private Material parachuteMaterial;
         [SerializeField] private Vector3 parachuteOffset = new(0f, 2.15f, 0f);
         [SerializeField] private float parachuteScale = 1f;
+        [Tooltip("Parasutun acilma animasyonu (saniye).")]
+        [SerializeField, Min(0.05f)] private float chuteOpenSeconds = 0.45f;
+        [Tooltip("Yere degince parasutun kaybolma animasyonu (saniye).")]
+        [SerializeField, Min(0.05f)] private float chuteCloseSeconds = 0.25f;
 
         [Networked] public DescentPhase Phase { get; private set; }
         [Networked] private float PhaseElapsed { get; set; }
         [Networked] private Vector3 GroundPoint { get; set; }
+        [Networked] private Vector2 FlightOffset { get; set; }
+        [Networked] private Vector2 DriftOffset { get; set; }
 
         public bool IsDescending => Phase == DescentPhase.Freefall || Phase == DescentPhase.Parachute;
+
+        /// <summary>Serbest dususun ilerlemesi (0-1). Parasut acildiysa 1.</summary>
+        public float FreefallProgress => Phase switch
+        {
+            DescentPhase.Freefall => Mathf.Clamp01(PhaseElapsed / Mathf.Max(0.0001f, freefallSeconds)),
+            DescentPhase.None => 0f,
+            _ => 1f
+        };
+
+        /// <summary>Parasut acildiktan sonra gecen sure (saniye).</summary>
+        public float ParachuteElapsed => Phase == DescentPhase.Parachute ? PhaseElapsed : 0f;
+
+        private DescentPhase _renderedPhase;
+        private float _chuteTimer;
+        private bool _chuteClosing;
 
         private CharacterController _characterController;
         private GameObject _parachuteVisual;
@@ -69,6 +95,11 @@ namespace NewBattle.Gameplay
                 _mapRadius = dropPhase.MapExtent;
 
             CreateParachuteVisual();
+
+            // Dusus pozu (yuzustu, donerek) her istemcide gorunsun. Prefab'a elle
+            // eklenmisse onun ayarlari kullanilir.
+            if (!TryGetComponent(out DescentPoseVisual _))
+                gameObject.AddComponent<DescentPoseVisual>();
         }
 
         /// <summary>
@@ -87,12 +118,20 @@ namespace NewBattle.Gameplay
             GroundPoint = resolved;
             PhaseElapsed = 0f;
             Phase = DescentPhase.Freefall;
+            DriftOffset = Vector2.zero;
+
+            // Ucus: harita merkezi tarafindan noktaya dogru suzulerek gel.
+            Vector2 target = new(GroundPoint.x, GroundPoint.z);
+            Vector2 toCenter = -target;
+            Vector2 direction = toCenter.sqrMagnitude > 1f ? toCenter.normalized : Vector2.up;
+            FlightOffset = direction * flightDistance;
 
             // Inis boyunca konumu dogrudan biz suruyoruz. CharacterController acik
             // kalirsa her Move'da eski konumu geri dayatir; bu yuzden bir kez
             // kapatip yere degdigimizde tekrar aciyoruz.
             SetControllerEnabled(false);
-            transform.position = new Vector3(GroundPoint.x, GroundPoint.y + startAltitude, GroundPoint.z);
+            Vector2 start = ClampToMap(target + FlightOffset);
+            transform.position = new Vector3(start.x, GroundPoint.y + startAltitude, start.y);
         }
 
         private void SetControllerEnabled(bool enabled)
@@ -128,6 +167,7 @@ namespace NewBattle.Gameplay
 
             float height;
             float currentDriftSpeed;
+            float flightRemaining = 0f;
 
             if (Phase == DescentPhase.Freefall)
             {
@@ -137,6 +177,9 @@ namespace NewBattle.Gameplay
                 // Ease-in: basta yavas, sonra hizlanan dusus.
                 height = startAltitude - freefallAltitude * (t * t);
                 currentDriftSpeed = freefallDriftSpeed;
+
+                // Ease-out: noktaya hizla yaklasir, sonda yavaslar.
+                flightRemaining = (1f - t) * (1f - t);
 
                 if (t >= 1f)
                 {
@@ -159,14 +202,21 @@ namespace NewBattle.Gameplay
                 }
             }
 
-            Vector3 position = transform.position;
-            Vector3 drift = new Vector3(steer.x, 0f, steer.y) * (currentDriftSpeed * deltaTime);
-            Vector2 horizontal = new(position.x + drift.x, position.z + drift.z);
+            // Joystick ile yapilan kayma ayri birikir; ucus payi ondan bagimsiz azalir.
+            DriftOffset += steer * (currentDriftSpeed * deltaTime);
 
-            // Suzulurken harita disina cikilamaz.
-            horizontal = Vector2.ClampMagnitude(horizontal, _mapRadius * 0.96f);
+            Vector2 target = new(GroundPoint.x, GroundPoint.z);
+            Vector2 horizontal = ClampToMap(target + FlightOffset * flightRemaining + DriftOffset);
+            DriftOffset = horizontal - target - FlightOffset * flightRemaining;
 
             transform.position = new Vector3(horizontal.x, GroundPoint.y + height, horizontal.y);
+        }
+
+        /// <summary>Suzulurken kare haritanin disina cikilamaz.</summary>
+        private Vector2 ClampToMap(Vector2 point)
+        {
+            float limit = _mapRadius * 0.96f;
+            return new Vector2(Mathf.Clamp(point.x, -limit, limit), Mathf.Clamp(point.y, -limit, limit));
         }
 
         private void Land()
@@ -218,20 +268,72 @@ namespace NewBattle.Gameplay
 
         public override void Render()
         {
+            DescentPhase phase = Phase;
+
+            if (phase != _renderedPhase)
+            {
+                if (phase == DescentPhase.Parachute)
+                {
+                    _chuteTimer = 0f;
+                    _chuteClosing = false;
+                }
+                else if (phase == DescentPhase.Landed && _renderedPhase == DescentPhase.Parachute)
+                {
+                    _chuteTimer = 0f;
+                    _chuteClosing = true;
+
+                    // Yere degince hafif sarsinti (sadece kendi kameramizda).
+                    if (HasInputAuthority)
+                        CameraFollow.Shake(0.35f);
+                }
+
+                _renderedPhase = phase;
+            }
+
             if (_parachuteVisual == null)
                 return;
 
-            bool shouldShow = Phase == DescentPhase.Parachute;
-
-            if (_parachuteVisual.activeSelf != shouldShow)
-                _parachuteVisual.SetActive(shouldShow);
-
-            if (shouldShow)
+            if (phase == DescentPhase.Parachute)
             {
+                // Acilis: kucukten baslayip biraz tasarak (pop) tam boyuna oturur.
+                _chuteTimer += Time.deltaTime;
+                float open = EaseOutBack(Mathf.Clamp01(_chuteTimer / chuteOpenSeconds));
+                SetChute(true, Mathf.LerpUnclamped(0.15f, 1f, open));
+
                 // Hafif salinim: parasut sabit dursa cansiz gorunuyor.
                 float sway = Mathf.Sin(Time.time * 1.6f) * 6f;
                 _parachuteVisual.transform.localRotation = Quaternion.Euler(sway * 0.4f, 0f, sway);
+                return;
             }
+
+            if (_chuteClosing)
+            {
+                // Inis: parasut buzulerek kaybolur.
+                _chuteTimer += Time.deltaTime;
+                float k = 1f - Mathf.Clamp01(_chuteTimer / chuteCloseSeconds);
+                SetChute(k > 0f, k);
+                if (k <= 0f)
+                    _chuteClosing = false;
+                return;
+            }
+
+            SetChute(false, 1f);
+        }
+
+        private void SetChute(bool visible, float scale)
+        {
+            if (_parachuteVisual.activeSelf != visible)
+                _parachuteVisual.SetActive(visible);
+
+            if (visible)
+                _parachuteVisual.transform.localScale = Vector3.one * (parachuteScale * Mathf.Max(0.01f, scale));
+        }
+
+        private static float EaseOutBack(float t)
+        {
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            return 1f + c3 * Mathf.Pow(t - 1f, 3f) + c1 * Mathf.Pow(t - 1f, 2f);
         }
 
         #endregion

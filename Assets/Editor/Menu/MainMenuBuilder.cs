@@ -172,6 +172,15 @@ namespace NewBattle.EditorTools
             if (RemoveDropBackButton(canvas))
                 added.Add("Geri butonu kaldırıldı");
 
+            if (EnsureDescentCamera())
+                added.Add("İniş kamerası");
+
+            if (EnsureDescentOverlay(canvas, rebuild))
+                added.Add("İniş efektleri");
+
+            if (UpdateDescentTimings())
+                added.Add("İniş süreleri (2.4 sn düşüş + 3.5 sn paraşüt)");
+
             if (SetFinalCountdownSeconds(5f))
                 added.Add("Geri sayım 5 saniye");
 

@@ -564,8 +564,60 @@ def compass_star():
     save_mask(m, 128, "compass_star.png")
 
 
+def sky_dive():
+    """Serbest dususte karakterin arkasindaki gokyuzu (kamera tepeden bakar)."""
+    w = 512
+    img = Image.new("RGBA", (w, w))
+    px_ = img.load()
+    inner, outer = (206, 238, 252), (150, 208, 240)
+    for y in range(w):
+        for x in range(w):
+            dx, dy = (x - w / 2) / (w / 2), (y - w / 2) / (w / 2)
+            t = min(1.0, math.sqrt(dx * dx + dy * dy))
+            px_[x, y] = tuple(int(inner[i] + (outer[i] - inner[i]) * t) for i in range(3)) + (255,)
+    haze = Image.new("L", (w, w), 0)
+    hd = ImageDraw.Draw(haze)
+    for cx, cy, r in ((120, 140, 70), (380, 110, 60), (300, 400, 90), (90, 380, 55)):
+        hd.ellipse((cx - r, cy - r, cx + r, cy + r), fill=90)
+    haze = haze.filter(ImageFilter.GaussianBlur(30))
+    img.paste((255, 255, 255, 255), mask=haze)
+    img.save(os.path.join(OUT, "sky_dive.png"))
+
+
+def vignette():
+    w = 256
+    mask = Image.new("L", (w, w), 0)
+    px_ = mask.load()
+    for y in range(w):
+        for x in range(w):
+            dx, dy = (x - w / 2) / (w / 2), (y - w / 2) / (w / 2)
+            t = math.sqrt(dx * dx + dy * dy)
+            px_[x, y] = int(255 * min(1.0, max(0.0, (t - 0.55) / 0.6)) ** 1.6)
+    img = Image.new("RGBA", (w, w), (10, 20, 35, 0))
+    img.putalpha(mask)
+    img.save(os.path.join(OUT, "vignette.png"))
+
+
+def streak():
+    """Hiz cizgisi: ince, iki ucu sonen beyaz cizgi."""
+    w, h = 256, 16
+    mask = Image.new("L", (w, h), 0)
+    px_ = mask.load()
+    for x in range(w):
+        a = math.sin(math.pi * x / (w - 1)) ** 1.5
+        for y in range(h):
+            v = max(0.0, 1 - abs(y - h / 2 + 0.5) / (h / 2))
+            px_[x, y] = int(255 * a * v)
+    img = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    img.putalpha(mask)
+    img.save(os.path.join(OUT, "streak.png"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    sky_dive()
+    vignette()
+    streak()
     ocean_background()
     cloud()
     soft_glow()

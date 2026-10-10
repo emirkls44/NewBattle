@@ -165,6 +165,9 @@ public class SafeZoneController : NetworkBehaviour
     private GameObject _dangerCanvasObject;
     private Transform _localPlayer;
     private float _nextLocalPlayerSearchTime;
+    private NewBattle.Gameplay.ParachuteDescent _localDescent;
+    private Transform _localDescentOwner;
+    private bool _zoneVisualsHidden;
     private Vector3 _initialCenter;
     private LobbyCountdownController _lobbyCountdown;
     private DropPhaseController _dropPhase;
@@ -236,6 +239,17 @@ public class SafeZoneController : NetworkBehaviour
 
     public override void Render()
     {
+        // Kendi oyuncumuz havadayken (dusus + parasut) alan cizgisi, kirmizi
+        // sis ve tehlike efekti gorunmez; yere inince geri gelir.
+        bool airborne = IsLocalPlayerAirborne();
+        SetZoneVisualsHidden(airborne);
+        if (airborne)
+        {
+            if (_dangerOverlay != null)
+                _dangerOverlay.color = Color.clear;
+            return;
+        }
+
         SampleGroundHeights();
         DrawBoundaries();
         DrawOutsideFog();
@@ -869,6 +883,38 @@ public class SafeZoneController : NetworkBehaviour
         }
 
         _dangerOverlay.color = new Color(dangerScreenColor.r, dangerScreenColor.g, dangerScreenColor.b, alpha);
+    }
+
+    private bool IsLocalPlayerAirborne()
+    {
+        if (_localPlayer == null && Time.unscaledTime >= _nextLocalPlayerSearchTime)
+        {
+            FindLocalPlayer();
+            _nextLocalPlayerSearchTime = Time.unscaledTime + 0.25f;
+        }
+
+        if (_localPlayer != _localDescentOwner)
+        {
+            _localDescentOwner = _localPlayer;
+            _localDescent = _localPlayer != null ? _localPlayer.GetComponent<NewBattle.Gameplay.ParachuteDescent>() : null;
+        }
+
+        return _localDescent != null && _localDescent.Object != null && _localDescent.IsDescending;
+    }
+
+    private void SetZoneVisualsHidden(bool hidden)
+    {
+        if (hidden == _zoneVisualsHidden)
+            return;
+
+        _zoneVisualsHidden = hidden;
+
+        if (_bandTransform != null && _bandTransform.TryGetComponent(out MeshRenderer band))
+            band.enabled = !hidden;
+        if (_fogTransform != null && _fogTransform.TryGetComponent(out MeshRenderer fog))
+            fog.enabled = !hidden;
+        if (_nextBoundary != null && hidden)
+            _nextBoundary.enabled = false; // gorunurken DrawBoundaries kendisi acar
     }
 
     private void FindLocalPlayer()

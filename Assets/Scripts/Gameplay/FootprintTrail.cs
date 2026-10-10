@@ -35,6 +35,7 @@ namespace NewBattle.Gameplay
         private Vector3 _lastStepPosition;
         private bool _steppedRight;
         private bool _visible = true;
+        private ParachuteDescent _descent;
         private MaterialPropertyBlock _propertyBlock;
 
         private struct Print
@@ -49,6 +50,7 @@ namespace NewBattle.Gameplay
         {
             _propertyBlock = new MaterialPropertyBlock();
             _lastStepPosition = transform.position;
+            _descent = GetComponent<ParachuteDescent>();
 
             // Izler dunyada kalmali: oyuncunun altinda degil, sahne kokunde tutulur.
             GameObject containerObject = new($"Footprints_{name}");
@@ -87,6 +89,13 @@ namespace NewBattle.Gameplay
         private void TrySpawnPrint()
         {
             Vector3 position = transform.position;
+
+            // Havada iz birakilmaz; inince ilk adim inis noktasindan sayilir.
+            if (_descent != null && _descent.Object != null && _descent.IsDescending)
+            {
+                _lastStepPosition = position;
+                return;
+            }
 
             Vector3 travel = position - _lastStepPosition;
             travel.y = 0f;

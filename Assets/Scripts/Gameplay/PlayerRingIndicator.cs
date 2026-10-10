@@ -30,6 +30,7 @@ namespace NewBattle.Gameplay
 
         private PlayerCombatStats _stats;
         private PlayerVisibility _visibility;
+        private ParachuteDescent _descent;
         private MeshRenderer _renderer;
         private MaterialPropertyBlock _propertyBlock;
         private PlayerRelation _lastRelation = (PlayerRelation)(-1);
@@ -38,6 +39,7 @@ namespace NewBattle.Gameplay
         {
             _stats = GetComponent<PlayerCombatStats>();
             _visibility = GetComponent<PlayerVisibility>();
+            _descent = GetComponent<ParachuteDescent>();
             _propertyBlock = new MaterialPropertyBlock();
 
             _renderer = OverlayMeshLibrary.CreateOverlayObject(
@@ -63,9 +65,11 @@ namespace NewBattle.Gameplay
             if (relation != _lastRelation)
                 ApplyColor(relation);
 
-            bool shouldDraw = !followBodyVisibility
+            // Havadayken (dusus / parasut) yerdeki cember anlamsiz.
+            bool airborne = _descent != null && _descent.Object != null && _descent.IsDescending;
+            bool shouldDraw = !airborne && (!followBodyVisibility
                               || _visibility == null
-                              || _visibility.IsBodyVisible;
+                              || _visibility.IsBodyVisible);
 
             if (_renderer.enabled != shouldDraw)
                 _renderer.enabled = shouldDraw;

@@ -85,6 +85,7 @@
     <Compile Include="Assets\Scripts\TimedLootPickup.cs" />
     <Compile Include="Assets\Scripts\NetworkBootstrap.cs" />
     <Compile Include="Assets\Scripts\Gameplay\OverlayVisual.cs" />
+    <Compile Include="Assets\Scripts\UI\DescentOverlay.cs" />
     <Compile Include="Assets\Scripts\HealthBarUI.cs" />
     <Compile Include="Assets\Scripts\CircleOutlineGraphic.cs" />
     <Compile Include="Assets\Scripts\PlayerAoIController.cs" />
@@ -121,6 +122,7 @@
     <Compile Include="Assets\Scripts\MinimapCameraFollow.cs" />
     <Compile Include="Assets\Scripts\Visual\LootBob.cs" />
     <Compile Include="Assets\Scripts\PlayerController.cs" />
+    <Compile Include="Assets\Scripts\Gameplay\DescentPoseVisual.cs" />
     <Compile Include="Assets\Scripts\Gameplay\MatchWorldGate.cs" />
     <Compile Include="Assets\Scripts\MobileFrameRate.cs" />
     <Compile Include="Assets\Scripts\PlayerDeadState.cs" />
@@ -145,6 +147,7 @@
     <Compile Include="Assets\Scripts\RiflePickup.cs" />
     <Compile Include="Assets\Scripts\DropPhaseController.cs" />
     <Compile Include="Assets\Scripts\DropSelectionHUD.cs" />
+    <Compile Include="Assets\Scripts\Gameplay\DescentCameraRig.cs" />
     <Compile Include="Assets\Scripts\PlayerHide.cs" />
     <Compile Include="Assets\Scripts\MinimapSystem.cs" />
     <Compile Include="Assets\Scripts\Gameplay\GroundSampler.cs" />

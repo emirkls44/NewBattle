@@ -740,10 +740,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7f267429c5fb2a48bc25084cef40330, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.ParachuteDescent
-  freefallSeconds: 0.8
-  parachuteSeconds: 2
-  startAltitude: 48
-  freefallAltitudeShare: 0.68
+  freefallSeconds: 2.4
+  parachuteSeconds: 3.5
+  startAltitude: 70
+  freefallAltitudeShare: 0.72
+  flightDistance: 18
   driftSpeed: 6
   freefallDriftSpeed: 2
   groundMask:
@@ -753,6 +754,8 @@ MonoBehaviour:
   parachuteMaterial: {fileID: 2100000, guid: be542fad40519094f99338d44f198893, type: 2}
   parachuteOffset: {x: 0, y: 2.15, z: 0}
   parachuteScale: 1
+  chuteOpenSeconds: 0.45
+  chuteCloseSeconds: 0.25
   _Phase: 0
 --- !u!114 &1753487376790570560
 MonoBehaviour:

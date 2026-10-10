@@ -67,6 +67,7 @@
     <Compile Include="Assets\Editor\ArtGen\GlbImporter.cs" />
     <Compile Include="Assets\Editor\Menu\DropMapDataEditor.cs" />
     <Compile Include="Assets\Editor\Menu\LobbyAnimationSetup.cs" />
+    <Compile Include="Assets\Editor\Menu\MainMenuBuilder.Descent.cs" />
     <Compile Include="Assets\Editor\MobileBuildSetup.cs" />
     <Compile Include="Assets\Editor\Menu\MainMenuBuilder.DropScreen.cs" />
     <Compile Include="Assets\Editor\Menu\MainMenuBuilder.cs" />
