@@ -181,6 +181,9 @@ namespace NewBattle.EditorTools
             if (UpdateDescentTimings())
                 added.Add("İniş süreleri (2.4 sn düşüş + 3.5 sn paraşüt)");
 
+            if (UpdateDescentCameraPreset())
+                added.Add("İniş kamerası ayarları");
+
             if (SetFinalCountdownSeconds(5f))
                 added.Add("Geri sayım 5 saniye");
 

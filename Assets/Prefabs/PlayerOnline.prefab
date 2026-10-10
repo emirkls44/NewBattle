@@ -743,7 +743,7 @@ MonoBehaviour:
   freefallSeconds: 2.4
   parachuteSeconds: 3.5
   startAltitude: 70
-  freefallAltitudeShare: 0.72
+  freefallAltitudeShare: 0.82
   flightDistance: 18
   driftSpeed: 6
   freefallDriftSpeed: 2

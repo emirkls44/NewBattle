@@ -104,7 +104,8 @@ namespace NewBattle.EditorTools
                 changed |= ReplaceIfDefault(serialized, "freefallSeconds", 0.8f, 2.4f);
                 changed |= ReplaceIfDefault(serialized, "parachuteSeconds", 2f, 3.5f);
                 changed |= ReplaceIfDefault(serialized, "startAltitude", 48f, 70f);
-                changed |= ReplaceIfDefault(serialized, "freefallAltitudeShare", 0.68f, 0.72f);
+                changed |= ReplaceIfDefault(serialized, "freefallAltitudeShare", 0.68f, 0.82f);
+                changed |= ReplaceIfDefault(serialized, "freefallAltitudeShare", 0.72f, 0.82f);
 
                 if (changed)
                 {
@@ -118,6 +119,33 @@ namespace NewBattle.EditorTools
             }
 
             return changed;
+        }
+
+        /// <summary>
+        /// Iniş kamerasini Battlelands gorunumune ceker: daha yakin kamera ve
+        /// zemin ancak yere yaklasinca acilan gokyuzu. Ilk surumun degerleri
+        /// duruyorsa gunceller; senin ayarladigin degerlere dokunmaz.
+        /// </summary>
+        private static bool UpdateDescentCameraPreset()
+        {
+            DescentCameraRig rig = Object.FindFirstObjectByType<DescentCameraRig>(FindObjectsInactive.Include);
+            if (rig == null)
+                return false;
+
+            var serialized = new SerializedObject(rig);
+            bool firstVersion = Mathf.Approximately(serialized.FindProperty("closeDistance").floatValue, 7f) &&
+                                Mathf.Approximately(serialized.FindProperty("farDistance").floatValue, 13f);
+            if (!firstVersion)
+                return false;
+
+            serialized.FindProperty("closeDistance").floatValue = 5.5f;
+            serialized.FindProperty("farDistance").floatValue = 9f;
+            serialized.FindProperty("freefallFieldOfView").floatValue = 45f;
+            serialized.FindProperty("parachuteBlendSeconds").floatValue = 0.9f;
+            serialized.FindProperty("skyFadeStart").floatValue = 0.75f;
+            serialized.FindProperty("skyFadeEnd").floatValue = 0.98f;
+            serialized.ApplyModifiedProperties();
+            return true;
         }
 
         private static bool ReplaceIfDefault(SerializedObject serialized, string property, float oldValue, float newValue)

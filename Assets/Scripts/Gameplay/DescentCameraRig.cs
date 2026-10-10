@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace NewBattle.Gameplay
@@ -11,6 +12,10 @@ namespace NewBattle.Gameplay
     ///                   acilir ve zemin gercekten buyuyerek yaklasir.
     ///   Parasut       : kamera yumusakca oyunun normal (ortografik, egik)
     ///                   gorunumune doner.
+    ///
+    /// Serbest dusus boyunca diger oyuncular ve botlar BIZIM ekranimizda
+    /// cizilmez (sadece kendimizi goruruz); parasut acilinca gorunurler. Bu
+    /// yalnizca gorunum: carpisma, ag ve digerlerinin ekranlari etkilenmez.
     ///
     /// Oyun kamerasi ortografik oldugu icin perspektif gecisi projeksiyon
     /// matrislerinin karistirilmasiyla yapilir; boylece ani bir sicrama olmaz.
@@ -27,7 +32,7 @@ namespace NewBattle.Gameplay
         [Tooltip("Dususun sonunda kameranin karaktere uzakligi.")]
         [SerializeField, Min(1f)] private float farDistance = 9f;
         [Tooltip("Serbest dususteki perspektif gorus acisi.")]
-        [SerializeField, Range(20f, 90f)] private float freefallFieldOfView = 50f;
+        [SerializeField, Range(20f, 90f)] private float freefallFieldOfView = 45f;
 
         [Header("Parasut Gecisi")]
         [Tooltip("Parasut acildiktan sonra normal kameraya donus suresi.")]
@@ -36,9 +41,9 @@ namespace NewBattle.Gameplay
         [Header("Gokyuzu")]
         [SerializeField] private Sprite skySprite;
         [Tooltip("Gokyuzunun gorunurlugu bu noktada azalmaya baslar (0-1).")]
-        [SerializeField, Range(0f, 1f)] private float skyFadeStart = 0.45f;
+        [SerializeField, Range(0f, 1f)] private float skyFadeStart = 0.75f;
         [Tooltip("Bu noktada gokyuzu tamamen kaybolur ve harita gorunur.")]
-        [SerializeField, Range(0f, 1f)] private float skyFadeEnd = 0.85f;
+        [SerializeField, Range(0f, 1f)] private float skyFadeEnd = 0.98f;
         [Tooltip("Gokyuzu karakterin bu kadar arkasinda durur.")]
         [SerializeField, Min(0.5f)] private float skyGap = 3f;
 
@@ -50,6 +55,15 @@ namespace NewBattle.Gameplay
         private bool _customProjection;
         private bool _baseOrthographic;
 
+        [Header("Diger Oyuncular")]
+        [Tooltip("Serbest dususte diger oyunculari gizle; parasut acilinca gorunurler.")]
+        [SerializeField] private bool hideOthersDuringFreefall = true;
+
+        private readonly List<Renderer> _hiddenRenderers = new();
+        private readonly List<Canvas> _hiddenCanvases = new();
+        private bool _othersHidden;
+        private float _nextOthersScan;
+
         private void Awake()
         {
             _camera = GetComponent<Camera>();
@@ -58,12 +72,19 @@ namespace NewBattle.Gameplay
             CreateSky();
         }
 
-        private void OnDisable() => RestoreProjection();
+        private void OnDisable()
+        {
+            RestoreProjection();
+            SetOthersHidden(false, null);
+        }
 
         private void OnDestroy()
         {
             if (_sky != null)
+            {
+                Destroy(_sky.sharedMaterial);
                 Destroy(_sky.gameObject);
+            }
         }
 
         private void LateUpdate()
@@ -76,6 +97,7 @@ namespace NewBattle.Gameplay
             }
 
             float weight = 0f;
+            bool freefall = false;
             float perspective = 0f;
             float skyAlpha = 0f;
             float distance = farDistance;
@@ -87,6 +109,7 @@ namespace NewBattle.Gameplay
                     case ParachuteDescent.DescentPhase.Freefall:
                     {
                         float t = _descent.FreefallProgress;
+                        freefall = true;
                         distance = Mathf.Lerp(closeDistance, farDistance, t);
                         weight = 1f;
                         perspective = 1f;
@@ -115,6 +138,75 @@ namespace NewBattle.Gameplay
 
             ApplyProjection(perspective);
             UpdateSky(skyAlpha, distance);
+            SetOthersHidden(hideOthersDuringFreefall && freefall, target);
+        }
+
+        /// <summary>
+        /// Diger oyuncularin cizimini kapatir / acar. Renderer.enabled yerine
+        /// forceRenderingOff kullanilir: gorunurluk sistemi (calilara saklanma)
+        /// enabled'i yonetiyor, ikisi birbirini bozmasin.
+        /// </summary>
+        private void SetOthersHidden(bool hide, Transform self)
+        {
+            if (hide)
+            {
+                // Sonradan dogan ya da gorsel ekleyen oyuncular icin ara ara tara.
+                if (!_othersHidden || Time.unscaledTime >= _nextOthersScan)
+                {
+                    _nextOthersScan = Time.unscaledTime + 0.5f;
+                    HideOthers(self);
+                }
+
+                _othersHidden = true;
+                return;
+            }
+
+            if (!_othersHidden)
+                return;
+
+            foreach (Renderer hidden in _hiddenRenderers)
+            {
+                if (hidden != null)
+                    hidden.forceRenderingOff = false;
+            }
+
+            foreach (Canvas hidden in _hiddenCanvases)
+            {
+                if (hidden != null)
+                    hidden.enabled = true;
+            }
+
+            _hiddenRenderers.Clear();
+            _hiddenCanvases.Clear();
+            _othersHidden = false;
+        }
+
+        private void HideOthers(Transform self)
+        {
+            foreach (ParachuteDescent other in FindObjectsByType<ParachuteDescent>(FindObjectsSortMode.None))
+            {
+                if (other == null || other.transform == self)
+                    continue;
+
+                foreach (Renderer renderer in other.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (renderer.forceRenderingOff)
+                        continue;
+
+                    renderer.forceRenderingOff = true;
+                    _hiddenRenderers.Add(renderer);
+                }
+
+                // Can bari gibi dunya-uzayi arayuzler.
+                foreach (Canvas canvas in other.GetComponentsInChildren<Canvas>(true))
+                {
+                    if (!canvas.enabled)
+                        continue;
+
+                    canvas.enabled = false;
+                    _hiddenCanvases.Add(canvas);
+                }
+            }
         }
 
         /// <summary>0 = oyunun normal kamerasi, 1 = serbest dusus perspektifi.</summary>
@@ -186,7 +278,14 @@ namespace NewBattle.Gameplay
             var sky = new GameObject("InisGokyuzu");
             _sky = sky.AddComponent<SpriteRenderer>();
             _sky.sprite = skySprite != null ? skySprite : CreateFallbackSky();
-            _sky.sortingOrder = -100;
+
+            // Gokyuzu saydam objelerin (loot halkalari, alan seridi...) EN SONUNDA
+            // cizilmeli; yoksa onlar gokyuzunun ustunde renkli noktalar olarak
+            // gorunur. Karakter opak oldugu ve gokyuzunden once derinlik yazdigi
+            // icin gokyuzunun onunde kalir.
+            _sky.sortingOrder = 32000;
+            var material = new Material(_sky.sharedMaterial) { name = "InisGokyuzuMaterial", renderQueue = 3900 };
+            _sky.sharedMaterial = material;
             _sky.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             _sky.receiveShadows = false;
             sky.SetActive(false);
