@@ -23,7 +23,7 @@ namespace NewBattle.EditorTools
     ///      silmez, "MainMenu_Eski" olarak gizli durur.
     ///   3. Game_UI altina "AnaMenu"yu, dunyaya "MenuKarakterSahnesi"ni kurar.
     /// </summary>
-    public static class MainMenuBuilder
+    public static partial class MainMenuBuilder
     {
         private const string FontAssetPath = "Assets/Fonts/TitanOne SDF.asset";
         private const string PatchedFontPath = "Assets/Fonts/NBDisplay-Regular.ttf";
@@ -165,6 +165,15 @@ namespace NewBattle.EditorTools
 
             if (screen != null && EnsureLoadingScreen(screen, rebuild))
                 added.Add("Yükleme ekranı");
+
+            if (EnsureDropScreen(canvas, rebuild))
+                added.Add("Harita seçme ekranı");
+
+            if (RemoveDropBackButton(canvas))
+                added.Add("Geri butonu kaldırıldı");
+
+            if (SetFinalCountdownSeconds(5f))
+                added.Add("Geri sayım 5 saniye");
 
             Undo.CollapseUndoOperations(undoGroup);
 

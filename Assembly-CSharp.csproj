@@ -67,6 +67,7 @@
     <Compile Include="Assets\Scripts\SafeZoneController.cs" />
     <Compile Include="Assets\Scripts\Gameplay\ParachuteDescent.cs" />
     <Compile Include="Assets\Scripts\Progression\LobbyAnimationLibrary.cs" />
+    <Compile Include="Assets\Scripts\UI\DropMapTapArea.cs" />
     <Compile Include="Assets\Scripts\Gameplay\OverlayMeshLibrary.cs" />
     <Compile Include="Assets\Scripts\AmmoPickup.cs" />
     <Compile Include="Assets\Scripts\UI\UIPressScale.cs" />
@@ -77,6 +78,7 @@
     <Compile Include="Assets\Scripts\Gameplay\LocalPlayerContext.cs" />
     <Compile Include="Assets\Scripts\NetworkInputData.cs" />
     <Compile Include="Assets\Scripts\InputManager.cs" />
+    <Compile Include="Assets\Scripts\UI\DropSelectionScreen.cs" />
     <Compile Include="Assets\Scripts\SafeZoneHUD.cs" />
     <Compile Include="Assets\Scripts\Gameplay\GrassPatchSpawner.cs" />
     <Compile Include="Assets\Scripts\MatchResultHUD.cs" />
@@ -94,6 +96,7 @@
     <Compile Include="Assets\Scripts\PrototypeIslandBuilder.cs" />
     <Compile Include="Assets\Scripts\PlayerLife.cs" />
     <Compile Include="Assets\Scripts\CircularMinimapGraphic.cs" />
+    <Compile Include="Assets\Scripts\UI\DropMapData.cs" />
     <Compile Include="Assets\Scripts\DamageNumberPopup.cs" />
     <Compile Include="Assets\Scripts\UI\MenuButton.cs" />
     <Compile Include="Assets\Scripts\LocalPlayerHUD.cs" />
@@ -125,6 +128,7 @@
     <Compile Include="Assets\Scripts\Gameplay\FootprintTrail.cs" />
     <Compile Include="Assets\Scripts\Gameplay\WeaponDefinition.cs" />
     <Compile Include="Assets\Scripts\LobbyWaitingHUD.cs" />
+    <Compile Include="Assets\Scripts\UI\UIDrift.cs" />
     <Compile Include="Assets\Scripts\RecoveryPickup.cs" />
     <Compile Include="Assets\Scripts\MainMenuFlow.cs" />
     <Compile Include="Assets\Scripts\PlayerCombatStats.cs" />

@@ -477,8 +477,102 @@ def spinner():
     save_mask(m, 128, "spinner.png")
 
 
+def ocean_background():
+    w, h = 512, 256
+    img = Image.new("RGB", (w, h))
+    px_ = img.load()
+    inner, outer = (36, 120, 176), (24, 92, 146)
+    for y in range(h):
+        for x in range(w):
+            dx = (x - w * 0.35) / (w * 0.7)
+            dy = (y - h * 0.5) / (h * 0.9)
+            t = min(1.0, math.sqrt(dx * dx + dy * dy))
+            px_[x, y] = tuple(int(inner[i] + (outer[i] - inner[i]) * t) for i in range(3))
+    img.save(os.path.join(OUT, "bg_ocean.png"))
+
+
+def cloud():
+    w, h = 256, 160
+    mask = Image.new("L", (w, h), 0)
+    d = ImageDraw.Draw(mask)
+    for cx, cy, r in ((80, 95, 45), (128, 70, 55), (175, 95, 45), (128, 105, 45)):
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=235)
+    mask = mask.filter(ImageFilter.GaussianBlur(10))
+    img = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    img.putalpha(mask)
+    img.save(os.path.join(OUT, "cloud.png"))
+
+
+def soft_glow():
+    """Buyuk geri sayim rakaminin arkasindaki yumusak parlama."""
+    w = 256
+    mask = Image.new("L", (w, w), 0)
+    ImageDraw.Draw(mask).ellipse((40, 60, 216, 196), fill=150)
+    mask = mask.filter(ImageFilter.GaussianBlur(28))
+    img = Image.new("RGBA", (w, w), (255, 255, 255, 0))
+    img.putalpha(mask)
+    img.save(os.path.join(OUT, "glow.png"))
+
+
+def drop_pin():
+    """Sari inis isaretcisi: alti sivri kalkan + beyaz asagi ok."""
+    size = 128
+    s = size * SS
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    body = [p(s, .18, .08), p(s, .82, .08), p(s, .82, .62), p(s, .50, .94), p(s, .18, .62)]
+    d.polygon(body, fill=(214, 140, 10, 255))
+    inner = [p(s, .24, .12), p(s, .76, .12), p(s, .76, .58), p(s, .50, .86), p(s, .24, .58)]
+    d.polygon(inner, fill=(255, 198, 26, 255))
+    d.line([p(s, .32, .38), p(s, .50, .56), p(s, .68, .38)], fill=(255, 255, 255, 255), width=int(.09 * s), joint="curve")
+    save_rgba(img, size, "drop_pin.png")
+
+
+def ring():
+    m, d, s = canvas(128)
+    d.ellipse((*p(s, .04, .04), *p(s, .96, .96)), fill=255)
+    d.ellipse((*p(s, .16, .16), *p(s, .84, .84)), fill=0)
+    save_mask(m, 128, "ring.png")
+
+
+def round_outline():
+    size, r, wdt = 128, 32, 5
+    s = size * SS
+    mask = Image.new("L", (s, s), 0)
+    d = ImageDraw.Draw(mask)
+    d.rounded_rectangle((0, 0, s - 1, s - 1), r * SS, fill=255)
+    d.rounded_rectangle((wdt * SS, wdt * SS, s - 1 - wdt * SS, s - 1 - wdt * SS), (r - wdt) * SS, fill=0)
+    save_mask(mask, size, "ui_round_outline.png")
+
+
+def compass_star():
+    m, d, s = canvas(128)
+    c = s / 2
+    for a in range(4):
+        ang = a * math.pi / 2
+        tip = (c + math.cos(ang) * .46 * s, c + math.sin(ang) * .46 * s)
+        l = (c + math.cos(ang + math.pi / 2) * .09 * s, c + math.sin(ang + math.pi / 2) * .09 * s)
+        r = (c + math.cos(ang - math.pi / 2) * .09 * s, c + math.sin(ang - math.pi / 2) * .09 * s)
+        d.polygon([tip, l, (c, c), r], fill=255)
+    for a in range(4):
+        ang = math.pi / 4 + a * math.pi / 2
+        tip = (c + math.cos(ang) * .26 * s, c + math.sin(ang) * .26 * s)
+        l = (c + math.cos(ang + math.pi / 2) * .06 * s, c + math.sin(ang + math.pi / 2) * .06 * s)
+        r = (c + math.cos(ang - math.pi / 2) * .06 * s, c + math.sin(ang - math.pi / 2) * .06 * s)
+        d.polygon([tip, l, (c, c), r], fill=200)
+    d.ellipse((c - .3 * s, c - .3 * s, c + .3 * s, c + .3 * s), outline=255, width=int(.03 * s))
+    save_mask(m, 128, "compass_star.png")
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    ocean_background()
+    cloud()
+    soft_glow()
+    drop_pin()
+    ring()
+    round_outline()
+    compass_star()
     running_frames()
     spinner()
     icon_person()

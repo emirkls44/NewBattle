@@ -13,8 +13,22 @@ namespace NewBattle.EditorTools
     {
         public const string Folder = "Assets/GameArt/MenuUI/";
 
+        public const string MapFolder = "Assets/GameArt/DropMap/";
+
         private void OnPreprocessTexture()
         {
+            // Harita resmi RawImage ile gosterilir: sprite degil, duz doku.
+            if (assetPath.StartsWith(MapFolder))
+            {
+                var map = (TextureImporter)assetImporter;
+                map.textureType = TextureImporterType.Default;
+                map.mipmapEnabled = false;
+                map.wrapMode = TextureWrapMode.Clamp;
+                map.maxTextureSize = 4096;
+                map.textureCompression = TextureImporterCompression.CompressedHQ;
+                return;
+            }
+
             if (!assetPath.StartsWith(Folder) || !assetPath.EndsWith(".png"))
                 return;
 
@@ -28,7 +42,7 @@ namespace NewBattle.EditorTools
             importer.textureCompression = TextureImporterCompression.Uncompressed;
 
             // Kose yaricapi 32 px; 9-slice ile her boyutta keskin kalir.
-            if (assetPath.EndsWith("ui_round.png"))
+            if (assetPath.EndsWith("ui_round.png") || assetPath.EndsWith("ui_round_outline.png"))
                 importer.spriteBorder = new Vector4(36f, 36f, 36f, 36f);
         }
     }

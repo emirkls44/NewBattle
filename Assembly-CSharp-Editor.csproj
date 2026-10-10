@@ -65,8 +65,10 @@
   <ItemGroup>
     <Compile Include="Assets\TutorialInfo\Scripts\Editor\ReadmeEditor.cs" />
     <Compile Include="Assets\Editor\ArtGen\GlbImporter.cs" />
+    <Compile Include="Assets\Editor\Menu\DropMapDataEditor.cs" />
     <Compile Include="Assets\Editor\Menu\LobbyAnimationSetup.cs" />
     <Compile Include="Assets\Editor\MobileBuildSetup.cs" />
+    <Compile Include="Assets\Editor\Menu\MainMenuBuilder.DropScreen.cs" />
     <Compile Include="Assets\Editor\Menu\MainMenuBuilder.cs" />
     <Compile Include="Assets\Editor\MapNavigationSetup.cs" />
     <Compile Include="Assets\Editor\Menu\MenuArtImporter.cs" />
