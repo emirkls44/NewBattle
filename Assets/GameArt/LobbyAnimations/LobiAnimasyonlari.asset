@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c24635a8f82908f46a488ee8e8a45c2a, type: 3}
+  m_Name: LobiAnimasyonlari
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Progression.LobbyAnimationLibrary
+  defaultAnimationId: bekleme
+  animations:
+  - id: bekleme
+    displayName: Bekleme
+    clip: {fileID: 2052686777651669518, guid: 613b36c4f61e18243840a2f57acc0ba4, type: 3}
+    unlock: 0
+    requirement: 0
+    speed: 1
+    icon: {fileID: 0}
+  - id: rahat
+    displayName: "Rahat Duru\u015F"
+    clip: {fileID: -479822015694463090, guid: 613b36c4f61e18243840a2f57acc0ba4, type: 3}
+    unlock: 1
+    requirement: 3
+    speed: 1
+    icon: {fileID: 0}
+  - id: onay
+    displayName: Onaylama
+    clip: {fileID: -1097069501823219401, guid: 613b36c4f61e18243840a2f57acc0ba4, type: 3}
+    unlock: 2
+    requirement: 1
+    speed: 1
+    icon: {fileID: 0}
+  - id: sasirma
+    displayName: "Etrafa Bak\u0131nma"
+    clip: {fileID: 8704505077196687563, guid: 613b36c4f61e18243840a2f57acc0ba4, type: 3}
+    unlock: 1
+    requirement: 5
+    speed: 1
+    icon: {fileID: 0}
+  - id: nisan
+    displayName: "Ni\u015Fan Al"
+    clip: {fileID: -623603649343465320, guid: b6f65edde4e50694598451a9cc90ab0e, type: 3}
+    unlock: 3
+    requirement: 200
+    speed: 1
+    icon: {fileID: 0}
+  - id: havali
+    displayName: "Haval\u0131 Y\xFCr\xFCy\xFC\u015F"
+    clip: {fileID: 2242438318902859138, guid: 613b36c4f61e18243840a2f57acc0ba4, type: 3}
+    unlock: 2
+    requirement: 5
+    speed: 1
+    icon: {fileID: 0}

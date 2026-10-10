@@ -66,9 +66,11 @@
     <Compile Include="Assets\Scripts\PlayerLoadout.cs" />
     <Compile Include="Assets\Scripts\SafeZoneController.cs" />
     <Compile Include="Assets\Scripts\Gameplay\ParachuteDescent.cs" />
+    <Compile Include="Assets\Scripts\Progression\LobbyAnimationLibrary.cs" />
     <Compile Include="Assets\Scripts\Gameplay\OverlayMeshLibrary.cs" />
     <Compile Include="Assets\Scripts\AmmoPickup.cs" />
     <Compile Include="Assets\Scripts\UI\UIPressScale.cs" />
+    <Compile Include="Assets\Scripts\Progression\PlayerProgress.cs" />
     <Compile Include="Assets\Scripts\Gameplay\PlayerPresence.cs" />
     <Compile Include="Assets\Scripts\VirtualJoystick.cs" />
     <Compile Include="Assets\Scripts\NetworkMenuUI.cs" />
@@ -94,6 +96,7 @@
     <Compile Include="Assets\Scripts\CircularMinimapGraphic.cs" />
     <Compile Include="Assets\Scripts\DamageNumberPopup.cs" />
     <Compile Include="Assets\Scripts\LocalPlayerHUD.cs" />
+    <Compile Include="Assets\Scripts\UI\LobbyCharacterAnimator.cs" />
     <Compile Include="Assets\Scripts\Gameplay\AirdropCratePickup.cs" />
     <Compile Include="Assets\Scripts\PlayerStateBase.cs" />
     <Compile Include="Assets\Scripts\Gameplay\HitFlash.cs" />

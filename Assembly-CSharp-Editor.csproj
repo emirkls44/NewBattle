@@ -68,6 +68,7 @@
     <Compile Include="Assets\Editor\ArtGen\LootVisualSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\LowPolyMeshBuilder.cs" />
     <Compile Include="Assets\Editor\ArtGen\GlbImporter.cs" />
+    <Compile Include="Assets\Editor\Menu\LobbyAnimationSetup.cs" />
     <Compile Include="Assets\Editor\MobileBuildSetup.cs" />
     <Compile Include="Assets\Editor\Menu\MainMenuBuilder.cs" />
     <Compile Include="Assets\Editor\MapNavigationSetup.cs" />
@@ -82,10 +83,12 @@
     <Compile Include="Assets\Editor\ArtGen\AnimationSetup.cs" />
     <Compile Include="Assets\Editor\PropPrefabBuilder.cs" />
     <Compile Include="Assets\Editor\ArtGen\IslandFactory.cs" />
+    <Compile Include="Assets\Editor\Menu\LobbyAnimationLibraryEditor.cs" />
     <Compile Include="Assets\Editor\ArtGen\PropFactory.cs" />
     <Compile Include="Assets\Editor\HudIconBuilder.cs" />
     <Compile Include="Assets\Editor\ArtGen\MeshSoftener.cs" />
     <Compile Include="Assets\Editor\ArtGen\MapSetupWindow.cs" />
+    <Compile Include="Assets\Editor\Menu\PlayerProfileWindow.cs" />
     <Compile Include="Assets\Editor\ArtGen\SoftStyleSetup.cs" />
     <Compile Include="Assets\Editor\BattlelandsHudSetup.cs" />
     <Compile Include="Assets\Editor\ArtGen\ToonPalette.cs" />
