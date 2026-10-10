@@ -68,6 +68,7 @@
     <Compile Include="Assets\Scripts\Gameplay\ParachuteDescent.cs" />
     <Compile Include="Assets\Scripts\Gameplay\OverlayMeshLibrary.cs" />
     <Compile Include="Assets\Scripts\AmmoPickup.cs" />
+    <Compile Include="Assets\Scripts\UI\UIPressScale.cs" />
     <Compile Include="Assets\Scripts\Gameplay\PlayerPresence.cs" />
     <Compile Include="Assets\Scripts\VirtualJoystick.cs" />
     <Compile Include="Assets\Scripts\NetworkMenuUI.cs" />
@@ -85,6 +86,7 @@
     <Compile Include="Assets\Scripts\PlayerAoIController.cs" />
     <Compile Include="Assets\Scripts\WorldHealthBar.cs" />
     <Compile Include="Assets\Scripts\PlayerShooting.cs" />
+    <Compile Include="Assets\Scripts\UI\MenuCharacterStage.cs" />
     <Compile Include="Assets\Scripts\LootSpawner.cs" />
     <Compile Include="Assets\Scripts\BattleStatusHUD.cs" />
     <Compile Include="Assets\Scripts\PrototypeIslandBuilder.cs" />
@@ -137,6 +139,7 @@
     <Compile Include="Assets\Scripts\Gameplay\GroundSampler.cs" />
     <Compile Include="Assets\Scripts\PlayerMoveState.cs" />
     <Compile Include="Assets\Scripts\Gameplay\LootZoneManager.cs" />
+    <Compile Include="Assets\Scripts\UI\MainMenuScreen.cs" />
     <Compile Include="Assets\Scripts\CombatLoadoutHUD.cs" />
     <Compile Include="Assets\Scripts\CameraFollow.cs" />
     <Compile Include="Assets\Scripts\PlayerStateMachine.cs" />
