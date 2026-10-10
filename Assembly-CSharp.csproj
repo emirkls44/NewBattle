@@ -95,6 +95,7 @@
     <Compile Include="Assets\Scripts\PlayerLife.cs" />
     <Compile Include="Assets\Scripts\CircularMinimapGraphic.cs" />
     <Compile Include="Assets\Scripts\DamageNumberPopup.cs" />
+    <Compile Include="Assets\Scripts\UI\MenuButton.cs" />
     <Compile Include="Assets\Scripts\LocalPlayerHUD.cs" />
     <Compile Include="Assets\Scripts\UI\LobbyCharacterAnimator.cs" />
     <Compile Include="Assets\Scripts\Gameplay\AirdropCratePickup.cs" />
@@ -127,9 +128,11 @@
     <Compile Include="Assets\Scripts\RecoveryPickup.cs" />
     <Compile Include="Assets\Scripts\MainMenuFlow.cs" />
     <Compile Include="Assets\Scripts\PlayerCombatStats.cs" />
+    <Compile Include="Assets\Scripts\UI\UISpin.cs" />
     <Compile Include="Assets\Scripts\Gameplay\PlayerRegistry.cs" />
     <Compile Include="Assets\Scripts\UI\ModeSelectPanel.cs" />
     <Compile Include="Assets\Scripts\HealthController.cs" />
+    <Compile Include="Assets\Scripts\UI\LoadingScreen.cs" />
     <Compile Include="Assets\Scripts\Gameplay\AirdropController.cs" />
     <Compile Include="Assets\Scripts\EnemyController.cs" />
     <Compile Include="Assets\Scripts\ShotTracer.cs" />
@@ -147,6 +150,7 @@
     <Compile Include="Assets\Scripts\CombatLoadoutHUD.cs" />
     <Compile Include="Assets\Scripts\CameraFollow.cs" />
     <Compile Include="Assets\Scripts\PlayerStateMachine.cs" />
+    <Compile Include="Assets\Scripts\UI\UIFlipbook.cs" />
     <Compile Include="Assets\Scripts\Visual\CharacterAnimationDriver.cs" />
     <Compile Include="Assets\Scripts\TrainingBotSpawner.cs" />
   </ItemGroup>

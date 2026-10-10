@@ -407,8 +407,80 @@ def mode_header():
     img.resize((w, h), Image.LANCZOS).save(os.path.join(OUT, "mode_header.png"))
 
 
+def running_frames(count=8):
+    """Yukleme ekrani: kosan chibi karakter silueti (beyaz), yandan."""
+    size = 256
+    s = size * SS
+
+    def limb(d, start, angles, lengths, width):
+        x, y = start
+        heading = 0.0
+        points = [(x, y)]
+        for angle, length in zip(angles, lengths):
+            heading += angle
+            rad = math.radians(heading)
+            x += math.sin(rad) * length
+            y += math.cos(rad) * length
+            points.append((x, y))
+        w = width * SS
+        for (x0, y0), (x1, y1) in zip(points, points[1:]):
+            d.line([(x0 * SS, y0 * SS), (x1 * SS, y1 * SS)], fill=255, width=int(w))
+        for px_, py_ in points:
+            d.ellipse((px_ * SS - w / 2, py_ * SS - w / 2, px_ * SS + w / 2, py_ * SS + w / 2), fill=255)
+        return points[-1]
+
+    for i in range(count):
+        t = i / count * math.tau
+        bob = -5 * abs(math.sin(t))
+        m = Image.new("L", (s, s), 0)
+        d = ImageDraw.Draw(m)
+        hip = (118, 160 + bob)
+        shoulder = (136, 120 + bob)  # one egik govde
+
+        for phase in (t + math.pi, t):  # once arkadaki bacak/kol
+            swing = math.sin(phase)
+            knee = 20 + 55 * max(0.0, -math.cos(phase))
+            foot = limb(d, hip, (38 * swing, -knee), (30, 30), 22)
+            d.ellipse(((foot[0] - 6) * SS, (foot[1] - 9) * SS, (foot[0] + 16) * SS, (foot[1] + 7) * SS), fill=255)
+            limb(d, shoulder, (-50 * swing, 70), (24, 22), 15)
+
+        # govde
+        d.line([(shoulder[0] * SS, shoulder[1] * SS), (hip[0] * SS, hip[1] * SS)], fill=255, width=40 * SS)
+        for cx, cy in (shoulder, hip):
+            d.ellipse(((cx - 20) * SS, (cy - 20) * SS, (cx + 20) * SS, (cy + 20) * SS), fill=255)
+        # buyuk kafa + sac/kask
+        hx, hy = 150, 78 + bob
+        d.ellipse(((hx - 40) * SS, (hy - 40) * SS, (hx + 40) * SS, (hy + 40) * SS), fill=255)
+        d.rounded_rectangle(((hx - 44) * SS, (hy - 46) * SS, (hx + 30) * SS, (hy - 14) * SS), 14 * SS, fill=255)
+        # silah (one dogru)
+        d.rounded_rectangle(((shoulder[0] + 4) * SS, (shoulder[1] + 22) * SS,
+                             (shoulder[0] + 44) * SS, (shoulder[1] + 32) * SS), 4 * SS, fill=255)
+
+        # ayak tozu: arka ayak yere vururken
+        if math.cos(t) > 0.6:
+            for dx, dy, r in ((-34, 0, 7), (-48, -6, 5), (-58, 2, 4)):
+                cx, cy = hip[0] + dx, 222 + dy
+                d.ellipse(((cx - r) * SS, (cy - r) * SS, (cx + r) * SS, (cy + r) * SS), fill=200)
+
+        save_mask(m, size, f"run_{i:02d}.png")
+
+
+def spinner():
+    """Sol ustteki yukleme gostergesi: kalin bir yay."""
+    m, d, s = canvas(128)
+    d.arc((*p(s, .12, .12), *p(s, .88, .88)), 180, 290, fill=255, width=int(.13 * s))
+    for a in (180, 290):
+        r = math.radians(a)
+        cx, cy = s / 2 + math.cos(r) * .315 * s, s / 2 + math.sin(r) * .315 * s
+        w = .065 * s
+        d.ellipse((cx - w, cy - w, cx + w, cy + w), fill=255)
+    save_mask(m, 128, "spinner.png")
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    running_frames()
+    spinner()
     icon_person()
     mode_header()
     vertical_gradient("bg_blue.png", (64, 170, 244), (110, 200, 252))

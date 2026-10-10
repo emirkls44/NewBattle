@@ -20,8 +20,8 @@ namespace NewBattle.UI
 
         [Header("Butonlar")]
         [SerializeField] private Button playButton;
-        [Tooltip("Henuz islevi olmayan butonlar. Basinca 'YAKINDA' bildirimi cikar.")]
-        [SerializeField] private Button[] comingSoonButtons;
+        [Tooltip("Eski kurulumdan kalan liste. 'Menü > Kur' bunlari MenuButton'a cevirip bosaltir.")]
+        [SerializeField, HideInInspector] private Button[] comingSoonButtons;
 
         [Header("Yazilar")]
         [SerializeField] private TextMeshProUGUI statusText;
@@ -48,6 +48,10 @@ namespace NewBattle.UI
                  "Test icin: Tools > NewBattle > Oyuncu Profili (Test).")]
         [SerializeField, Min(1)] private int seasonNumber = 1;
         [SerializeField, Min(0)] private int onlinePlayers = 1;
+
+        [Header("Yukleme Ekrani")]
+        [Tooltip("Mac aranirken gosterilen ekran (Assets/Prefabs/UI/YuklemeEkrani).")]
+        [SerializeField] private LoadingScreen loadingScreenPrefab;
 
         [Header("Mod")]
         [Tooltip("OYNA'ya basinca acilan oyun modu penceresi.")]
@@ -89,11 +93,14 @@ namespace NewBattle.UI
             if (playButton != null)
                 playButton.onClick.AddListener(OnPlayPressed);
 
+            // Islevi henuz baglanmamis butonlar (bkz. MenuButton) "YAKINDA!" der.
+            MenuButton.Unhandled += OnUnhandledButton;
+
             if (comingSoonButtons != null)
             {
                 foreach (Button button in comingSoonButtons)
                 {
-                    if (button != null)
+                    if (button != null && button.GetComponent<MenuButton>() == null)
                         button.onClick.AddListener(() => ShowToast("YAKINDA!"));
                 }
             }
@@ -130,6 +137,7 @@ namespace NewBattle.UI
         private void OnDestroy()
         {
             PlayerProgress.Changed -= Refresh;
+            MenuButton.Unhandled -= OnUnhandledButton;
 
             if (modePanel != null)
             {
@@ -179,6 +187,7 @@ namespace NewBattle.UI
             if (playButton != null)
                 playButton.interactable = false;
 
+            LoadingScreen.Show(loadingScreenPrefab, _bootstrap);
             _bootstrap.StartMatchmaking(mode);
         }
 
@@ -213,6 +222,12 @@ namespace NewBattle.UI
         private void OnModeSelectionChanged(ModeSelectPanel.ModeOption option)
         {
             SetText(modeChipText, option.shortLabel);
+        }
+
+        private void OnUnhandledButton(MenuButton button)
+        {
+            if (isActiveAndEnabled)
+                ShowToast("YAKINDA!");
         }
 
         private void OnLockedModePressed(ModeSelectPanel.ModeOption option)

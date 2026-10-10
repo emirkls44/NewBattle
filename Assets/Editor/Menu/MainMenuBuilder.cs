@@ -33,6 +33,7 @@ namespace NewBattle.EditorTools
 
         public const string RootName = "AnaMenu";
         private const string ModePanelName = "OyunModuEkrani";
+        private const string LoadingPrefabPath = "Assets/Prefabs/UI/YuklemeEkrani.prefab";
         private const string StageName = "MenuKarakterSahnesi";
         private static readonly Vector3 StagePosition = new(5000f, -2000f, 5000f);
 
@@ -102,7 +103,7 @@ namespace NewBattle.EditorTools
                 return;
             }
 
-            Transform root = canvas.transform.Find(RootName);
+            Transform root = FindMenuRoot(canvas, out int removedCopies);
             GameObject existingStage = GameObject.Find(StageName);
 
             if (rebuild && (root != null || existingStage != null))
@@ -119,6 +120,8 @@ namespace NewBattle.EditorTools
             Undo.SetCurrentGroupName("Menüyü Kur");
             int undoGroup = Undo.GetCurrentGroup();
             var added = new List<string>();
+            if (removedCopies > 0)
+                added.Add($"{removedCopies} fazla menü kopyası silindi");
 
             if (rebuild && root != null)
             {
@@ -146,16 +149,22 @@ namespace NewBattle.EditorTools
                 added.Add("Lobi animasyonları");
             }
 
+            if (screen != null && MigrateComingSoonButtons(screen))
+                added.Add("Buton eylemleri");
+
             if (screen != null && root.Find(ModePanelName) == null)
             {
                 ComingSoon.Clear();
                 ModeSelectPanel panel = BuildModePanel((RectTransform)root);
                 var serialized = new SerializedObject(screen);
                 serialized.FindProperty("modePanel").objectReferenceValue = panel;
-                AppendButtons(serialized.FindProperty("comingSoonButtons"), ComingSoon);
                 serialized.ApplyModifiedProperties();
+                AttachActions(ComingSoon);
                 added.Add("Oyun modu ekranı");
             }
+
+            if (screen != null && EnsureLoadingScreen(screen, rebuild))
+                added.Add("Yükleme ekranı");
 
             Undo.CollapseUndoOperations(undoGroup);
 
@@ -169,13 +178,104 @@ namespace NewBattle.EditorTools
             EditorUtility.DisplayDialog("Menü", message, "Tamam");
         }
 
-        private static void AppendButtons(SerializedProperty list, List<Button> buttons)
+        /// <summary>
+        /// Eski kurulumdaki "YAKINDA" listesini MenuButton'lara cevirir: her
+        /// buton kendi eylem kimligini alir, sonradan kodla baglanabilir.
+        /// </summary>
+        /// <summary>
+        /// Menuyu adiyla degil bilesiniyle bulur. Eski bir hata yuzunden menu
+        /// "Arkaplan" adini alip ikinci kez kurulmus olabilir: mod penceresi bagli
+        /// (yoksa en son kurulan) kopya tutulur, digerleri silinir.
+        /// </summary>
+        private static Transform FindMenuRoot(Canvas canvas, out int removedCopies)
+        {
+            removedCopies = 0;
+            MainMenuScreen[] screens = canvas.GetComponentsInChildren<MainMenuScreen>(true);
+            if (screens.Length == 0)
+                return null;
+
+            MainMenuScreen keep = screens[screens.Length - 1];
+            foreach (MainMenuScreen screen in screens)
+            {
+                if (new SerializedObject(screen).FindProperty("modePanel").objectReferenceValue != null)
+                    keep = screen;
+            }
+
+            foreach (MainMenuScreen screen in screens)
+            {
+                if (screen == keep)
+                    continue;
+
+                Undo.DestroyObjectImmediate(screen.gameObject);
+                removedCopies++;
+            }
+
+            if (keep.gameObject.name != RootName)
+            {
+                Undo.RecordObject(keep.gameObject, "Menu adini duzelt");
+                keep.gameObject.name = RootName;
+            }
+
+            return keep.transform;
+        }
+
+        private static bool MigrateComingSoonButtons(MainMenuScreen screen)
+        {
+            var serialized = new SerializedObject(screen);
+            SerializedProperty list = serialized.FindProperty("comingSoonButtons");
+            if (list.arraySize == 0)
+                return false;
+
+            var buttons = new List<Button>();
+            for (int i = 0; i < list.arraySize; i++)
+            {
+                if (list.GetArrayElementAtIndex(i).objectReferenceValue is Button button)
+                    buttons.Add(button);
+            }
+
+            AttachActions(buttons);
+            list.arraySize = 0;
+            serialized.ApplyModifiedProperties();
+            return true;
+        }
+
+        private static void AttachActions(IEnumerable<Button> buttons)
         {
             foreach (Button button in buttons)
             {
-                list.arraySize++;
-                list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = button;
+                if (button == null)
+                    continue;
+
+                MenuButton action = button.GetComponent<MenuButton>();
+                if (action == null)
+                    action = Undo.AddComponent<MenuButton>(button.gameObject);
+
+                var serialized = new SerializedObject(action);
+                serialized.FindProperty("actionId").stringValue = ActionIdFor(button.gameObject.name);
+                serialized.ApplyModifiedProperties();
             }
+        }
+
+        /// <summary>Buton nesnesinin adindan eylem kimligi.</summary>
+        private static string ActionIdFor(string objectName)
+        {
+            return objectName switch
+            {
+                "AyarlarButonu" => "ayarlar",
+                "ParaEkleButonu" => "para_ekle",
+                "BattlePassButonu" => "battle_pass",
+                "BattlePassKarti" => "battle_pass_kart",
+                "MagazaButonu" => "magaza",
+                "LiderlikButonu" => "liderlik",
+                "KarakterButonu" => "karakter",
+                "ArkadaslarButonu" => "arkadaslar",
+                "EtkinliklerButonu" => "savas_etkinlikleri",
+                "EtkinlikKarti" => "savas_etkinlikleri_kart",
+                "KostumKarti" => "kostum",
+                "EtkinlestirButonu" => "cift_xp",
+                "IsimDuzenleButonu" => "isim_duzenle",
+                _ => objectName.ToLowerInvariant()
+            };
         }
 
         // ------------------------------------------------------------------
@@ -376,7 +476,6 @@ namespace NewBattle.EditorTools
 
             Image background = AddImage(root, Sprite("bg_gold"), Color.white, raycast: true);
             background.type = Image.Type.Simple;
-            background.name = "Arkaplan";
 
             var refs = new MenuRefs();
 
@@ -714,12 +813,9 @@ namespace NewBattle.EditorTools
             serialized.FindProperty("toastGroup").objectReferenceValue = refs.ToastGroup;
             serialized.FindProperty("toastText").objectReferenceValue = refs.Toast;
 
-            SerializedProperty list = serialized.FindProperty("comingSoonButtons");
-            list.arraySize = ComingSoon.Count;
-            for (int i = 0; i < ComingSoon.Count; i++)
-                list.GetArrayElementAtIndex(i).objectReferenceValue = ComingSoon[i];
-
+            serialized.FindProperty("comingSoonButtons").arraySize = 0;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+            AttachActions(ComingSoon);
         }
 
         // ------------------------------------------------------------------
@@ -962,6 +1058,84 @@ namespace NewBattle.EditorTools
             closeButton.targetGraphic = closeImage;
             close.gameObject.AddComponent<UIPressScale>();
             return closeButton;
+        }
+
+        // ------------------------------------------------------------------
+        // ASAMA 3: Yukleme ekrani (prefab; sahne degisiminde yasar)
+        // ------------------------------------------------------------------
+
+        private static bool EnsureLoadingScreen(MainMenuScreen screen, bool rebuild)
+        {
+            var serialized = new SerializedObject(screen);
+            SerializedProperty property = serialized.FindProperty("loadingScreenPrefab");
+            if (property.objectReferenceValue != null && !rebuild)
+                return false;
+
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(LoadingPrefabPath);
+            LoadingScreen prefab = existing != null && !rebuild
+                ? existing.GetComponent<LoadingScreen>()
+                : BuildLoadingPrefab();
+
+            property.objectReferenceValue = prefab;
+            serialized.ApplyModifiedProperties();
+            return true;
+        }
+
+        private static LoadingScreen BuildLoadingPrefab()
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/Prefabs/UI"))
+                AssetDatabase.CreateFolder("Assets/Prefabs", "UI");
+
+            var go = new GameObject("YuklemeEkrani", typeof(RectTransform)) { layer = 5 };
+            Canvas canvas = go.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 5000; // her seyin ustunde
+
+            CanvasScaler scaler = go.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+            go.AddComponent<GraphicRaycaster>();
+            CanvasGroup group = go.AddComponent<CanvasGroup>();
+            group.alpha = 0f;
+
+            var root = (RectTransform)go.transform;
+
+            RectTransform background = NewRect("Arkaplan", root);
+            Stretch(background, 0f, 0f, 0f, 0f);
+            AddImage(background, null, Hex("#221C3A"), raycast: true);
+
+            RectTransform runner = NewRect("KosanKarakter", root);
+            Place(runner, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(170f, 170f));
+            Image runnerImage = AddImage(runner, Sprite("run_00"), Color.white);
+            runnerImage.type = Image.Type.Simple;
+            runnerImage.preserveAspect = true;
+            UIFlipbook flipbook = runner.gameObject.AddComponent<UIFlipbook>();
+            var flipbookSerialized = new SerializedObject(flipbook);
+            SerializedProperty frames = flipbookSerialized.FindProperty("frames");
+            frames.arraySize = 8;
+            for (int i = 0; i < 8; i++)
+                frames.GetArrayElementAtIndex(i).objectReferenceValue = Sprite($"run_{i:00}");
+            flipbookSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+            RectTransform spinner = NewRect("Gosterge", root);
+            Place(spinner, new Vector2(0f, 1f), new Vector2(0.5f, 0.5f), new Vector2(64f, -64f), new Vector2(64f, 64f));
+            AddImage(spinner, Sprite("spinner"), new Color(1f, 1f, 1f, 0.75f)).type = Image.Type.Simple;
+            spinner.gameObject.AddComponent<UISpin>();
+
+            TextMeshProUGUI status = AddText(root, "Durum", string.Empty, 28f, Hex("#8C86AC"), TextAlignmentOptions.Center);
+            Place(status.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(1200f, 44f));
+
+            LoadingScreen loading = go.AddComponent<LoadingScreen>();
+            var loadingSerialized = new SerializedObject(loading);
+            loadingSerialized.FindProperty("group").objectReferenceValue = group;
+            loadingSerialized.FindProperty("statusText").objectReferenceValue = status;
+            loadingSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, LoadingPrefabPath);
+            Object.DestroyImmediate(go);
+            return prefab.GetComponent<LoadingScreen>();
         }
 
         // ------------------------------------------------------------------
