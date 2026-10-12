@@ -91,7 +91,9 @@ namespace NewBattle.Gameplay
         /// Varsayilan silah seti. Prefab'da dizi bos birakilirsa bu kullanilir,
         /// boylece proje hicbir Inspector ayari yapilmadan calisir.
         ///
-        /// Sira = ag kimligi: 0 yumruk, 1 normal tufek, 2 airdrop silahi.
+        /// Sira = ag kimligi: 0 yumruk, 1 normal tufek, 2 airdrop silahi,
+        /// 3 tabanca, 4 hafif makineli, 5 pompali, 6 keskin nisanci.
+        /// Modeller (heldMesh) Kur ile prefab'a yazilir; burada bos.
         /// </summary>
         public static WeaponDefinition[] CreateDefaultSet()
         {
@@ -127,6 +129,55 @@ namespace NewBattle.Gameplay
                     spreadAngle = 1f,
                     maxAmmo = 120,
                     tracerColor = new Color(1f, 0.55f, 0.15f, 1f)
+                },
+                new WeaponDefinition
+                {
+                    label = "Tabanca",
+                    damage = 18f,
+                    fireInterval = 0.32f,
+                    range = 28f,
+                    pellets = 1,
+                    spreadAngle = 2f,
+                    maxAmmo = 60,
+                    shakeStrength = 0.12f,
+                    fireSound = "ates_tabanca"
+                },
+                new WeaponDefinition
+                {
+                    label = "Hafif Makineli",
+                    damage = 10f,
+                    fireInterval = 0.09f,
+                    range = 24f,
+                    pellets = 1,
+                    spreadAngle = 4f,
+                    maxAmmo = 150,
+                    shakeStrength = 0.08f,
+                    fireSound = "ates_tufek"
+                },
+                new WeaponDefinition
+                {
+                    label = "Pompali",
+                    damage = 11f,
+                    fireInterval = 0.85f,
+                    range = 14f,
+                    pellets = 6,
+                    spreadAngle = 14f,
+                    maxAmmo = 36,
+                    shakeStrength = 0.35f,
+                    fireSound = "ates_pompali"
+                },
+                new WeaponDefinition
+                {
+                    label = "Keskin Nisanci",
+                    damage = 70f,
+                    fireInterval = 1.4f,
+                    range = 55f,
+                    pellets = 1,
+                    spreadAngle = 0.2f,
+                    maxAmmo = 20,
+                    shakeStrength = 0.45f,
+                    tracerColor = new Color(0.75f, 0.92f, 1f, 1f),
+                    fireSound = "ates_agir"
                 }
             };
         }

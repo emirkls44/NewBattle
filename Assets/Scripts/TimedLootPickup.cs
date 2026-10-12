@@ -37,6 +37,9 @@ public abstract class TimedLootPickup : NetworkBehaviour
     private LobbyCountdownController _lobby;
     private bool _consumed;
     protected abstract bool CanCollect(PlayerLoadout player);
+
+    /// <summary>Altindaki parlamanin rengi. Silah eşyasi nadirlik rengini verir.</summary>
+    protected virtual Color GlowColor => glowColor;
     protected abstract void GiveTo(PlayerLoadout player);
 
     /// <summary>Haritada su an duran, henuz alinmamis butun loot'lar. Bot yapay zekasi okur.</summary>
@@ -189,7 +192,8 @@ public abstract class TimedLootPickup : NetworkBehaviour
             1f / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)),
             1f / Mathf.Max(0.0001f, Mathf.Abs(parentScale.z)));
 
-        SetOverlay(_glow, glowColor, glowColor.a > 0.001f ? 1f : 0f);
+        Color glow = GlowColor;
+        SetOverlay(_glow, glow, glow.a > 0.001f ? 1f : 0f);
         SetOverlay(_track, ringColor, nearLocalPlayer ? 1f : 0f);
         SetOverlay(_fill, progressColor, progress);
     }

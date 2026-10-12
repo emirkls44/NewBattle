@@ -126,6 +126,9 @@ public class PlayerShooting : NetworkBehaviour
             ? firePoint.position
             : transform.position + Vector3.up + baseDirection * 0.6f;
 
+        // Nadirlik hasari carpar (Siradan 1, Efsanevi 1.35; SilahAyarlari).
+        float damage = weapon.damage * (_loadout != null ? _loadout.CurrentDamageMultiplier : 1f);
+
         for (int pellet = 0; pellet < Mathf.Max(1, weapon.pellets); pellet++)
         {
             Vector3 direction = ApplySpread(baseDirection, weapon.spreadAngle);
@@ -138,7 +141,7 @@ public class PlayerShooting : NetworkBehaviour
                 foundHit = true;
 
                 if (target != null)
-                    target.TakeDamage(weapon.damage, Object.InputAuthority, Object, weapon.label);
+                    target.TakeDamage(damage, Object.InputAuthority, Object, weapon.label);
             }
 
             Rpc_ShowShot(origin, endPoint, foundHit, weapon.tracerColor);

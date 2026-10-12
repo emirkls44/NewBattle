@@ -49,6 +49,7 @@ namespace NewBattle.Gameplay
                 "Tufek" => "Tüfek",
                 "Airdrop Tufegi" => "Airdrop Tüfeği",
                 "Pompali" => "Pompalı",
+                "Keskin Nisanci" => "Keskin Nişancı",
                 _ => label
             };
         }

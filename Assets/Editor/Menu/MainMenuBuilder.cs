@@ -182,6 +182,15 @@ namespace NewBattle.EditorTools
             if (EnsureMatchFeel(canvas, out string feel))
                 added.Add("Maç içi his: " + feel);
 
+            if (EnsureWeaponSettings())
+                added.Add("Silah Ayarları (Resources/SilahAyarlari: nadirlik + olasılıklar)");
+
+            if (EnsureWeaponCatalog())
+                added.Add("Yeni silahlar: Tabanca, Hafif Makineli, Pompalı, Keskin Nişancı");
+
+            if (EnsureSecondWeaponSlot())
+                added.Add("İkinci silah yuvası (sağ üst)");
+
             if (EnsureHeightMatchedScalers())
                 added.Add("Ekran ölçeği telefona uyumlu (yüksekliğe eşit)");
 

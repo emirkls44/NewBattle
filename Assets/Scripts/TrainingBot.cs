@@ -435,8 +435,12 @@ public class TrainingBot : NetworkBehaviour
     {
         switch (pickup)
         {
-            case RiflePickup:
-                return _loadout.HasRangedWeapon ? AmmoNeed() * 0.6f : 3f;
+            case RiflePickup weapon:
+                // Silahsiz: cok onemli. Bos yuva ya da daha iyi silah: onemli.
+                // Degilse sadece mermisi icin (ayni silah).
+                if (!_loadout.HasRangedWeapon)
+                    return 3f;
+                return weapon.IsUpgradeFor(_loadout) ? 2f : AmmoNeed() * 0.6f;
 
             case AmmoPickup:
                 return AmmoNeed() * 2f;

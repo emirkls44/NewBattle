@@ -1,7 +1,14 @@
 using UnityEngine;
+
+/// <summary>
+/// Mermi kutusu: secili silaha (doluysa diger silaha) azami mermisinin
+/// SilahAyarlari > Ammo Pack Fraction orani kadar mermi verir. Boylece pompaliya
+/// da hafif makineliye de "ayni oranda" dolum gelir.
+/// </summary>
 public class AmmoPickup : TimedLootPickup
 {
-    [SerializeField, Min(1)] private int ammoAmount = 20;
-    protected override bool CanCollect(PlayerLoadout player) => player.HasRifle && player.RifleAmmo < player.MaxRifleAmmo;
-    protected override void GiveTo(PlayerLoadout player) { player.AddRifleAmmo(ammoAmount); }
+    protected override bool CanCollect(PlayerLoadout player) => player.CanTakeAmmo;
+
+    protected override void GiveTo(PlayerLoadout player) =>
+        player.AddAmmoPack(NewBattle.Gameplay.WeaponLootSettings.Instance.ammoPackFraction);
 }
