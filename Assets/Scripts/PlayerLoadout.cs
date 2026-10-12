@@ -3,17 +3,17 @@ using NewBattle.Gameplay;
 using UnityEngine;
 
 /// <summary>
-/// Oyuncunun iki silah yuvasi ve cephanesi.
+/// Oyuncunun elindeki TEK silah ve cephanesi.
 ///
-/// Ag uzerinde her yuva icin uc sayi tasinir: silah kimligi (PlayerShooting'deki
-/// dizinin indeksi; 0 = bos), nadirlik ve mermi. Ayrica secili yuva ve o an
-/// kullanilan silah (WeaponId). Hasar, atis hizi gibi her sey tanimdan okunur.
+/// Ag uzerinde uc sayi tasinir: WeaponId (PlayerShooting'deki silah dizisinin
+/// indeksi; 0 = yumruk), nadirlik ve mermi. Hasar, atis hizi gibi her sey
+/// tanimdan okunur.
 ///
 /// Kurallar:
-///   - Bos yuva varsa yerdeki silah oraya girer (elde yumruk varsa ona gecilir).
-///   - Ayni silahtan daha nadiri alinirsa yuva yukselir; degilse sadece mermisi alinir.
-///   - Iki yuva doluysa yalnizca ELDEKINDEN guclu bir silah alinir; eldeki yere duser.
-///   - Mermi bitince diger silaha, o da bossa yumruga gecilir; mermi gelince geri doner.
+///   - Yerdeki silahin halkasi dolunca elindeki silah YOK OLUR, yenisi kendi
+///     mermisiyle gelir (eski mermi aktarilmaz).
+///   - Mermi bitince silah gider, yumruga gecilir.
+///   - Mermi kutusu sadece elinde silah varken ve mermi dolu degilken alinir.
 /// </summary>
 [RequireComponent(typeof(PlayerController))]
 public class PlayerLoadout : NetworkBehaviour
@@ -21,20 +21,17 @@ public class PlayerLoadout : NetworkBehaviour
     /// <summary>Yumruk her zaman 0 numaradir; silahsiz oyuncunun varsayilan hali.</summary>
     public const int FistWeaponId = 0;
 
-    public const int SlotCount = 2;
-
     [Header("Gorsel")]
     [SerializeField] private GameObject rifleVisual;
 
-    /// <summary>O an kullanilan silahin PlayerShooting dizisindeki indeksi (yumruk dahil).</summary>
+    /// <summary>Elindeki silahin PlayerShooting dizisindeki indeksi (0 = yumruk).</summary>
     [Networked] public int WeaponId { get; private set; }
 
-    /// <summary>Secili yuva (0 ya da 1).</summary>
-    [Networked] public int ActiveSlot { get; private set; }
+    /// <summary>Elindeki silahin nadirligi (WeaponRarity; yumrukta 0).</summary>
+    [Networked] public int Rarity { get; private set; }
 
-    [Networked, Capacity(SlotCount)] private NetworkArray<int> SlotWeapons => default;
-    [Networked, Capacity(SlotCount)] private NetworkArray<int> SlotRarities => default;
-    [Networked, Capacity(SlotCount)] private NetworkArray<int> SlotAmmo => default;
+    /// <summary>Elindeki silahin mermisi. Yumrukta anlamsizdir.</summary>
+    [Networked] public int Ammo { get; private set; }
 
     private PlayerShooting _shooting;
     private PlayerController _playerController;
@@ -43,54 +40,41 @@ public class PlayerLoadout : NetworkBehaviour
     private int _shownHeldWeaponId = -1;
     private static readonly int HasWeaponHash = Animator.StringToHash("HasWeapon");
 
-    #region Yuva bilgisi (HUD ve botlar okur)
-
-    public int GetSlotWeaponId(int slot) => ValidSlot(slot) ? SlotWeapons[slot] : FistWeaponId;
-
-    public int GetSlotRarity(int slot) => ValidSlot(slot) ? SlotRarities[slot] : 0;
-
-    public int GetSlotAmmo(int slot) => ValidSlot(slot) ? SlotAmmo[slot] : 0;
-
-    public bool SlotHasWeapon(int slot) => GetSlotWeaponId(slot) != FistWeaponId;
-
-    public WeaponDefinition GetSlotWeapon(int slot) =>
-        SlotHasWeapon(slot) ? Shooting?.GetWeapon(GetSlotWeaponId(slot)) : null;
-
-    public int GetSlotMaxAmmo(int slot)
-    {
-        WeaponDefinition weapon = GetSlotWeapon(slot);
-        return weapon != null ? weapon.maxAmmo : 0;
-    }
-
-    /// <summary>Eldeki silahin nadirligi (yumrukta 0).</summary>
-    public int CurrentRarity => WeaponId != FistWeaponId ? GetSlotRarity(ActiveSlot) : 0;
-
-    /// <summary>Eldeki silahin nadirlik hasar carpani.</summary>
-    public float CurrentDamageMultiplier =>
-        WeaponId != FistWeaponId ? WeaponLootSettings.DamageMultiplier(CurrentRarity) : 1f;
-
-    #endregion
-
-    #region Eski arayuz (HUD, pickup'lar ve botlar bunlari kullaniyor)
-
-    /// <summary>En az bir menzilli silah tasiyor mu.</summary>
-    public bool HasRangedWeapon => SlotHasWeapon(0) || SlotHasWeapon(1);
-    public bool HasRifle => HasRangedWeapon;
-
-    /// <summary>Secili yuvadaki silahin mermisi.</summary>
-    public int Ammo => GetSlotAmmo(ActiveSlot);
-    public int RifleAmmo => Ammo;
-    public int MaxRifleAmmo => SlotHasWeapon(ActiveSlot) ? GetSlotMaxAmmo(ActiveSlot) : 120;
-    public int SelectedSlot => WeaponId == FistWeaponId ? 0 : 1;
-    public bool IsRifleSelected => WeaponId != FistWeaponId;
-
-    /// <summary>Secili yuvadaki silahin tanimi (secili olmasa bile).</summary>
-    public WeaponDefinition RangedWeapon => GetSlotWeapon(ActiveSlot);
-
-    #endregion
+    /// <summary>Elinde menzilli bir silah var mi.</summary>
+    public bool HasRangedWeapon => WeaponId != FistWeaponId;
 
     /// <summary>Elindeki silahin tanimi. Dizi disi bir kimlikte null doner.</summary>
     public WeaponDefinition CurrentWeapon => Shooting?.GetWeapon(WeaponId);
+
+    /// <summary>Elindeki silahin azami mermisi (yumrukta 0).</summary>
+    public int MaxAmmo
+    {
+        get
+        {
+            WeaponDefinition weapon = HasRangedWeapon ? CurrentWeapon : null;
+            return weapon != null ? weapon.maxAmmo : 0;
+        }
+    }
+
+    /// <summary>Elindeki silahin nadirlik hasar carpani.</summary>
+    public float CurrentDamageMultiplier =>
+        HasRangedWeapon ? WeaponLootSettings.DamageMultiplier(Rarity) : 1f;
+
+    #region Eski arayuz (HUD, pickup'lar ve botlar bunlari kullaniyor)
+
+    public bool HasRifle => HasRangedWeapon;
+    public int RifleAmmo => Ammo;
+    public int MaxRifleAmmo => HasRangedWeapon ? MaxAmmo : 120;
+    public int SelectedSlot => HasRangedWeapon ? 1 : 0;
+    public bool IsRifleSelected => HasRangedWeapon;
+    public WeaponDefinition RangedWeapon => HasRangedWeapon ? CurrentWeapon : null;
+
+    /// <summary>Tek silah var; secim yok (eski HUD butonlari icin bos).</summary>
+    public void SelectFist() { }
+
+    public void SelectRifle() { }
+
+    #endregion
 
     private PlayerShooting Shooting
     {
@@ -101,8 +85,6 @@ public class PlayerLoadout : NetworkBehaviour
             return _shooting;
         }
     }
-
-    private static bool ValidSlot(int slot) => slot >= 0 && slot < SlotCount;
 
     private void Awake()
     {
@@ -120,17 +102,7 @@ public class PlayerLoadout : NetworkBehaviour
     public override void Spawned()
     {
         if (HasStateAuthority)
-        {
-            for (int i = 0; i < SlotCount; i++)
-            {
-                SlotWeapons.Set(i, FistWeaponId);
-                SlotRarities.Set(i, 0);
-                SlotAmmo.Set(i, 0);
-            }
-
-            ActiveSlot = 0;
-            WeaponId = FistWeaponId;
-        }
+            ClearWeapon();
 
         ApplyVisualState();
     }
@@ -140,75 +112,30 @@ public class PlayerLoadout : NetworkBehaviour
         ApplyVisualState();
     }
 
-    #region Secim
-
-    /// <summary>HUD'dan yuva secimi (sadece yerel oyuncu).</summary>
-    public void SelectSlot(int slot)
-    {
-        if (HasInputAuthority && ValidSlot(slot) && SlotHasWeapon(slot))
-            Rpc_RequestSlot(slot);
-    }
-
-    /// <summary>Eski cagri yolu: silah varken yumruga donulmez, bos kalir.</summary>
-    public void SelectFist() { }
-
-    /// <summary>Eski cagri yolu: secili yuvayi ister.</summary>
-    public void SelectRifle() => SelectSlot(ActiveSlot);
-
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void Rpc_RequestSlot(int slot)
-    {
-        // Sunucu da kontrol eder: degistirilmis bir istemci bos yuvayi secemesin.
-        if (!ValidSlot(slot) || !SlotHasWeapon(slot) || SlotAmmo[slot] <= 0)
-            return;
-
-        ActiveSlot = slot;
-        RecomputeWeapon();
-    }
-
-    #endregion
-
     #region Silah alma
 
-    /// <summary>Bu silahi alabilir mi (bos yuva / yukseltme / mermi / daha guclu silah).</summary>
+    /// <summary>Bu silahi alabilir mi. Gecerli her menzilli silah alinir (elindekinin yerine).</summary>
     public bool CanAcceptWeapon(int weaponId, int rarity)
     {
         WeaponDefinition incoming = Shooting?.GetWeapon(weaponId);
-        if (incoming == null || incoming.isMelee)
-            return false;
-
-        int same = FindSlotWith(weaponId);
-        if (same >= 0)
-            return rarity > SlotRarities[same] || SlotAmmo[same] < incoming.maxAmmo;
-
-        if (FindEmptySlot() >= 0)
-            return true;
-
-        return Score(weaponId, rarity) > Score(SlotWeapons[ActiveSlot], SlotRarities[ActiveSlot]);
-    }
-
-    /// <summary>Yerdeki silah, eldekinden mi daha iyi (bos yuva ya da yukseltme). Botlar okur.</summary>
-    public bool IsUpgrade(int weaponId, int rarity)
-    {
-        int same = FindSlotWith(weaponId);
-        if (same >= 0)
-            return rarity > SlotRarities[same];
-
-        return FindEmptySlot() >= 0 ||
-               Score(weaponId, rarity) > Score(SlotWeapons[ActiveSlot], SlotRarities[ActiveSlot]);
+        return incoming != null && !incoming.isMelee;
     }
 
     /// <summary>
-    /// Silahi verir. Iki yuva doluysa eldeki silah cikarilir; cikan silah
-    /// droppedWeaponId (0 = hicbir sey dusmedi) ile doner, cagiran yere birakir.
+    /// Bot yapay zekasi: bu silah elindekinden daha mi iyi. Silahsizken her silah;
+    /// silahliyken saniyedeki hasari (nadirlik dahil) daha yuksek olan.
     /// </summary>
-    public void GrantWeapon(int weaponId, int rarity, int ammo,
-        out int droppedWeaponId, out int droppedRarity, out int droppedAmmo)
+    public bool IsUpgrade(int weaponId, int rarity)
     {
-        droppedWeaponId = FistWeaponId;
-        droppedRarity = 0;
-        droppedAmmo = 0;
+        if (!CanAcceptWeapon(weaponId, rarity))
+            return false;
 
+        return !HasRangedWeapon || Ammo <= 0 || Score(weaponId, rarity) > Score(WeaponId, Rarity);
+    }
+
+    /// <summary>Silahi eline verir; elindeki silah ve mermisi yok olur.</summary>
+    public void GrantWeapon(int weaponId, int rarity, int ammo)
+    {
         if (!HasStateAuthority)
             return;
 
@@ -216,73 +143,23 @@ public class PlayerLoadout : NetworkBehaviour
         if (incoming == null || incoming.isMelee)
             return;
 
-        ammo = Mathf.Max(0, ammo);
-        rarity = Mathf.Clamp(rarity, 0, (int)WeaponRarity.Efsanevi);
-
-        int same = FindSlotWith(weaponId);
-        if (same >= 0)
-        {
-            // Ayni silah: daha nadirse yukselt, mermiyi her durumda ekle.
-            if (rarity > SlotRarities[same])
-                SlotRarities.Set(same, rarity);
-            SlotAmmo.Set(same, Mathf.Min(incoming.maxAmmo, SlotAmmo[same] + ammo));
-        }
-        else
-        {
-            int slot = FindEmptySlot();
-            if (slot < 0)
-            {
-                slot = ActiveSlot;
-                droppedWeaponId = SlotWeapons[slot];
-                droppedRarity = SlotRarities[slot];
-                droppedAmmo = SlotAmmo[slot];
-            }
-
-            SlotWeapons.Set(slot, weaponId);
-            SlotRarities.Set(slot, rarity);
-            SlotAmmo.Set(slot, Mathf.Min(incoming.maxAmmo, ammo));
-
-            // Yumrukla geziyorsa (ya da yuva degistiyse) yeni silaha gec.
-            if (WeaponId == FistWeaponId || slot == ActiveSlot)
-                ActiveSlot = slot;
-        }
-
-        RecomputeWeapon();
+        WeaponId = weaponId;
+        Rarity = Mathf.Clamp(rarity, 0, (int)WeaponRarity.Efsanevi);
+        Ammo = Mathf.Clamp(ammo, 1, incoming.maxAmmo);
+        ApplyVisualState();
     }
 
     /// <summary>Eski cagri yolu: Siradan tufek.</summary>
-    public void GrantRifle(int ammo) => GrantWeapon(1, 0, ammo, out _, out _, out _);
+    public void GrantRifle(int ammo) => GrantWeapon(1, 0, ammo);
 
     /// <summary>Eski cagri yolu. tier 0 = Siradan tufek, 1+ = airdrop silahi (ayarlardaki nadirlikte).</summary>
     public void GrantRifle(int ammo, int tier)
     {
         WeaponLootSettings settings = WeaponLootSettings.Instance;
         if (tier >= 1)
-            GrantWeapon(settings.airdropWeaponId, (int)settings.airdropRarity, ammo, out _, out _, out _);
+            GrantWeapon(settings.airdropWeaponId, (int)settings.airdropRarity, ammo);
         else
             GrantRifle(ammo);
-    }
-
-    private int FindSlotWith(int weaponId)
-    {
-        for (int i = 0; i < SlotCount; i++)
-        {
-            if (SlotWeapons[i] == weaponId)
-                return i;
-        }
-
-        return -1;
-    }
-
-    private int FindEmptySlot()
-    {
-        for (int i = 0; i < SlotCount; i++)
-        {
-            if (SlotWeapons[i] == FistWeaponId)
-                return i;
-        }
-
-        return -1;
     }
 
     /// <summary>Saniyedeki hasar x nadirlik: iki silahi karsilastirmanin olcusu.</summary>
@@ -296,52 +173,38 @@ public class PlayerLoadout : NetworkBehaviour
         return dps * WeaponLootSettings.DamageMultiplier(rarity);
     }
 
+    private void ClearWeapon()
+    {
+        WeaponId = FistWeaponId;
+        Rarity = 0;
+        Ammo = 0;
+    }
+
     #endregion
 
     #region Cephane
 
-    /// <summary>Mermisi dolu olmayan bir silahi var mi.</summary>
-    public bool CanTakeAmmo => AmmoTargetSlot() >= 0;
+    /// <summary>Elinde silah var ve mermisi dolu degil.</summary>
+    public bool CanTakeAmmo => HasRangedWeapon && Ammo < MaxAmmo;
 
     /// <summary>Mermi kutusu: silahin azami mermisinin bu orani kadar ekler.</summary>
     public void AddAmmoPack(float fraction)
     {
-        int slot = AmmoTargetSlot();
-        if (!HasStateAuthority || slot < 0)
+        if (!HasStateAuthority || !CanTakeAmmo)
             return;
 
-        int amount = Mathf.Max(1, Mathf.CeilToInt(GetSlotMaxAmmo(slot) * Mathf.Clamp01(fraction)));
-        AddAmmoToSlot(slot, amount);
+        AddRifleAmmo(Mathf.Max(1, Mathf.CeilToInt(MaxAmmo * Mathf.Clamp01(fraction))));
     }
 
-    /// <summary>Eski cagri yolu: secili (ya da ihtiyaci olan) silaha mermi ekler.</summary>
     public void AddRifleAmmo(int amount)
     {
-        int slot = AmmoTargetSlot();
-        if (HasStateAuthority && slot >= 0)
-            AddAmmoToSlot(slot, amount);
+        if (!HasStateAuthority || !HasRangedWeapon)
+            return;
+
+        Ammo = Mathf.Min(MaxAmmo, Ammo + Mathf.Max(0, amount));
     }
 
-    private void AddAmmoToSlot(int slot, int amount)
-    {
-        SlotAmmo.Set(slot, Mathf.Min(GetSlotMaxAmmo(slot), SlotAmmo[slot] + Mathf.Max(0, amount)));
-        RecomputeWeapon();
-    }
-
-    /// <summary>Once secili yuva, dolu ise diger yuva; ikisi de doluysa -1.</summary>
-    private int AmmoTargetSlot()
-    {
-        if (SlotHasWeapon(ActiveSlot) && GetSlotAmmo(ActiveSlot) < GetSlotMaxAmmo(ActiveSlot))
-            return ActiveSlot;
-
-        int other = 1 - ActiveSlot;
-        if (SlotHasWeapon(other) && GetSlotAmmo(other) < GetSlotMaxAmmo(other))
-            return other;
-
-        return -1;
-    }
-
-    /// <summary>Atis icin mermi dusur. Sinirsiz cephaneli silahlarda hep true doner.</summary>
+    /// <summary>Atis icin mermi dusur. Yumrukta ve sinirsiz cephaneli silahlarda hep true doner.</summary>
     public bool TryConsumeAmmo()
     {
         if (!HasStateAuthority)
@@ -351,54 +214,29 @@ public class PlayerLoadout : NetworkBehaviour
         if (weapon == null)
             return false;
 
-        if (weapon.infiniteAmmo || WeaponId == FistWeaponId)
+        if (weapon.infiniteAmmo || !HasRangedWeapon)
             return true;
 
-        int slot = ActiveSlot;
-        if (SlotAmmo[slot] <= 0)
+        if (Ammo <= 0)
         {
-            RecomputeWeapon();
+            ClearWeapon();
+            ApplyVisualState();
             return false;
         }
 
-        SlotAmmo.Set(slot, SlotAmmo[slot] - 1);
-        if (SlotAmmo[slot] <= 0)
-            RecomputeWeapon(); // bitti: diger silaha ya da yumruga gec
+        Ammo--;
+
+        // Son mermi atildi: silah gider, yumruga gecilir.
+        if (Ammo <= 0)
+        {
+            ClearWeapon();
+            ApplyVisualState();
+        }
+
         return true;
     }
 
     #endregion
-
-    /// <summary>
-    /// Kullanilan silahi yuvalardan hesaplar: secili yuvada mermi varsa o,
-    /// yoksa diger yuva, o da yoksa yumruk.
-    /// </summary>
-    private void RecomputeWeapon()
-    {
-        if (!HasStateAuthority)
-            return;
-
-        int active = ActiveSlot;
-        if (SlotHasWeapon(active) && SlotAmmo[active] > 0)
-        {
-            WeaponId = SlotWeapons[active];
-        }
-        else
-        {
-            int other = 1 - active;
-            if (SlotHasWeapon(other) && SlotAmmo[other] > 0)
-            {
-                ActiveSlot = other;
-                WeaponId = SlotWeapons[other];
-            }
-            else
-            {
-                WeaponId = FistWeaponId;
-            }
-        }
-
-        ApplyVisualState();
-    }
 
     private void ApplyVisualState()
     {

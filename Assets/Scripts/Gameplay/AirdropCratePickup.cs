@@ -45,13 +45,8 @@ namespace NewBattle.Gameplay
             int weaponId = weaponTier >= 1 ? settings.airdropWeaponId : 1;
             int rarity = weaponTier >= 1 ? (int)settings.airdropRarity : 0;
 
-            player.GrantWeapon(weaponId, rarity, ammoAmount,
-                out int droppedId, out int droppedRarity, out int droppedAmmo);
-
-            // Iki yuva doluydu: eldeki silah sandigin yanina duser.
-            if (droppedId > PlayerLoadout.FistWeaponId)
-                RiflePickup.SpawnDropped(Runner, transform.position + Vector3.right * 1.2f,
-                    droppedId, droppedRarity, droppedAmmo);
+            // Elindeki silah yok olur; airdrop silahi kendi mermisiyle gelir.
+            player.GrantWeapon(weaponId, rarity, ammoAmount);
         }
 
         /// <summary>Sunucu spawn'dan hemen sonra cagirir.</summary>

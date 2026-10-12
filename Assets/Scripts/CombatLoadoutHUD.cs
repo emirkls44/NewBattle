@@ -11,19 +11,6 @@ public class CombatLoadoutHUD : MonoBehaviour
     [SerializeField] private Image rifleBackground;
     [SerializeField] private TextMeshProUGUI rifleText;
 
-    [Header("Ikinci Silah Yuvasi (Kur ekler: CombatSlots/RifleSlot2)")]
-    [SerializeField] private Button secondButton;
-    [SerializeField] private Image secondBackground;
-    [SerializeField] private TextMeshProUGUI secondText;
-
-    [Header("Yuva Gorunumu")]
-    [Tooltip("Secili olmayan yuva bu oranda kuculur.")]
-    [SerializeField, Range(0.5f, 1f)] private float unselectedScale = 0.86f;
-    [Tooltip("Nadirlik renginin ne kadar koyulastirilacagi (0 = oldugu gibi).")]
-    [SerializeField, Range(0f, 0.9f)] private float selectedDarken = 0.18f;
-    [SerializeField, Range(0f, 0.9f)] private float unselectedDarken = 0.55f;
-    [SerializeField] private Color emptyAmmoColor = new(1f, 0.45f, 0.4f, 1f);
-
     [Header("Secim Renkleri")]
     [SerializeField] private Color selectedColor = new(0.28f, 0.78f, 0.25f, 0.96f);
     [SerializeField] private Color availableColor = new(0.16f, 0.18f, 0.21f, 0.92f);
@@ -31,8 +18,6 @@ public class CombatLoadoutHUD : MonoBehaviour
 
     private PlayerLoadout _loadout;
     private float _nextSearchTime;
-    private Vector3 _rifleBaseScale = Vector3.one;
-    private Vector3 _secondBaseScale = Vector3.one;
 
     private void Start()
     {
@@ -48,15 +33,7 @@ public class CombatLoadoutHUD : MonoBehaviour
         }
 
         fistButton.onClick.AddListener(SelectFist);
-        rifleButton.onClick.AddListener(SelectFirstSlot);
-        _rifleBaseScale = rifleButton.transform.localScale;
-
-        if (secondButton != null)
-        {
-            secondButton.onClick.AddListener(SelectSecondSlot);
-            _secondBaseScale = secondButton.transform.localScale;
-        }
-
+        rifleButton.onClick.AddListener(SelectRifle);
         Refresh();
     }
 
@@ -77,10 +54,7 @@ public class CombatLoadoutHUD : MonoBehaviour
             fistButton.onClick.RemoveListener(SelectFist);
 
         if (rifleButton != null)
-            rifleButton.onClick.RemoveListener(SelectFirstSlot);
-
-        if (secondButton != null)
-            secondButton.onClick.RemoveListener(SelectSecondSlot);
+            rifleButton.onClick.RemoveListener(SelectRifle);
     }
 
     private void SelectFist()
@@ -88,9 +62,10 @@ public class CombatLoadoutHUD : MonoBehaviour
         _loadout?.SelectFist();
     }
 
-    private void SelectFirstSlot() => _loadout?.SelectSlot(0);
-
-    private void SelectSecondSlot() => _loadout?.SelectSlot(1);
+    private void SelectRifle()
+    {
+        _loadout?.SelectRifle();
+    }
 
     private void FindLocalLoadout()
     {
@@ -135,28 +110,6 @@ public class CombatLoadoutHUD : MonoBehaviour
             rifleText ??= rifleSlot.Find("Label")?.GetComponent<TextMeshProUGUI>();
             KeepOnOneLine(rifleText);
         }
-
-        Transform secondSlot = root.Find("RifleSlot2");
-        if (secondSlot != null)
-        {
-            secondButton ??= secondSlot.GetComponent<Button>();
-            secondBackground ??= secondSlot.GetComponent<Image>();
-            secondText ??= secondSlot.Find("Label")?.GetComponent<TextMeshProUGUI>();
-        }
-
-        // Yuvalarda iki satir var (silah adi + mermi): satir bolmeye izin ver.
-        AllowTwoLines(rifleText);
-        AllowTwoLines(secondText);
-    }
-
-    private static void AllowTwoLines(TextMeshProUGUI label)
-    {
-        if (label == null)
-            return;
-
-        label.richText = true;
-        label.textWrappingMode = TextWrappingModes.NoWrap; // satir sadece \n ile
-        label.enableAutoSizing = true;
     }
 
     /// <summary>
@@ -198,73 +151,37 @@ public class CombatLoadoutHUD : MonoBehaviour
             && _loadout.Object.IsValid
             && _loadout.Runner != null;
 
-        bool armed = loadoutReady && _loadout.HasRangedWeapon;
+        bool hasRifle = loadoutReady && _loadout.HasRifle;
 
-        // Silahsizken tek kutu: YUMRUK. Silah alininca iki yuva gorunur
-        // (ikincisi bossa "BOS"); dokunulan yuvaya gecilir.
-        SetActive(fistButton, !armed);
-        SetActive(rifleButton, armed);
-        SetActive(secondButton, armed);
+        // Ayni anda TEK kutu gorunuyor: elindeki ne ise o.
+        //
+        // Iki kutu, oyuncu ikisi arasinda gecis yapabildigi surece anlamliydi.
+        // Silah alindiktan sonra yumruga donus kalktigi icin yumruk kutusu
+        // artik ne bilgi veriyor ne de bir ise yariyor - sadece ekranin
+        // kosesini dolduruyordu. Referans oyunda da tek gosterge var.
+        if (fistButton.gameObject.activeSelf == hasRifle)
+            fistButton.gameObject.SetActive(!hasRifle);
+
+        if (rifleButton.gameObject.activeSelf != hasRifle)
+            rifleButton.gameObject.SetActive(hasRifle);
 
         fistBackground.color = selectedColor;
 
-        if (!armed)
+        if (!hasRifle)
             return;
 
-        DrawSlot(0, rifleButton, rifleBackground, rifleText, _rifleBaseScale);
-        DrawSlot(1, secondButton, secondBackground, secondText, _secondBaseScale);
+        rifleBackground.color = selectedColor;
+        rifleButton.interactable = false;
+        rifleText.text = _loadout.RifleAmmo.ToString();
     }
 
-    private static void SetActive(Button button, bool active)
+    /// <summary>Elindeki silahin adi; cok silahli sistemde hangi silah oldugunu gosterir.</summary>
+    private string WeaponLabel()
     {
-        if (button != null && button.gameObject.activeSelf != active)
-            button.gameObject.SetActive(active);
-    }
-
-    /// <summary>Bir yuvayi cizer: nadirlik renginde zemin, silah adi ve mermi.</summary>
-    private void DrawSlot(int slot, Button button, Image background, TextMeshProUGUI text, Vector3 baseScale)
-    {
-        if (button == null || background == null || text == null)
-            return;
-
-        if (!_loadout.SlotHasWeapon(slot))
-        {
-            background.color = lockedColor;
-            text.text = "<size=60%>BOŞ</size>";
-            button.interactable = false;
-            button.transform.localScale = baseScale * unselectedScale;
-            return;
-        }
-
-        bool selected = _loadout.ActiveSlot == slot && _loadout.IsRifleSelected;
-        int ammo = _loadout.GetSlotAmmo(slot);
-        Color rarity = NewBattle.Gameplay.WeaponLootSettings.RarityColor(_loadout.GetSlotRarity(slot));
-
-        Color fill = Color.Lerp(rarity, Color.black, selected ? selectedDarken : unselectedDarken);
-        fill.a = selected ? 0.96f : 0.85f;
-        background.color = fill;
-
-        string ammoText = ammo > 0
-            ? ammo.ToString()
-            : $"<color=#{ColorUtility.ToHtmlStringRGB(emptyAmmoColor)}>0</color>";
-        text.text = $"<size=46%>{SlotName(slot)}</size>\n{ammoText}";
-
-        button.interactable = !selected && ammo > 0;
-        button.transform.localScale = baseScale * (selected ? 1f : unselectedScale);
-    }
-
-    /// <summary>Yuvadaki silahin Turkce, buyuk harfli adi.</summary>
-    private string SlotName(int slot)
-    {
-        NewBattle.Gameplay.WeaponDefinition weapon = _loadout.GetSlotWeapon(slot);
-        string label = weapon != null ? NewBattle.Gameplay.KillEvents.WeaponDisplayName(weapon.label) : "SİLAH";
-        return TurkishUpper(label);
-    }
-
-    /// <summary>"Keskin Nişancı" -> "KESKİN NİŞANCI" (kultur ayarina guvenmeden).</summary>
-    private static string TurkishUpper(string value)
-    {
-        return value.Replace('i', 'İ').Replace('ı', 'I').ToUpperInvariant();
+        NewBattle.Gameplay.WeaponDefinition weapon = _loadout.CurrentWeapon;
+        return weapon != null && !string.IsNullOrEmpty(weapon.label)
+            ? weapon.label.ToUpperInvariant()
+            : "SILAH";
     }
 
     [ContextMenu("Create Editable Combat Slots In Hierarchy")]

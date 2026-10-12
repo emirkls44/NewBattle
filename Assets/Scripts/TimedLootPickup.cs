@@ -38,6 +38,9 @@ public abstract class TimedLootPickup : NetworkBehaviour
     private bool _consumed;
     protected abstract bool CanCollect(PlayerLoadout player);
 
+    /// <summary>Zeminin pickup kokune gore yuksekligi (negatif: kokun altinda).</summary>
+    protected float RingGroundOffset => ringGroundOffset;
+
     /// <summary>Altindaki parlamanin rengi. Silah eşyasi nadirlik rengini verir.</summary>
     protected virtual Color GlowColor => glowColor;
     protected abstract void GiveTo(PlayerLoadout player);

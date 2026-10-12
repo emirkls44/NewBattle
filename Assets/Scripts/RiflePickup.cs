@@ -4,9 +4,12 @@ using UnityEngine;
 
 /// <summary>
 /// Yerdeki silah. Hangi silah oldugu ve nadirligi agda tasinir; host spawn'da
-/// SilahAyarlari'ndaki olasiliklara gore secer (ya da dusurulen silah icin
-/// Configure ile verilir). Model silaha gore degisir, altindaki parlama
-/// nadirlik rengindedir.
+/// SilahAyarlari'ndaki olasiliklara gore secer. Model silaha gore degisir,
+/// namlusu yukari dik durur ve LootBob ile kendi etrafinda yavasca doner;
+/// altindaki parlama nadirlik rengindedir.
+///
+/// Halkasi dolunca oyuncunun elindeki silah yok olur, bu silah kendi mermisiyle
+/// gelir (PlayerLoadout.GrantWeapon).
 ///
 /// Adi eski (tek silah varken "tufek" idi); prefab ve sahne referanslari
 /// bozulmasin diye sinif adi korunuyor.
@@ -15,6 +18,12 @@ public class RiflePickup : TimedLootPickup
 {
     [Tooltip("Silah tanimi bulunamazsa verilecek mermi; normalde SilahAyarlari > Pickup Ammo Fraction kullanilir.")]
     [SerializeField] private int ammoAmount = 30;
+
+    [Header("Yerdeki Duruş")]
+    [Tooltip("Namlunun yataydan acisi. 90 = tam dik (namlu yukari).")]
+    [SerializeField, Range(0f, 90f)] private float standAngle = 90f;
+    [Tooltip("Silahin en alt noktasi zeminden bu kadar yukarida durur.")]
+    [SerializeField, Min(0f)] private float groundClearance = 0.12f;
 
     /// <summary>Silahin PlayerShooting dizisindeki indeksi (0 = henuz secilmedi).</summary>
     [Networked] public int WeaponId { get; private set; }
@@ -73,51 +82,28 @@ public class RiflePickup : TimedLootPickup
     protected override bool CanCollect(PlayerLoadout player) =>
         WeaponId > PlayerLoadout.FistWeaponId && player.CanAcceptWeapon(WeaponId, Rarity);
 
-    /// <summary>Bot yapay zekasi: bu silah ona yarar mi (sadece mermi icin degil).</summary>
+    /// <summary>Bot yapay zekasi: bu silah elindekinden iyi mi.</summary>
     public bool IsUpgradeFor(PlayerLoadout player) =>
         WeaponId > PlayerLoadout.FistWeaponId && player != null && player.IsUpgrade(WeaponId, Rarity);
 
     protected override void GiveTo(PlayerLoadout player)
     {
-        player.GrantWeapon(WeaponId, Rarity, AmmoFor(player, WeaponId, StoredAmmo),
-            out int droppedId, out int droppedRarity, out int droppedAmmo);
-
-        // Iki yuva doluydu: eldeki silah bu esyanin yerine duser.
-        if (droppedId > PlayerLoadout.FistWeaponId)
-            SpawnDropped(Runner, transform.position, droppedId, droppedRarity, droppedAmmo);
+        player.GrantWeapon(WeaponId, Rarity, AmmoFor(player));
     }
 
-    private int AmmoFor(PlayerLoadout player, int weaponId, int stored)
+    private int AmmoFor(PlayerLoadout player)
     {
-        if (stored >= 0)
-            return stored;
+        if (StoredAmmo >= 0)
+            return StoredAmmo;
 
-        WeaponDefinition weapon = player.GetComponent<PlayerShooting>()?.GetWeapon(weaponId);
+        WeaponDefinition weapon = player.GetComponent<PlayerShooting>()?.GetWeapon(WeaponId);
         if (weapon == null)
             return ammoAmount;
 
         return Mathf.Max(1, Mathf.CeilToInt(weapon.maxAmmo * WeaponLootSettings.Instance.pickupAmmoFraction));
     }
 
-    /// <summary>Elden cikan silahi yere birakir (host). Airdrop sandigi da kullanir.</summary>
-    public static void SpawnDropped(NetworkRunner runner, Vector3 position, int weaponId, int rarity, int ammo)
-    {
-        if (runner == null || !runner.IsServer)
-            return;
-
-        LootSpawner spawner = runner.GetComponent<LootSpawner>();
-        if (spawner == null || !spawner.RiflePickupPrefab.IsValid)
-            return;
-
-        runner.Spawn(spawner.RiflePickupPrefab, position, Quaternion.identity, null,
-            (_, spawned) =>
-            {
-                if (spawned.TryGetComponent(out RiflePickup pickup))
-                    pickup.Configure(weaponId, rarity, ammo);
-            });
-    }
-
-    /// <summary>Yerdeki modeli silahin elde tutulan modeliyle degistirir.</summary>
+    /// <summary>Yerdeki modeli silahin modeliyle degistirir ve namlusu yukari dik durdurur.</summary>
     private void ApplyModel()
     {
         if (_modelFilter == null || WeaponId == _shownWeaponId || WeaponId <= PlayerLoadout.FistWeaponId)
@@ -130,6 +116,51 @@ public class RiflePickup : TimedLootPickup
         _shownWeaponId = WeaponId;
         if (weapon.heldMesh != null)
             _modelFilter.sharedMesh = weapon.heldMesh;
+
+        StandUpright(_modelFilter.transform, _modelFilter.sharedMesh);
+    }
+
+    /// <summary>
+    /// Silah modellerinde namlu +Z yonunde. Model, namlu yukari bakacak sekilde
+    /// (standAngle) cevrilir ve merkezi dondurme eksenine (ustteki LootBob) oturtulur;
+    /// boylece silah kendi etrafinda doner. Uzun silahlar yere gomulmesin diye
+    /// en alt nokta zeminden groundClearance kadar yukarida tutulur.
+    /// </summary>
+    private void StandUpright(Transform model, Mesh mesh)
+    {
+        if (model == null || mesh == null || model.parent == null)
+            return;
+
+        Quaternion rotation = Quaternion.Euler(-standAngle, 0f, 0f);
+        model.localRotation = rotation;
+
+        Vector3 scale = model.localScale;
+        Bounds bounds = mesh.bounds;
+        Vector3 center = rotation * Vector3.Scale(bounds.center, scale);
+        Vector3 rotatedExtents = RotatedExtents(rotation, Vector3.Scale(bounds.extents, scale));
+
+        // Model merkezi dondurme ekseninde (x, z = 0).
+        Vector3 position = -center;
+
+        // Zemin: pickup kokunun RingGroundOffset kadar altinda (kok olcegi 1).
+        Transform pivot = model.parent;
+        float pivotHeight = pivot.position.y - transform.position.y;
+        float groundLocal = RingGroundOffset - pivotHeight;
+        float bottom = position.y - rotatedExtents.y;
+        float minBottom = groundLocal + groundClearance;
+        if (bottom < minBottom)
+            position.y += minBottom - bottom;
+
+        model.localPosition = position;
+    }
+
+    private static Vector3 RotatedExtents(Quaternion rotation, Vector3 extents)
+    {
+        Matrix4x4 m = Matrix4x4.Rotate(rotation);
+        return new Vector3(
+            Mathf.Abs(m.m00) * extents.x + Mathf.Abs(m.m01) * extents.y + Mathf.Abs(m.m02) * extents.z,
+            Mathf.Abs(m.m10) * extents.x + Mathf.Abs(m.m11) * extents.y + Mathf.Abs(m.m12) * extents.z,
+            Mathf.Abs(m.m20) * extents.x + Mathf.Abs(m.m21) * extents.y + Mathf.Abs(m.m22) * extents.z);
     }
 
     private static PlayerShooting _definitionSource;

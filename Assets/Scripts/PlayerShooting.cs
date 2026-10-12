@@ -106,6 +106,11 @@ public class PlayerShooting : NetworkBehaviour
         if (!FireCooldown.ExpiredOrNotRunning(Runner))
             return;
 
+        // Silah bilgisi mermi dusulmeden ONCE alinir: son mermiyle silah elden
+        // gider (yumruga gecilir), ama o mermi yine bu silahin hasari ve sesiyle cikmali.
+        int weaponId = _loadout.WeaponId;
+        float damageMultiplier = _loadout.CurrentDamageMultiplier;
+
         if (!_loadout.TryConsumeAmmo())
             return;
 
@@ -114,12 +119,12 @@ public class PlayerShooting : NetworkBehaviour
         if (weapon.isMelee)
             ExecuteMelee(weapon);
         else
-            FireRanged(weapon, aimInput);
+            FireRanged(weapon, weaponId, damageMultiplier, aimInput);
     }
 
     #region Menzilli
 
-    private void FireRanged(WeaponDefinition weapon, Vector2 aimInput)
+    private void FireRanged(WeaponDefinition weapon, int weaponId, float damageMultiplier, Vector2 aimInput)
     {
         Vector3 baseDirection = new Vector3(aimInput.x, 0f, aimInput.y).normalized;
         Vector3 origin = firePoint != null
@@ -127,7 +132,7 @@ public class PlayerShooting : NetworkBehaviour
             : transform.position + Vector3.up + baseDirection * 0.6f;
 
         // Nadirlik hasari carpar (Siradan 1, Efsanevi 1.35; SilahAyarlari).
-        float damage = weapon.damage * (_loadout != null ? _loadout.CurrentDamageMultiplier : 1f);
+        float damage = weapon.damage * damageMultiplier;
 
         for (int pellet = 0; pellet < Mathf.Max(1, weapon.pellets); pellet++)
         {
@@ -144,7 +149,7 @@ public class PlayerShooting : NetworkBehaviour
                     target.TakeDamage(damage, Object.InputAuthority, Object, weapon.label);
             }
 
-            Rpc_ShowShot(origin, endPoint, foundHit, weapon.tracerColor);
+            Rpc_ShowShot(origin, endPoint, foundHit, weapon.tracerColor, weaponId);
         }
     }
 
@@ -272,11 +277,11 @@ public class PlayerShooting : NetworkBehaviour
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_ShowShot(Vector3 origin, Vector3 endPoint, bool hitSomething, Color tracerColor)
+    private void Rpc_ShowShot(Vector3 origin, Vector3 endPoint, bool hitSomething, Color tracerColor, int weaponId)
     {
         ShotTracer.Show(origin, endPoint, hitSomething, tracerColor);
 
-        WeaponDefinition weapon = _loadout != null ? _loadout.CurrentWeapon : null;
+        WeaponDefinition weapon = GetWeapon(weaponId);
         ShakeOwnCamera(weapon != null ? weapon.shakeStrength : 0.15f);
 
         // Kovan HERKESTE gorunmeli - dusmanin ates ettigini kovanindan da

@@ -40,6 +40,8 @@ public class BattleStatusHUD : MonoBehaviour
         Refresh();
     }
 
+    private int _lastKills;
+
     private void FindLocalStats()
     {
         PlayerCombatStats[] allStats = UnityEngine.Object.FindObjectsByType<PlayerCombatStats>(
@@ -49,7 +51,7 @@ public class BattleStatusHUD : MonoBehaviour
 
         foreach (PlayerCombatStats stats in allStats)
         {
-            if (stats == null || stats.Object == null || !stats.HasInputAuthority)
+            if (stats == null || stats.Object == null || !stats.Object.IsValid || !stats.HasInputAuthority)
                 continue;
 
             _localStats = stats;
@@ -70,11 +72,15 @@ public class BattleStatusHUD : MonoBehaviour
         int aliveCount = 0;
         foreach (HealthController player in players)
         {
-            if (player != null && player.Object != null && player.currentHealth > 0f)
+            if (player != null && player.Object != null && player.Object.IsValid && player.currentHealth > 0f)
                 aliveCount++;
         }
 
-        int kills = _localStats != null ? _localStats.Kills : 0;
+        // Olen oyuncu agdan silinir (despawn) ama bilesen bir sure yasar: Object
+        // gecersizken networked alan okumak hata verir. Son bilinen degeri goster.
+        if (_localStats != null && _localStats.Object != null && _localStats.Object.IsValid)
+            _lastKills = _localStats.Kills;
+        int kills = _lastKills;
         // Onek bossa basa bosluk koyma: iki haneli sayi ("16") yanindaki kuru kafa
         // rozetinin ustune tasiyordu.
         aliveText.text = WithPrefix(alivePrefix, aliveCount);

@@ -188,8 +188,8 @@ namespace NewBattle.EditorTools
             if (EnsureWeaponCatalog())
                 added.Add("Yeni silahlar: Tabanca, Hafif Makineli, Pompalı, Keskin Nişancı");
 
-            if (EnsureSecondWeaponSlot())
-                added.Add("İkinci silah yuvası (sağ üst)");
+            if (EnsureWeaponDisplay(canvas))
+                added.Add("Silah göstergesi (minimap yanında: resim + mermi)");
 
             if (EnsureHeightMatchedScalers())
                 added.Add("Ekran ölçeği telefona uyumlu (yüksekliğe eşit)");

@@ -52,6 +52,7 @@ public class MatchResultHUD : MonoBehaviour
     // Olen oyuncu 1.25 sn sonra agdan silinir (PlayerDeadState); ondan sonra da
     // izleme ve mac sonu ekrani calissin diye gereken bilgiler burada tutulur.
     private bool _localDead;
+    private int _deathKills;
     private int _localTeamId = int.MinValue;
     private GameObject _characterHolder;
     private GameObject _characterSnapshot;
@@ -133,7 +134,11 @@ public class MatchResultHUD : MonoBehaviour
         LocalGameplayStopped = true;
         _localHealth.Runner.ProvideInput = false;
         if (IsNetworkObjectReady(_localStats))
+        {
             _localTeamId = _localStats.TeamId;
+            // Mac sonu ekrani bunu kullanir: ikilide o ana kadar karakter agdan silinmis olur.
+            _deathKills = _localStats.Kills;
+        }
 
         // Mac sonu ekrani bu kopyayi gosterir: ikilide arkadasini izlerken senin
         // karakterin agdan silindigi icin onizleme bos kaliyordu.
@@ -344,7 +349,7 @@ public class MatchResultHUD : MonoBehaviour
         LocalGameplayStopped = true;
         HideLocalControls();
         if (IsNetworkObjectReady(_localStats)) _localStats.Runner.ProvideInput = false;
-        int kills = IsNetworkObjectReady(_localStats) ? _localStats.Kills : 0;
+        int kills = IsNetworkObjectReady(_localStats) ? _localStats.Kills : _deathKills;
         int placement = victory ? 1 : Mathf.Max(2, _capturedPlacement);
 
         titleText.text = victory ? "ZAFER!" : "ELENDIN";
@@ -379,7 +384,7 @@ public class MatchResultHUD : MonoBehaviour
         HideLocalControls();
         if (IsNetworkObjectReady(_localStats)) _localStats.Runner.ProvideInput = false;
 
-        int kills = IsNetworkObjectReady(_localStats) ? _localStats.Kills : 0;
+        int kills = IsNetworkObjectReady(_localStats) ? _localStats.Kills : _deathKills;
         int placement = victory ? 1 : Mathf.Max(2, _capturedPlacement);
 
         LobbyCountdownController lobby = UnityEngine.Object.FindFirstObjectByType<LobbyCountdownController>();
