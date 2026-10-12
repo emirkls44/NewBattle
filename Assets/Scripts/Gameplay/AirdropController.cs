@@ -140,22 +140,21 @@ namespace NewBattle.Gameplay
             for (int attempt = 0; attempt < placementAttempts; attempt++)
             {
                 Vector2 offset = Random.insideUnitCircle * radius;
-                Vector3 origin = new(center.x + offset.x, center.y + dropAltitude + 20f, center.z + offset.y);
 
-                if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit,
-                        dropAltitude + 100f, groundMask, QueryTriggerInteraction.Ignore))
+                // Ustu acik zemin (agac tepesine inmesin).
+                if (!GroundSampler.TrySampleOpenGround(center.x + offset.x, center.z + offset.y, groundMask, out Vector3 ground))
                     continue;
 
                 // Sandigin oturacagi yerde bina/agac olmasin.
                 // Kureyi zeminden yukari kaldiriyoruz; aksi halde zeminin kendisi
                 // engel sayilir ve hicbir aday gecmez.
-                Vector3 clearanceCenter = hit.point + Vector3.up * (clearanceRadius + 0.6f);
+                Vector3 clearanceCenter = ground + Vector3.up * (clearanceRadius + 0.6f);
 
                 if (Physics.CheckSphere(clearanceCenter, clearanceRadius,
                         groundMask, QueryTriggerInteraction.Ignore))
                     continue;
 
-                groundPoint = hit.point;
+                groundPoint = ground;
                 return true;
             }
 

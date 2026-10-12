@@ -102,6 +102,8 @@ namespace NewBattle.UI
                     : $"{info.KillerName}  <size=75%><color={weaponColor}>{info.Weapon}</color></size>  {info.VictimName}";
             }
 
+            FitWidthToText(row, text);
+
             if (row.TryGetComponent(out Image background))
             {
                 background.color = info.KillerIsLocal ? localKillColor
@@ -118,6 +120,30 @@ namespace NewBattle.UI
                     Destroy(_rows[0].row.gameObject);
                 _rows.RemoveAt(0);
             }
+        }
+
+        /// <summary>
+        /// Arka plan yazinin boyu kadar olsun (sablonun genisligi en fazla genislik).
+        /// Yazinin sablondaki kenar boslugu korunur.
+        /// </summary>
+        private void FitWidthToText(RectTransform row, TextMeshProUGUI text)
+        {
+            if (text == null)
+                return;
+
+            // Otomatik boyut acikken "olmasi gereken genislik" hesaplanamaz; sablondaki
+            // en buyuk punto ile sabitle.
+            if (text.enableAutoSizing)
+            {
+                text.fontSize = text.fontSizeMax;
+                text.enableAutoSizing = false;
+            }
+
+            RectTransform textRect = text.rectTransform;
+            float margins = textRect.offsetMin.x - textRect.offsetMax.x; // sol + sag bosluk
+            float maxWidth = rowTemplate != null ? rowTemplate.sizeDelta.x : row.sizeDelta.x;
+            float width = Mathf.Min(maxWidth, text.GetPreferredValues(text.text).x + margins + 8f);
+            row.sizeDelta = new Vector2(width, row.sizeDelta.y);
         }
 
         private void PunchAliveCounter()

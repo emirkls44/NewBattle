@@ -420,8 +420,12 @@ namespace NewBattle.Gameplay
                 if (IsTooCloseToPlaced(placed, point))
                     continue;
 
-                float groundY = SampleGroundHeight(point);
-                Vector3 candidate = new(point.x, groundY + spawnHeight, point.y);
+                // Ilk carpan yer degil, ustu ACIK zemin: agac tepesine konmaz,
+                // agacin altina da (ustten gorunmez) saklanmaz.
+                if (!GroundSampler.TrySampleOpenGround(point.x, point.y, obstacleLayerMask, out Vector3 ground))
+                    continue;
+
+                Vector3 candidate = new(point.x, ground.y + spawnHeight, point.y);
 
                 if (Physics.CheckSphere(candidate, obstacleCheckRadius, obstacleLayerMask,
                         QueryTriggerInteraction.Ignore))
@@ -445,19 +449,6 @@ namespace NewBattle.Gameplay
             }
 
             return false;
-        }
-
-        private float SampleGroundHeight(Vector2 point)
-        {
-            Vector3 origin = new(point.x, groundRaycastHeight, point.y);
-
-            if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit,
-                    groundRaycastHeight * 2f, obstacleLayerMask, QueryTriggerInteraction.Ignore))
-            {
-                return hit.point.y;
-            }
-
-            return 0f;
         }
 
         private int PickEntry(System.Random random)

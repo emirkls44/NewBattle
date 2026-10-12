@@ -27,10 +27,18 @@ namespace NewBattle.EditorTools
                 added.Add("Öldürme akışı (sol üst)");
             }
 
-            if (canvas.GetComponentInChildren<KillBanner>(true) == null)
+            // "ÖLDÜRDÜN!" yazisi yerine can barinin ustunde kuru kafa rozetleri.
+            KillBanner oldBanner = canvas.GetComponentInChildren<KillBanner>(true);
+            if (oldBanner != null)
             {
-                BuildKillBanner(root);
-                added.Add("Öldürme afişi + XP");
+                Undo.DestroyObjectImmediate(oldBanner.gameObject);
+                added.Add("ÖLDÜRDÜN yazısı kaldırıldı");
+            }
+
+            if (canvas.GetComponentInChildren<KillBadges>(true) == null)
+            {
+                BuildKillBadges(root);
+                added.Add("Öldürme rozetleri (can barının üstü)");
             }
 
             if (canvas.GetComponentInChildren<DamageVignette>(true) == null)
@@ -85,6 +93,47 @@ namespace NewBattle.EditorTools
             serialized.FindProperty("list").objectReferenceValue = list;
             serialized.FindProperty("rowTemplate").objectReferenceValue = row;
             serialized.FindProperty("aliveCounter").objectReferenceValue = canvas.Find("BattleStatus/AliveCount") as RectTransform;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void BuildKillBadges(RectTransform canvas)
+        {
+            Vector2 bottom = new(0.5f, 0f);
+            RectTransform root = NewRect("OldurmeRozetleri", canvas);
+            Undo.RegisterCreatedObjectUndo(root.gameObject, "Oldurme rozetleri");
+            Place(root, bottom, new Vector2(0.5f, 0.5f), new Vector2(0f, 200f), new Vector2(400f, 160f));
+            CanvasGroup group = root.gameObject.AddComponent<CanvasGroup>();
+            group.alpha = 0f;
+            group.blocksRaycasts = false;
+            group.interactable = false;
+
+            RectTransform badge = NewRect("RozetSablonu", root);
+            Place(badge, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(112f, 112f));
+
+            RectTransform backing = NewRect("Zemin", badge);
+            Stretch(backing, 6f, 6f, 6f, 6f);
+            AddImage(backing, Sprite("ui_circle"), new Color(0.12f, 0.08f, 0.2f, 0.88f)).type = Image.Type.Simple;
+
+            RectTransform track = NewRect("HalkaIzi", badge);
+            Stretch(track, 0f, 0f, 0f, 0f);
+            AddImage(track, Sprite("ring"), new Color(1f, 1f, 1f, 0.22f)).type = Image.Type.Simple;
+
+            RectTransform ringRect = NewRect("Halka", badge);
+            Stretch(ringRect, 0f, 0f, 0f, 0f);
+            Image ring = AddImage(ringRect, Sprite("ring"), Yellow);
+            ring.type = Image.Type.Filled;
+            ring.fillMethod = Image.FillMethod.Radial360;
+            ring.fillOrigin = (int)Image.Origin360.Top;
+            ring.fillClockwise = true;
+            ring.fillAmount = 1f;
+
+            AddIcon(badge, "KuruKafa", "icon_skull", Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, 60f);
+
+            KillBadges component = root.gameObject.AddComponent<KillBadges>();
+            var serialized = new SerializedObject(component);
+            serialized.FindProperty("container").objectReferenceValue = root;
+            serialized.FindProperty("group").objectReferenceValue = group;
+            serialized.FindProperty("badgeTemplate").objectReferenceValue = badge;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

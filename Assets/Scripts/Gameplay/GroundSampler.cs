@@ -118,6 +118,31 @@ namespace NewBattle.Gameplay
             return false;
         }
 
+        /// <summary>
+        /// Ustu ACIK zemin: zemini bulur ve uzerinde agac tepesi, kaya, cati gibi
+        /// bir sey yoksa true. Loot ve airdrop sandigi icin: agacin ustune
+        /// konmasinlar, agacin altina da (ustten bakista gorunmez) saklanmasinlar.
+        /// </summary>
+        public static bool TrySampleOpenGround(float x, float z, LayerMask mask, out Vector3 ground)
+        {
+            if (!TrySampleAt(x, z, mask, out ground))
+                return false;
+
+            Vector3 origin = new(x, RayStartHeight, z);
+            int count = Physics.RaycastNonAlloc(origin, Vector3.down, Hits, RayLength, mask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = Hits[i];
+                if (hit.collider.GetComponentInParent<HealthController>() != null)
+                    continue;
+
+                if (hit.point.y > ground.y + 0.3f)
+                    return false; // zeminin ustunde bir sey var
+            }
+
+            return true;
+        }
+
         /// <summary>Yukari bakan, genis bir yuzey mi (arazi, zemin kutusu) - agac ya da kaya degil.</summary>
         private static bool IsGroundLike(RaycastHit hit)
         {
