@@ -8,7 +8,7 @@ namespace NewBattle.UI
     /// <summary>
     /// Olunce (ikili modda takim arkadasin hayattayken) altta cikan izleme paneli:
     ///   "İZLENİYOR" + izlenen oyuncunun adi, sol/sag oklarla oyuncular arasinda gecis,
-    ///   AYRIL ile izlemeyi birakip mac sonu ekranina gecis.
+    ///   sag altta MAÇTAN ÇIK ile izlemeyi birakip mac istatistikleri ekranina gecis.
     /// Mantik MatchResultHUD'da; bu sinif sadece gorunumu tasir.
     /// Tools > NewBattle > Menü > Kur ile Game_UI altina "IzlemePaneli" olarak kurulur.
     /// </summary>
@@ -24,6 +24,8 @@ namespace NewBattle.UI
         [Header("Etiket Renkleri")]
         [SerializeField] private Color teammateColor = new(0.45f, 0.9f, 1f, 1f);
         [SerializeField] private Color enemyColor = new(1f, 0.55f, 0.45f, 1f);
+
+        [SerializeField, HideInInspector] private int layoutVersion;
 
         /// <summary>-1: onceki oyuncu, +1: sonraki oyuncu.</summary>
         public event Action<int> StepRequested;

@@ -17,7 +17,13 @@ namespace NewBattle.Audio
         public static void Play(string id, Vector3 position, float volumeScale = 1f) =>
             AudioDirector.Instance?.Play(id, position, volumeScale);
 
-        public static void PlayUI(string id) => AudioDirector.Instance?.Play(id, null, 1f);
+        public static void PlayUI(string id) => AudioDirector.Instance?.Play(id, null, 1f, ui: true);
+
+        /// <summary>
+        /// Mac sonu ekraninda: arkadaki catisma, adim, ruzgar gibi oyun sesleri susar;
+        /// arayuz sesleri ve muzik calmaya devam eder. Sahne yeniden yuklenince kalkar.
+        /// </summary>
+        public static void MuteWorld(bool muted) => AudioDirector.SetWorldMuted(muted);
 
         /// <summary>Donen bir ses baslatir (ruzgar gibi). Durdurmak icin donen numarayi sakla.</summary>
         public static int StartLoop(string id) => AudioDirector.Instance != null ? AudioDirector.Instance.StartLoop(id) : 0;
@@ -83,8 +89,45 @@ namespace NewBattle.Audio
         private float _musicOutFade;
         private string _musicId;
 
+        /// <summary>Oyun dunyasinin sesleri susturuldu mu (mac sonu ekrani).</summary>
+        public static bool WorldMuted { get; private set; }
+
+        public static void SetWorldMuted(bool muted)
+        {
+            WorldMuted = muted;
+            if (_instance != null)
+                _instance.ApplyWorldMute();
+        }
+
+        private void ApplyWorldMute()
+        {
+            if (WorldMuted)
+            {
+                // Su an calan atis/adim seslerini de kes.
+                foreach (AudioSource voice in _voices)
+                {
+                    if (voice != null)
+                        voice.Stop();
+                }
+            }
+
+            foreach (var loop in _loops.Values)
+            {
+                if (loop.source != null)
+                    loop.source.mute = WorldMuted;
+            }
+        }
+
+        private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            // Menuye donuldu (sahne yeniden yuklendi): oyun sesleri geri gelsin.
+            if (WorldMuted)
+                SetWorldMuted(false);
+        }
+
         private void Awake()
         {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
             _library = SoundLibrary.Instance;
 
             int count = _library != null ? _library.maxVoices : 16;
@@ -105,6 +148,7 @@ namespace NewBattle.Audio
 
         private void OnDestroy()
         {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
             GameSettings.Changed -= ApplyVolumes;
             if (_instance == this)
                 _instance = null;
@@ -127,10 +171,14 @@ namespace NewBattle.Audio
         // Efektler
         // ------------------------------------------------------------------
 
-        public void Play(string id, Vector3? position, float volumeScale)
+        public void Play(string id, Vector3? position, float volumeScale, bool ui = false)
         {
             SoundEntry entry = Lookup(id);
             if (entry == null || entry.clips == null || entry.clips.Length == 0)
+                return;
+
+            // Mac sonu ekraninda sadece arayuz sesleri.
+            if (WorldMuted && !ui && entry.channel != SoundChannel.UI)
                 return;
 
             float now = Time.unscaledTime;
@@ -242,6 +290,7 @@ namespace NewBattle.Audio
             AudioSource source = CreateSource("Dongu_" + id, loop: true);
             source.clip = entry.clips[0];
             source.volume = entry.volume * ChannelVolume(entry.channel);
+            source.mute = WorldMuted;
             source.Play();
 
             int handle = _nextLoopHandle++;

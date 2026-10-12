@@ -31,6 +31,8 @@ namespace NewBattle.UI
         [SerializeField] private Color fistFrameColor = new(1f, 1f, 1f, 0.35f);
 
         private PlayerLoadout _loadout;
+        private DropPhaseController _dropPhase;
+        private CanvasGroup _group;
         private float _nextSearchTime;
         private int _shownWeapon = -1;
         private int _shownAmmo = -1;
@@ -42,6 +44,13 @@ namespace NewBattle.UI
         {
             if (icon != null)
                 _iconBaseScale = icon.rectTransform.localScale;
+
+            _group = GetComponent<CanvasGroup>();
+            if (_group == null)
+                _group = gameObject.AddComponent<CanvasGroup>();
+            _group.interactable = false;
+            _group.blocksRaycasts = false;
+            _group.alpha = 0f;
         }
 
         private void Update()
@@ -53,6 +62,17 @@ namespace NewBattle.UI
             }
 
             bool ready = IsReady(_loadout);
+
+            // Minimap gibi: sadece mac oynanirken (menude, lobide, inis secerken,
+            // olunce ve mac sonunda gorunmez).
+            if (_dropPhase == null && Time.unscaledTime >= _nextSearchTime)
+                _dropPhase = FindFirstObjectByType<DropPhaseController>();
+            bool playing = ready && _dropPhase != null && _dropPhase.Object != null && _dropPhase.Object.IsValid &&
+                           _dropPhase.GameplayStarted && !MatchResultHUD.LocalGameplayStopped;
+            _group.alpha = playing ? 1f : 0f;
+            if (!playing)
+                return;
+
             int weaponId = ready ? _loadout.WeaponId : PlayerLoadout.FistWeaponId;
             int ammo = ready ? _loadout.Ammo : 0;
             int rarity = ready ? _loadout.Rarity : 0;

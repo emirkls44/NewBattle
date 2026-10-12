@@ -342,6 +342,7 @@ public class MatchResultHUD : MonoBehaviour
             return;
 
         _resultShown = true;
+        NewBattle.Audio.Sfx.MuteWorld(true);
         bool victory = IsNetworkObjectReady(_match) && _match.MatchEnded &&
             (_match.Winner == _localPlayer ||
              (NetworkBootstrap.ActiveMode == BattleGameMode.Squad && IsNetworkObjectReady(_localStats) &&
@@ -379,6 +380,8 @@ public class MatchResultHUD : MonoBehaviour
     private void ShowEndScreen()
     {
         _resultShown = true;
+        // Istatistik ekraninda arkadaki catisma, botlar ve harita sesleri duyulmasin.
+        NewBattle.Audio.Sfx.MuteWorld(true);
         bool victory = IsVictory();
         LocalGameplayStopped = true;
         HideLocalControls();
