@@ -84,6 +84,10 @@ public class PlayerController : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        // Yeniden oynatilan tick'lerde CharacterController geri alinan konumu gorsun
+        // (yoksa katilan oyuncu cok hizli/titrek hareket ediyor).
+        NewBattle.Gameplay.PhysicsTickSync.Ensure(Runner);
+
         var health = GetComponent<HealthController>();
         if (health != null && health.currentHealth <= 0f) return;
         if (_lobbyCountdown != null && !_lobbyCountdown.MatchStarted)

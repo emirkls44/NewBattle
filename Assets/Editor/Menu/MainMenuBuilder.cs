@@ -182,6 +182,12 @@ namespace NewBattle.EditorTools
             if (EnsureMatchFeel(canvas, out string feel))
                 added.Add("Maç içi his: " + feel);
 
+            if (EnsureHeightMatchedScalers())
+                added.Add("Ekran ölçeği telefona uyumlu (yüksekliğe eşit)");
+
+            if (EnsureMobileJoysticks())
+                added.Add("Joystickler büyük, yuvarlak, saydam ve içeride");
+
             if (EnsureCloserCamera())
                 added.Add("Kamera yaklaştırıldı (8.5 → 6)");
 
@@ -1186,7 +1192,7 @@ namespace NewBattle.EditorTools
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
+            scaler.matchWidthOrHeight = 1f; // yatay telefonlar: dikeyde hep 1080 birim
             go.AddComponent<GraphicRaycaster>();
             CanvasGroup group = go.AddComponent<CanvasGroup>();
             group.alpha = 1f; // prefab duzenlenirken gorunsun; calisirken 0'dan acilir

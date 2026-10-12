@@ -75,9 +75,14 @@ public class BattleStatusHUD : MonoBehaviour
         }
 
         int kills = _localStats != null ? _localStats.Kills : 0;
-        aliveText.text = $"{alivePrefix}  {aliveCount}";
-        killsText.text = $"{killsPrefix}  {kills}";
+        // Onek bossa basa bosluk koyma: iki haneli sayi ("16") yanindaki kuru kafa
+        // rozetinin ustune tasiyordu.
+        aliveText.text = WithPrefix(alivePrefix, aliveCount);
+        killsText.text = WithPrefix(killsPrefix, kills);
     }
+
+    private static string WithPrefix(string prefix, int value) =>
+        string.IsNullOrWhiteSpace(prefix) ? value.ToString() : $"{prefix}  {value}";
 
     private void ResolveHierarchyReferences()
     {

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Fusion;
 using TMPro;
 using UnityEngine;
@@ -24,6 +25,10 @@ public class MatchResultHUD : MonoBehaviour
     [SerializeField] private Button returnButton;
     [SerializeField] private TextMeshProUGUI returnButtonText;
 
+    [Header("Izleme")]
+    [Tooltip("Olunce (ikili modda) altta cikan izleme paneli. Bossa sahnede aranir.")]
+    [SerializeField] private NewBattle.UI.SpectatorPanel spectatorPanel;
+
     [Header("Yeni Mac Sonu Ekrani")]
     [Tooltip("Doluysa sonuc Battlelands tarzi yeni ekranda gosterilir (Tools > NewBattle > Menu > Kur).")]
     [SerializeField] private NewBattle.UI.MatchEndScreen endScreen;
@@ -43,6 +48,17 @@ public class MatchResultHUD : MonoBehaviour
     private bool _returning;
     private int _capturedPlacement;
     private float _nextSearchTime;
+
+    // Olen oyuncu 1.25 sn sonra agdan silinir (PlayerDeadState); ondan sonra da
+    // izleme ve mac sonu ekrani calissin diye gereken bilgiler burada tutulur.
+    private bool _localDead;
+    private int _localTeamId = int.MinValue;
+    private GameObject _characterHolder;
+    private GameObject _characterSnapshot;
+    private PlayerCombatStats _spectatedStats;
+    private bool _leftSpectating;
+    private bool _spectatorWired;
+    private readonly List<PlayerCombatStats> _spectateTargets = new();
 
     private RenderTexture _previewTexture;
     private GameObject _previewCharacter;
@@ -90,26 +106,16 @@ public class MatchResultHUD : MonoBehaviour
         }
 
         CapturePlacementWhenEliminated();
-        if (IsNetworkObjectReady(_localHealth) && _localHealth.currentHealth <= 0f)
+        if (!_localDead && IsNetworkObjectReady(_localHealth) && _localHealth.currentHealth <= 0f)
+            OnLocalPlayerDied();
+
+        if (_localDead)
         {
-            LocalGameplayStopped = true;
-            _localHealth.Runner.ProvideInput = false;
-            if (NetworkBootstrap.ActiveMode == BattleGameMode.Squad)
-            {
-                Transform teammate = FindLivingTeammate();
-                if (teammate != null && !(IsNetworkObjectReady(_match) && _match.MatchEnded))
-                {
-                    if (_spectatorCamera == null)
-                        _spectatorCamera = UnityEngine.Object.FindFirstObjectByType<CameraFollow>();
-                    if (_spectatorCamera != null && _spectated != teammate)
-                    {
-                        _spectatorCamera.SetTarget(teammate);
-                        _spectated = teammate;
-                    }
-                    HideLocalControls();
-                    return;
-                }
-            }
+            bool matchOver = IsNetworkObjectReady(_match) && _match.MatchEnded;
+            if (!matchOver && !_leftSpectating && UpdateSpectating())
+                return;
+
+            HideSpectatorPanel();
             ShowResult();
             return;
         }
@@ -121,17 +127,137 @@ public class MatchResultHUD : MonoBehaviour
             ShowResult();
     }
 
-    private Transform FindLivingTeammate()
+    private void OnLocalPlayerDied()
     {
-        if (!IsNetworkObjectReady(_localStats)) return null;
-        foreach (var stats in UnityEngine.Object.FindObjectsByType<PlayerCombatStats>(FindObjectsSortMode.None))
+        _localDead = true;
+        LocalGameplayStopped = true;
+        _localHealth.Runner.ProvideInput = false;
+        if (IsNetworkObjectReady(_localStats))
+            _localTeamId = _localStats.TeamId;
+
+        // Mac sonu ekrani bu kopyayi gosterir: ikilide arkadasini izlerken senin
+        // karakterin agdan silindigi icin onizleme bos kaliyordu.
+        SnapshotLocalCharacter();
+    }
+
+    /// <summary>
+    /// Ikili modda takim arkadasin hayattaysa izlemeye devam eder. Takim tamamen
+    /// elendiyse (ya da solo moddaysa) false doner ve mac sonu ekrani acilir.
+    /// </summary>
+    private bool UpdateSpectating()
+    {
+        if (NetworkBootstrap.ActiveMode != BattleGameMode.Squad || _localTeamId == int.MinValue)
+            return false;
+
+        CollectSpectateTargets();
+        if (_spectateTargets.Count == 0 || !IsTeammate(_spectateTargets[0]))
+            return false; // takimda hayatta kimse kalmadi
+
+        if (!_spectateTargets.Contains(_spectatedStats))
+            SetSpectated(_spectateTargets[0]); // ilk kez ya da izlenen oldu: takim arkadasina don
+        else
+            RefreshSpectatorPanel();
+
+        HideLocalControls();
+        return true;
+    }
+
+    /// <summary>Hayattaki oyuncular; once takim arkadaslari, sonra rakipler (isme gore).</summary>
+    private void CollectSpectateTargets()
+    {
+        _spectateTargets.Clear();
+        foreach (PlayerCombatStats stats in UnityEngine.Object.FindObjectsByType<PlayerCombatStats>(FindObjectsSortMode.None))
         {
-            if (stats == _localStats || !IsNetworkObjectReady(stats) || stats.Runner != _localStats.Runner) continue;
-            var health = stats.GetComponent<HealthController>();
-            if (_localStats.IsTeammate(stats) && IsNetworkObjectReady(health) && health.currentHealth > 0f)
-                return stats.transform;
+            if (stats == null || stats == _localStats || !IsNetworkObjectReady(stats))
+                continue;
+
+            HealthController health = stats.GetComponent<HealthController>();
+            if (IsNetworkObjectReady(health) && health.currentHealth > 0f)
+                _spectateTargets.Add(stats);
         }
-        return null;
+
+        _spectateTargets.Sort((a, b) =>
+        {
+            int team = IsTeammate(b).CompareTo(IsTeammate(a));
+            return team != 0 ? team : string.CompareOrdinal(a.NameOrDefault, b.NameOrDefault);
+        });
+    }
+
+    private bool IsTeammate(PlayerCombatStats stats) => stats != null && stats.TeamId == _localTeamId;
+
+    private void StepSpectated(int direction)
+    {
+        CollectSpectateTargets();
+        if (_spectateTargets.Count == 0)
+            return;
+
+        int index = _spectateTargets.IndexOf(_spectatedStats);
+        int count = _spectateTargets.Count;
+        int next = index < 0 ? 0 : ((index + direction) % count + count) % count;
+        SetSpectated(_spectateTargets[next]);
+    }
+
+    private void SetSpectated(PlayerCombatStats target)
+    {
+        _spectatedStats = target;
+
+        if (_spectatorCamera == null)
+            _spectatorCamera = UnityEngine.Object.FindFirstObjectByType<CameraFollow>();
+        if (_spectatorCamera != null && target != null && _spectated != target.transform)
+        {
+            _spectatorCamera.SetTarget(target.transform);
+            _spectated = target.transform;
+        }
+
+        RefreshSpectatorPanel();
+    }
+
+    private void RefreshSpectatorPanel()
+    {
+        NewBattle.UI.SpectatorPanel panel = ResolveSpectatorPanel();
+        if (panel == null || _spectatedStats == null)
+            return;
+
+        panel.Show(_spectatedStats.NameOrDefault, IsTeammate(_spectatedStats), _spectateTargets.Count > 1);
+    }
+
+    private NewBattle.UI.SpectatorPanel ResolveSpectatorPanel()
+    {
+        if (spectatorPanel == null)
+            spectatorPanel = UnityEngine.Object.FindFirstObjectByType<NewBattle.UI.SpectatorPanel>(FindObjectsInactive.Include);
+
+        if (spectatorPanel != null && !_spectatorWired)
+        {
+            _spectatorWired = true;
+            spectatorPanel.StepRequested += StepSpectated;
+            spectatorPanel.LeaveRequested += () => _leftSpectating = true;
+        }
+
+        return spectatorPanel;
+    }
+
+    private void HideSpectatorPanel()
+    {
+        if (spectatorPanel != null)
+            spectatorPanel.Hide();
+    }
+
+    /// <summary>
+    /// Olum aninda karakterin gorunur kismini gizli bir kopya olarak saklar
+    /// (kopya aktif olmayan bir tasiyicinin altinda: calismaz, gorunmez).
+    /// </summary>
+    private void SnapshotLocalCharacter()
+    {
+        if (_characterSnapshot != null || _localStats == null)
+            return;
+
+        Animator source = _localStats.GetComponentInChildren<Animator>(true);
+        if (source == null)
+            return;
+
+        _characterHolder = new GameObject("MacSonuKarakterKopyasi");
+        _characterHolder.SetActive(false);
+        _characterSnapshot = Instantiate(source.gameObject, _characterHolder.transform);
     }
 
     private void HideLocalControls()
@@ -361,18 +487,21 @@ public class MatchResultHUD : MonoBehaviour
 
     private void CreateCharacterPreview(RawImage target, AnimationClip resultClip = null)
     {
-        if (_localStats == null || target == null)
+        if (target == null)
             return;
 
-        Animator sourceAnimator = _localStats.GetComponentInChildren<Animator>(true);
-        if (sourceAnimator == null)
+        // Oyuncu hala sahnedeyse onu, agdan silindiyse olum anindaki kopyayi kullan.
+        Animator sourceAnimator = _localStats != null ? _localStats.GetComponentInChildren<Animator>(true) : null;
+        GameObject source = sourceAnimator != null ? sourceAnimator.gameObject : _characterSnapshot;
+        if (source == null)
         {
-            Debug.LogWarning("MatchResultHUD: Yerel karakterde Animator bulunamadi; onizleme bos kalacak.");
+            Debug.LogWarning("MatchResultHUD: Yerel karakter bulunamadi; onizleme bos kalacak.");
             return;
         }
 
         Vector3 stage = new(1000f, 1000f, 1000f);
-        _previewCharacter = Instantiate(sourceAnimator.gameObject, stage, Quaternion.identity);
+        _previewCharacter = Instantiate(source, stage, Quaternion.identity);
+        _previewCharacter.SetActive(true);
         _previewCharacter.name = "ResultCharacterPreview";
         SetLayerRecursively(_previewCharacter, PreviewLayer);
 
@@ -501,6 +630,7 @@ public class MatchResultHUD : MonoBehaviour
         LocalGameplayStopped = false;
         if (_backgroundCamera != null) Destroy(_backgroundCamera.gameObject);
         if (_previewCharacter != null) Destroy(_previewCharacter);
+        if (_characterHolder != null) Destroy(_characterHolder);
         if (_previewCameraObject != null) Destroy(_previewCameraObject);
         if (_previewLightObject != null) Destroy(_previewLightObject);
 

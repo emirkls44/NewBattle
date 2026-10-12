@@ -843,7 +843,7 @@ public class SafeZoneController : NetworkBehaviour
         CanvasScaler scaler = _dangerCanvasObject.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
+        scaler.matchWidthOrHeight = 1f; // yatay telefonlar: dikeyde hep 1080 birim
 
         GameObject imageObject = new("RedPulse", typeof(RectTransform), typeof(Image));
         RectTransform imageRect = imageObject.GetComponent<RectTransform>();

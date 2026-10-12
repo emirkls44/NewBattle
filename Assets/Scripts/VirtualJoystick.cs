@@ -8,14 +8,21 @@ public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, I
     [SerializeField, Range(0.1f, 1f)] private float handleRange = 0.65f;
 
     [Header("Gorsel Stil")]
+    [Tooltip("Acikken arka plan ve top yuvarlak cizilir; asagidaki renkler kullanilir.")]
     [SerializeField] private bool applyBattleRoyaleStyle = true;
-    [SerializeField, Range(0.2f, 0.7f)] private float handleSizeRatio = 0.38f;
+    [SerializeField, Range(0.2f, 0.7f)] private float handleSizeRatio = 0.42f;
+    [Tooltip("Arka plan dairesi: ici bu rengin yarisi kadar, kenar halkasi tam bu renk.")]
+    [SerializeField] private Color backgroundColor = new(1f, 1f, 1f, 0.32f);
+    [SerializeField] private Color handleColor = new(1f, 1f, 1f, 0.55f);
+
+    [SerializeField, HideInInspector] private int layoutVersion;
 
     private RectTransform _backgroundRect;
     private RectTransform _handleRect;
 
     private static Texture2D _circleTexture;
     private static Sprite _circleSprite;
+    private static Sprite _ringSprite;
 
     public Vector2 InputVector { get; private set; }
 
@@ -49,10 +56,15 @@ public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, I
         Sprite circle = GetCircleSprite();
 
         Image backgroundImage = GetComponent<Image>();
-        backgroundImage.sprite = circle;
+        backgroundImage.sprite = GetRingSprite();
         backgroundImage.type = Image.Type.Simple;
         backgroundImage.preserveAspect = true;
         backgroundImage.raycastTarget = true;
+        backgroundImage.color = backgroundColor;
+
+        // Saydam daire altinda golge camur gibi gorunuyor.
+        if (TryGetComponent(out Shadow shadow))
+            shadow.enabled = false;
 
         Image handleImage = _handleRect.GetComponent<Image>();
         if (handleImage == null)
@@ -62,6 +74,10 @@ public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, I
         handleImage.type = Image.Type.Simple;
         handleImage.preserveAspect = true;
         handleImage.raycastTarget = false;
+        handleImage.color = handleColor;
+
+        if (_handleRect.TryGetComponent(out Shadow handleShadow))
+            handleShadow.enabled = false;
 
         float diameter = Mathf.Min(_backgroundRect.rect.width, _backgroundRect.rect.height);
         if (diameter <= 0f)
@@ -111,6 +127,46 @@ public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, I
         );
         _circleSprite.name = "RuntimeJoystickCircleSprite";
         return _circleSprite;
+    }
+
+    /// <summary>Ici yari saydam, kenari belirgin halka (Battlelands joystick'i gibi).</summary>
+    private static Sprite GetRingSprite()
+    {
+        if (_ringSprite != null)
+            return _ringSprite;
+
+        const int size = 256;
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            name = "RuntimeJoystickRing",
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        Color32[] pixels = new Color32[size * size];
+        float center = (size - 1) * 0.5f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - center;
+                float dy = y - center;
+                float d = Mathf.Sqrt(dx * dx + dy * dy) / center;
+
+                float outerEdge = 1f - Mathf.SmoothStep(0.97f, 1f, d);
+                float ring = Mathf.SmoothStep(0.88f, 0.91f, d);
+                float alpha = outerEdge * Mathf.Lerp(0.5f, 1f, ring);
+                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply(false, true);
+
+        _ringSprite = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
+        _ringSprite.name = "RuntimeJoystickRingSprite";
+        return _ringSprite;
     }
 
     public void OnPointerDown(PointerEventData eventData)

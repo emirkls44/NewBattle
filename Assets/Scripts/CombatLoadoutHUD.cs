@@ -100,6 +100,7 @@ public class CombatLoadoutHUD : MonoBehaviour
         {
             fistButton ??= fistSlot.GetComponent<Button>();
             fistBackground ??= fistSlot.GetComponent<Image>();
+            KeepOnOneLine(fistSlot.GetComponentInChildren<TextMeshProUGUI>(true));
         }
 
         if (rifleSlot != null)
@@ -107,6 +108,25 @@ public class CombatLoadoutHUD : MonoBehaviour
             rifleButton ??= rifleSlot.GetComponent<Button>();
             rifleBackground ??= rifleSlot.GetComponent<Image>();
             rifleText ??= rifleSlot.Find("Label")?.GetComponent<TextMeshProUGUI>();
+            KeepOnOneLine(rifleText);
+        }
+    }
+
+    /// <summary>
+    /// Dar ekranli telefonlarda "YUMRUK" iki satira bolunup "YUMRU / K" oluyordu:
+    /// yazi tek satirda kalsin, sigmazsa kuculsun.
+    /// </summary>
+    private static void KeepOnOneLine(TextMeshProUGUI label)
+    {
+        if (label == null)
+            return;
+
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        if (!label.enableAutoSizing)
+        {
+            label.fontSizeMax = label.fontSize;
+            label.fontSizeMin = Mathf.Min(12f, label.fontSize);
+            label.enableAutoSizing = true;
         }
     }
 

@@ -11,3 +11,5 @@
 # İşletim sistemi kalıntıları
 .DS_Store
 Thumbs.db
+# Android Gradle gecici klasoru
+/.utmp/

@@ -47,7 +47,21 @@ namespace NewBattle.EditorTools
                 added.Add("Hasar efekti");
             }
 
-            ScreenAnnouncer announcer = Object.FindFirstObjectByType<ScreenAnnouncer>(FindObjectsInactive.Include);
+            if (canvas.GetComponentInChildren<SpectatorPanel>(true) == null)
+            {
+                SpectatorPanel panel = BuildSpectatorPanel(root);
+                MatchResultHUD resultHud = Object.FindFirstObjectByType<MatchResultHUD>(FindObjectsInactive.Include);
+                if (resultHud != null)
+                {
+                    var serializedHud = new SerializedObject(resultHud);
+                    serializedHud.FindProperty("spectatorPanel").objectReferenceValue = panel;
+                    serializedHud.ApplyModifiedProperties();
+                }
+
+                added.Add("İzleme paneli (ölünce kimi izlediğin + oklarla geçiş)");
+            }
+
+            ScreenAnnouncer announcer =Object.FindFirstObjectByType<ScreenAnnouncer>(FindObjectsInactive.Include);
             if (announcer != null)
             {
                 var serialized = new SerializedObject(announcer);
@@ -94,6 +108,57 @@ namespace NewBattle.EditorTools
             serialized.FindProperty("rowTemplate").objectReferenceValue = row;
             serialized.FindProperty("aliveCounter").objectReferenceValue = canvas.Find("BattleStatus/AliveCount") as RectTransform;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Olunce alt ortada: "İZLENİYOR" etiketi + izlenen oyuncunun adi, iki yanda
+        /// oklar (oyuncular arasinda gecis), sagda AYRIL (mac sonu ekranina gec).
+        /// </summary>
+        private static SpectatorPanel BuildSpectatorPanel(RectTransform canvas)
+        {
+            Vector2 bottom = new(0.5f, 0f);
+            RectTransform root = NewRect("IzlemePaneli", canvas);
+            Undo.RegisterCreatedObjectUndo(root.gameObject, "Izleme paneli");
+            Place(root, bottom, new Vector2(0.5f, 0.5f), new Vector2(0f, 190f), new Vector2(1180f, 150f));
+            CanvasGroup group = root.gameObject.AddComponent<CanvasGroup>();
+            group.alpha = 0f;
+            group.blocksRaycasts = false;
+            group.interactable = false;
+
+            RectTransform plate = NewRect("Zemin", root);
+            Place(plate, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600f, 140f));
+            AddImage(plate, Sprite("ui_round"), new Color(0f, 0f, 0f, 0.6f)).pixelsPerUnitMultiplier = 2f;
+
+            TextMeshProUGUI tag = AddText(plate, "Etiket", "İZLENİYOR · TAKIM ARKADAŞIN", 28f, new Color(0.45f, 0.9f, 1f, 1f), TextAlignmentOptions.Center);
+            Place(tag.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(560f, 40f));
+
+            TextMeshProUGUI playerName = AddText(plate, "Isim", "Savaşçı", 56f, Color.white, TextAlignmentOptions.Center, shadow: true);
+            Place(playerName.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(560f, 76f));
+
+            Button previous = AddButton(root, "OncekiButonu", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-385f, 4f), new Vector2(120f, 120f), Blue, BlueLip);
+            AddIcon(Face(previous), "Ok", "icon_play", Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, 58f)
+                .rectTransform.localEulerAngles = new Vector3(0f, 0f, 180f);
+
+            Button next = AddButton(root, "SonrakiButonu", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(385f, 4f), new Vector2(120f, 120f), Blue, BlueLip);
+            AddIcon(Face(next), "Ok", "icon_play", Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, 58f);
+
+            Button leave = AddButton(root, "AyrilButonu", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(530f, 4f), new Vector2(130f, 90f), Orange, OrangeLip);
+            TextMeshProUGUI leaveText = AddText(Face(leave), "Yazi", "AYRIL", 34f, Color.white, TextAlignmentOptions.Center, shadow: true);
+            Stretch(leaveText.rectTransform, 8f, 8f, 6f, 6f);
+
+            SpectatorPanel component = root.gameObject.AddComponent<SpectatorPanel>();
+            var serialized = new SerializedObject(component);
+            serialized.FindProperty("group").objectReferenceValue = group;
+            serialized.FindProperty("nameText").objectReferenceValue = playerName;
+            serialized.FindProperty("tagText").objectReferenceValue = tag;
+            serialized.FindProperty("previousButton").objectReferenceValue = previous;
+            serialized.FindProperty("nextButton").objectReferenceValue = next;
+            serialized.FindProperty("leaveButton").objectReferenceValue = leave;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return component;
         }
 
         private static void BuildKillBadges(RectTransform canvas)

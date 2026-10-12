@@ -128,7 +128,7 @@ namespace NewBattle.Gameplay
                 CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
                 scaler.referenceResolution = new Vector2(1920f, 1080f);
-                scaler.matchWidthOrHeight = 0.5f;
+                scaler.matchWidthOrHeight = 1f; // yatay telefonlar: dikeyde hep 1080 birim
             }
 
             _group = gameObject.GetComponent<CanvasGroup>();
@@ -146,13 +146,8 @@ namespace NewBattle.Gameplay
             _label.alignment = TextAlignmentOptions.Center;
             _label.textWrappingMode = TextWrappingModes.NoWrap;
             _label.raycastTarget = false;
-            _label.color = textColor;
             _label.fontStyle = FontStyles.Bold;
-            _label.outlineWidth = outlineWidth;
-            _label.outlineColor = outlineColor;
-
-            if (font != null)
-                _label.font = font;
+            ApplyLook();
 
             _labelRect = _label.rectTransform;
             _labelRect.anchorMin = new Vector2(0f, 0.5f);
@@ -177,14 +172,27 @@ namespace NewBattle.Gameplay
 
             // Inspector'dan degistirilen gorunum ayarlari her gosterimde
             // yeniden uygulaniyor; Play modunda deneyip sonucu hemen gor.
+            ApplyLook();
+
+            Debug.Log($"[Duyuru] \"{message}\"");
+        }
+
+        /// <summary>
+        /// Once font, sonra kenar cizgisi: outlineWidth o anki fontun materyalini kopyalar.
+        /// Font sonradan degisirse kopya eski fontun dokusunu tutar; telefonda (font dokusu
+        /// calisma aninda uretilir) harfler bozuk cikiyordu.
+        /// </summary>
+        private void ApplyLook()
+        {
+            if (font != null && _label.font != font)
+            {
+                _label.font = font;
+                _label.fontSharedMaterial = font.material;
+            }
+
             _label.color = textColor;
             _label.outlineWidth = outlineWidth;
             _label.outlineColor = outlineColor;
-
-            if (font != null && _label.font != font)
-                _label.font = font;
-
-            Debug.Log($"[Duyuru] \"{message}\"");
         }
 
         private void Update()

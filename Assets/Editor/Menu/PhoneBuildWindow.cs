@@ -66,14 +66,14 @@ namespace NewBattle.EditorTools
             using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
             {
                 if (GUILayout.Button("APK Oluştur + Telefonlara Yükle", GUILayout.Height(36f)))
-                    BuildAndInstall(install: true);
+                    RunAfterGui(() => BuildAndInstall(install: true));
 
                 if (GUILayout.Button("Sadece APK Oluştur"))
-                    BuildAndInstall(install: false);
+                    RunAfterGui(() => BuildAndInstall(install: false));
             }
 
             if (GUILayout.Button("Mevcut APK'yı tekrar yükle (derlemeden)"))
-                InstallToAll(Path.Combine(BuildFolder, "NewBattle.apk"));
+                RunAfterGui(() => InstallToAll(Path.Combine(BuildFolder, "NewBattle.apk")));
 
             if (GUILayout.Button("APK klasörünü aç"))
             {
@@ -132,6 +132,16 @@ namespace NewBattle.EditorTools
                                                    ", Photon bölgesi '" + PhotonRegion + "'.", "Tamam");
         }
 
+        /// <summary>
+        /// Uzun islemi (derleme) pencere cizimi bittikten sonra calistirir; OnGUI icinde
+        /// calisinca "EndLayoutGroup: BeginLayoutGroup must be called first" hatasi verir.
+        /// </summary>
+        private static void RunAfterGui(System.Action action)
+        {
+            EditorApplication.delayCall += () => action();
+            GUIUtility.ExitGUI();
+        }
+
         private void BuildAndInstall(bool install)
         {
             PrepareSettingsQuiet();
@@ -174,18 +184,83 @@ namespace NewBattle.EditorTools
                 return;
             }
 
-            Debug.Log($"APK hazir: {apk} ({report.summary.totalSize / (1024f * 1024f):0.0} MB)");
+            float sizeMb = new FileInfo(apk).Length / (1024f * 1024f);
+            Debug.Log($"APK hazir: {apk} ({sizeMb:0.0} MB)");
 
             if (install)
+            {
                 InstallToAll(apk);
-            else
-                EditorUtility.RevealInFinder(apk);
+                return;
+            }
+
+            EditorUtility.RevealInFinder(apk);
+            EditorUtility.DisplayDialog("APK hazır",
+                $"NewBattle.apk ({sizeMb:0} MB) açılan klasörde.\n\n" +
+                "Telefona at: WhatsApp / Telegram / Google Drive / e-posta / USB ile kopyala.\n" +
+                "Telefonda dosyaya dokun → 'Bilinmeyen uygulamaları yükle' iznini ver → Yükle.\n\n" +
+                "Yeni sürümü aynı şekilde üstüne kurabilirsin; ilerleme silinmez.",
+                "Tamam");
         }
 
         private static void PrepareSettingsQuiet()
         {
             if (PlayerSettings.GetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android) != PackageName)
                 PrepareSettings();
+
+            EnsureAlwaysIncludedShaders();
+        }
+
+        /// <summary>
+        /// Kodda Shader.Find ile yuklenen shader'lar hicbir materyalde kullanilmadigi icin
+        /// derlemeye girmez; telefonda yedek (opak) shader'a duserler. Ornek: loot parlamasi
+        /// duz renkli disk gibi gorunuyordu. Bunlari "her zaman dahil" listesine ekler.
+        /// </summary>
+        private static void EnsureAlwaysIncludedShaders()
+        {
+            string[] names =
+            {
+                "NewBattle/ToonOverlay",
+                "NewBattle/ZoneBand",
+                "Universal Render Pipeline/Unlit"
+            };
+
+            var settings = new SerializedObject(UnityEngine.Rendering.GraphicsSettings.GetGraphicsSettings());
+            SerializedProperty list = settings.FindProperty("m_AlwaysIncludedShaders");
+            bool changed = false;
+
+            foreach (string shaderName in names)
+            {
+                Shader shader = Shader.Find(shaderName);
+                if (shader == null)
+                {
+                    Debug.LogWarning("Telefon: shader bulunamadi: " + shaderName);
+                    continue;
+                }
+
+                bool present = false;
+                for (int i = 0; i < list.arraySize; i++)
+                {
+                    if (list.GetArrayElementAtIndex(i).objectReferenceValue == shader)
+                    {
+                        present = true;
+                        break;
+                    }
+                }
+
+                if (present)
+                    continue;
+
+                list.InsertArrayElementAtIndex(list.arraySize);
+                list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = shader;
+                changed = true;
+                Debug.Log("Telefon: derlemeye her zaman dahil edilen shader eklendi: " + shaderName);
+            }
+
+            if (changed)
+            {
+                settings.ApplyModifiedPropertiesWithoutUndo();
+                AssetDatabase.SaveAssets();
+            }
         }
 
         private void InstallToAll(string apk)
