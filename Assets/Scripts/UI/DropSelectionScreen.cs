@@ -285,15 +285,17 @@ namespace NewBattle.UI
             if (target == null)
                 yield break;
 
+            // Senin ayarladigin olcek etrafinda ziplar.
+            Vector3 baseScale = UIBaseScale.Get(target);
+
             for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
             {
                 float k = 1f - Mathf.Pow(1f - t / seconds, 3f);
-                float scale = Mathf.Lerp(startScale, 1f, k);
-                target.localScale = new Vector3(scale, scale, 1f);
+                target.localScale = baseScale * Mathf.Lerp(startScale, 1f, k);
                 yield return null;
             }
 
-            target.localScale = Vector3.one;
+            target.localScale = baseScale;
         }
     }
 }

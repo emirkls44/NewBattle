@@ -103,6 +103,12 @@ namespace NewBattle.EditorTools
             item.FindPropertyRelative("icon").objectReferenceValue = null;
         }
 
+        /// <summary>Projedeki karakter animasyon paketinden isimle klip bulur.</summary>
+        public static AnimationClip FindCharacterClip(string name)
+        {
+            return LoadClips(MergedClipsPath).TryGetValue(name, out AnimationClip clip) ? clip : null;
+        }
+
         private static Dictionary<string, AnimationClip> LoadClips(string path)
         {
             return AssetDatabase.LoadAllAssetsAtPath(path)

@@ -47,6 +47,10 @@ namespace NewBattle.UI
         [SerializeField, Min(1)] private int seasonNumber = 1;
         [SerializeField, Min(0)] private int onlinePlayers = 1;
 
+        [Header("Alt Ekranlar")]
+        [Tooltip("'karakter' butonunun actigi lobi animasyonu secim ekrani.")]
+        [SerializeField] private LobbyAnimationScreen characterScreen;
+
         [Header("Yukleme Ekrani")]
         [Tooltip("Mac aranirken gosterilen ekran (Assets/Prefabs/UI/YuklemeEkrani).")]
         [SerializeField] private LoadingScreen loadingScreenPrefab;
@@ -94,6 +98,10 @@ namespace NewBattle.UI
             // Islevi henuz baglanmamis butonlar (bkz. MenuButton) "YAKINDA!" der.
             MenuButton.Unhandled += OnUnhandledButton;
 
+            // Baglanan butonlar.
+            if (characterScreen != null)
+                MenuButton.Register("karakter", characterScreen.Open);
+
             if (comingSoonButtons != null)
             {
                 foreach (Button button in comingSoonButtons)
@@ -136,6 +144,8 @@ namespace NewBattle.UI
         {
             PlayerProgress.Changed -= Refresh;
             MenuButton.Unhandled -= OnUnhandledButton;
+            if (characterScreen != null)
+                MenuButton.Unregister("karakter", characterScreen.Open);
 
             if (modePanel != null)
             {

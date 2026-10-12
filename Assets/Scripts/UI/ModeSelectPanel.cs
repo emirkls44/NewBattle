@@ -154,8 +154,10 @@ namespace NewBattle.UI
 
         public void Open()
         {
-            gameObject.SetActive(true);
+            // Once "acik" isaretle: ilk acilista Awake bu SetActive sirasinda
+            // calisir ve pencere kapali sanilirsa kendini geri kapatirdi.
             IsOpen = true;
+            gameObject.SetActive(true);
             transform.SetAsLastSibling();
 
             _tipIndex = UnityEngine.Random.Range(0, Mathf.Max(1, tips.Length));
@@ -297,7 +299,7 @@ namespace NewBattle.UI
 
             // Acilirken hafif "zipla" (ease-out-back), kapanirken duz kucul.
             float scale = opening ? Mathf.LerpUnclamped(0.85f, 1f, EaseOutBack(progress)) : Mathf.Lerp(0.9f, 1f, progress);
-            window.localScale = new Vector3(scale, scale, 1f);
+            window.localScale = UIBaseScale.Get(window) * scale;
         }
 
         private static float EaseOutBack(float t)

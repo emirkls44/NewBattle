@@ -277,7 +277,7 @@ public class MatchResultHUD : MonoBehaviour
         _backgroundCamera.backgroundColor = Color.black;
         _backgroundCamera.targetDisplay = 0;
 
-        CreateCharacterPreview(endScreen.CharacterImage);
+        CreateCharacterPreview(endScreen.CharacterImage, endScreen.ResultClip(victory));
         endScreen.Show(outcome, BuildEndMessage(victory), ReturnToMainMenu);
     }
 
@@ -359,7 +359,7 @@ public class MatchResultHUD : MonoBehaviour
         }
     }
 
-    private void CreateCharacterPreview(RawImage target)
+    private void CreateCharacterPreview(RawImage target, AnimationClip resultClip = null)
     {
         if (_localStats == null || target == null)
             return;
@@ -382,6 +382,10 @@ public class MatchResultHUD : MonoBehaviour
             if (script != null)
                 Destroy(script);
         }
+
+        // Kazanma / elenme animasyonu.
+        if (resultClip != null && _previewCharacter.TryGetComponent(out Animator previewAnimator))
+            _previewCharacter.AddComponent<NewBattle.UI.LoopingClipPlayer>().Play(previewAnimator, resultClip);
 
         Renderer[] renderers = _previewCharacter.GetComponentsInChildren<Renderer>(true);
         if (renderers.Length == 0)

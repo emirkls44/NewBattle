@@ -35,6 +35,10 @@ namespace NewBattle.UI
 
         [Header("Karakter")]
         [SerializeField] private RawImage characterImage;
+        [Tooltip("Kazaninca karakterin oynayacagi animasyon (Humanoid klip; Mixamo 'Victory' gibi).")]
+        [SerializeField] private AnimationClip victoryClip;
+        [Tooltip("Elenince karakterin oynayacagi animasyon (Mixamo 'Defeated' gibi).")]
+        [SerializeField] private AnimationClip defeatClip;
 
         [Header("Seviye")]
         [SerializeField] private TextMeshProUGUI levelText;
@@ -63,6 +67,9 @@ namespace NewBattle.UI
         private bool _shown;
 
         public RawImage CharacterImage => characterImage;
+
+        /// <summary>Sonuca gore karakterin oynayacagi klip (bossa duruyor).</summary>
+        public AnimationClip ResultClip(bool victory) => victory ? victoryClip : defeatClip;
 
         private void Awake()
         {
@@ -110,12 +117,21 @@ namespace NewBattle.UI
             {
                 continueButton.gameObject.SetActive(true);
                 continueButton.interactable = false;
+
+                // Animasyonlar bitene kadar gizli (sifir boyut); sonunda bir kez
+                // ziplayarak cikar. Asil olcek once hatirlaniyor.
+                Transform continueTransform = continueButton.transform;
+                UIBaseScale.Get(continueTransform);
+                continueTransform.localScale = Vector3.zero;
             }
 
             foreach (RectTransform card in cards)
             {
-                if (card != null)
-                    card.localScale = Vector3.zero;
+                if (card == null)
+                    continue;
+
+                UIBaseScale.Get(card); // asil olcegi sifirlamadan once hatirla
+                card.localScale = Vector3.zero;
             }
 
             SetText(killsText, "0");
@@ -247,15 +263,17 @@ namespace NewBattle.UI
             const float c1 = 1.70158f;
             const float c3 = c1 + 1f;
 
+            // Senin ayarladigin olcek etrafinda ziplar.
+            Vector3 baseScale = UIBaseScale.Get(target);
+
             for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
             {
                 float x = t / seconds - 1f;
-                float scale = 1f + c3 * x * x * x + c1 * x * x;
-                target.localScale = new Vector3(scale, scale, 1f);
+                target.localScale = baseScale * (1f + c3 * x * x * x + c1 * x * x);
                 yield return null;
             }
 
-            target.localScale = Vector3.one;
+            target.localScale = baseScale;
         }
 
         private static void SetText(TextMeshProUGUI target, string value)

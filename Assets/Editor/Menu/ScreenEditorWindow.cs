@@ -35,6 +35,7 @@ namespace NewBattle.EditorTools
             {
                 Row("Ana Menü", ShowMainMenu);
                 Row("Oyun Modu Penceresi", ShowModePanel);
+                Row("Karakter (Lobi Animasyonu)", ShowCharacterScreen);
                 Row("Harita Seçimi (Aksiyona Hazırlan)", ShowDropScreen);
                 Row("Maç Sonu", ShowMatchEnd);
                 Row("Yükleme Ekranı (prefab)", OpenLoadingPrefab);
@@ -82,6 +83,18 @@ namespace NewBattle.EditorTools
             }
 
             Finish(panel.gameObject);
+        }
+
+        private static void ShowCharacterScreen()
+        {
+            HideAll();
+            LobbyAnimationScreen screen = Find<LobbyAnimationScreen>();
+            if (screen == null)
+                return;
+
+            Undo.RecordObject(screen.gameObject, "Ekran goster");
+            screen.gameObject.SetActive(true);
+            Finish(screen.gameObject);
         }
 
         private static void ShowDropScreen()
@@ -135,6 +148,13 @@ namespace NewBattle.EditorTools
             {
                 Undo.RecordObject(panel.gameObject, "Ekranlari gizle");
                 panel.gameObject.SetActive(false);
+            }
+
+            LobbyAnimationScreen character = FindFirstObjectByType<LobbyAnimationScreen>(FindObjectsInactive.Include);
+            if (character != null && character.gameObject.activeSelf)
+            {
+                Undo.RecordObject(character.gameObject, "Ekranlari gizle");
+                character.gameObject.SetActive(false);
             }
 
             DropSelectionScreen drop = Find<DropSelectionScreen>();

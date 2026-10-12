@@ -190,6 +190,9 @@ namespace NewBattle.EditorTools
             if (EnsureScreenToasts(canvas))
                 added.Add("YAKINDA bildirimleri");
 
+            if (screen != null && EnsureCharacterScreen(screen))
+                added.Add("Karakter (lobi animasyonu) ekranı");
+
             int pressables = EnsurePressables(canvas);
             if (pressables > 0)
                 added.Add($"{pressables} kart basılabilir yapıldı");

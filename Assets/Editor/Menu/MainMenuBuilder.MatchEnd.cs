@@ -30,12 +30,13 @@ namespace NewBattle.EditorTools
 
             MatchEndScreen existing = canvas.GetComponentInChildren<MatchEndScreen>(true);
             if (existing != null && !rebuild)
-                return UpgradeMatchEndLayout(existing);
+                return UpgradeMatchEndLayout(existing) | EnsureResultClips(existing);
 
             if (existing != null)
                 Undo.DestroyObjectImmediate(existing.gameObject);
 
             MatchEndScreen screen = BuildMatchEndScreen(canvas.transform);
+            EnsureResultClips(screen);
 
             var serialized = new SerializedObject(hud);
             serialized.FindProperty("endScreen").objectReferenceValue = screen;
@@ -173,6 +174,31 @@ namespace NewBattle.EditorTools
                 text.enableAutoSizing = true;
                 text.overflowMode = TextOverflowModes.Ellipsis;
             }
+        }
+
+        /// <summary>Bos olan zafer / yenilgi kliplerine varsayilanlari atar. Atadiysa true.</summary>
+        private static bool EnsureResultClips(MatchEndScreen screen)
+        {
+            var serialized = new SerializedObject(screen);
+            bool changed = false;
+            changed |= AssignClipIfEmpty(serialized.FindProperty("victoryClip"), "Agree_Gesture");
+            changed |= AssignClipIfEmpty(serialized.FindProperty("defeatClip"), "Look_Around_Dumbfounded");
+            if (changed)
+                serialized.ApplyModifiedProperties();
+            return changed;
+        }
+
+        private static bool AssignClipIfEmpty(SerializedProperty property, string clipName)
+        {
+            if (property == null || property.objectReferenceValue != null)
+                return false;
+
+            AnimationClip clip = LobbyAnimationSetup.FindCharacterClip(clipName);
+            if (clip == null)
+                return false;
+
+            property.objectReferenceValue = clip;
+            return true;
         }
 
         /// <summary>Eski surumle kurulmus ekrani yerinde duzeltir. Duzelttiyse true.</summary>
