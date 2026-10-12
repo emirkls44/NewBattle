@@ -16,8 +16,6 @@ namespace NewBattle.UI
     /// </summary>
     public class MainMenuScreen : MonoBehaviour
     {
-        private const string PlayerNameKey = "nb_player_name";
-
         [Header("Butonlar")]
         [SerializeField] private Button playButton;
         [Tooltip("Eski kurulumdan kalan liste. 'Menü > Kur' bunlari MenuButton'a cevirip bosaltir.")]
@@ -113,7 +111,7 @@ namespace NewBattle.UI
                 modePanel.LockedPressed += OnLockedModePressed;
             }
 
-            PlayerName = LoadOrCreatePlayerName();
+            PlayerName = PlayerProgress.PlayerName;
             PlayerProgress.Changed += Refresh;
             Refresh();
             SetStatus(string.Empty);
@@ -274,18 +272,6 @@ namespace NewBattle.UI
 
             toastGroup.alpha = 0f;
             _toastRoutine = null;
-        }
-
-        private static string LoadOrCreatePlayerName()
-        {
-            string saved = PlayerPrefs.GetString(PlayerNameKey, string.Empty);
-            if (!string.IsNullOrEmpty(saved))
-                return saved;
-
-            string created = $"Savaşçı#{Random.Range(1000, 10000)}";
-            PlayerPrefs.SetString(PlayerNameKey, created);
-            PlayerPrefs.Save();
-            return created;
         }
 
         /// <summary>

@@ -63,6 +63,7 @@
     <Analyzer Include="D:\emir\Game\NewBattle\Library\PackageCache\com.unity.dt.app-ui@8ac7e730dd5d\Runtime\MVVM\SourceGenerators\netstandard2.0\MVVMSourceGenerators.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Editor\Menu\ScreenEditorWindow.cs" />
     <Compile Include="Assets\TutorialInfo\Scripts\Editor\ReadmeEditor.cs" />
     <Compile Include="Assets\Editor\ArtGen\GlbImporter.cs" />
     <Compile Include="Assets\Editor\Menu\DropMapDataEditor.cs" />
@@ -73,7 +74,9 @@
     <Compile Include="Assets\Editor\Menu\MainMenuBuilder.cs" />
     <Compile Include="Assets\Editor\MapNavigationSetup.cs" />
     <Compile Include="Assets\Editor\Menu\MenuArtImporter.cs" />
+    <Compile Include="Assets\Editor\Menu\MainMenuBuilder.Pressables.cs" />
     <Compile Include="Assets\Editor\ArtGen\ArtGenIO.cs" />
+    <Compile Include="Assets\Editor\Menu\MainMenuBuilder.MatchEnd.cs" />
     <Compile Include="Assets\Editor\ArtGen\WorldScaleSync.cs" />
     <Compile Include="Assets\Editor\PropPrefabBuilder.cs" />
     <Compile Include="Assets\Editor\Menu\LobbyAnimationLibraryEditor.cs" />

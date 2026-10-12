@@ -4,6 +4,13 @@ using UnityEngine;
 
 public class HealthController : NetworkBehaviour
 {
+    public enum DeathCause : byte
+    {
+        None = 0,
+        Player = 1,
+        Zone = 2
+    }
+
     [Header("Health Settings")]
     public float maxHealth = 100f;
     [Networked] public float currentHealth { get; set; }
@@ -15,6 +22,11 @@ public class HealthController : NetworkBehaviour
     [Tooltip("Kalkanin hasarin ne kadarini emdigi. 1 = hasar once tamamen kalkandan " +
              "gider, kalkan bitince tasan kisim cana isler.")]
     [Range(0f, 1f)] public float shieldAbsorbRatio = 1f;
+
+    [Networked] public DeathCause LastDeathCause { get; private set; }
+    /// <summary>Oldureni (oyuncu ya da bot) ag nesnesi.</summary>
+    [Networked] public NetworkId KillerObject { get; private set; }
+    [Networked] public NetworkString<_16> KillerWeapon { get; private set; }
 
     public event Action OnDeath;
     public event Action OnHealthChanged;
@@ -42,6 +54,16 @@ public class HealthController : NetworkBehaviour
     }
 
     public void TakeDamage(float baseDamage, PlayerRef attacker)
+    {
+        TakeDamage(baseDamage, attacker, null, null);
+    }
+
+    /// <summary>
+    /// attackerObject / weaponLabel: kimin hangi silahla vurdugu. Olum
+    /// mesajinda ("Dorian seni Pompali ile vurdu!") kullanilir. Ikisi de
+    /// bossa hasar oyuncudan degil, guvenli alandan gelmistir.
+    /// </summary>
+    public void TakeDamage(float baseDamage, PlayerRef attacker, NetworkObject attackerObject, string weaponLabel)
     {
         if (!HasStateAuthority || currentHealth <= 0f || baseDamage <= 0f)
             return;
@@ -75,9 +97,20 @@ public class HealthController : NetworkBehaviour
 
         if (currentHealth <= 0f)
         {
+            RecordDeath(attacker, attackerObject, weaponLabel);
             AwardKill(attacker);
             Die();
         }
+    }
+
+    private void RecordDeath(PlayerRef attacker, NetworkObject attackerObject, string weaponLabel)
+    {
+        bool byPlayer = attackerObject != null || attacker != PlayerRef.None;
+        LastDeathCause = byPlayer ? DeathCause.Player : DeathCause.Zone;
+        KillerObject = attackerObject != null ? attackerObject.Id : default;
+
+        string weapon = weaponLabel ?? string.Empty;
+        KillerWeapon = weapon.Length > 16 ? weapon.Substring(0, 16) : weapon;
     }
 
     private void MarkCombatants(PlayerRef attacker)

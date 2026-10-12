@@ -24,6 +24,10 @@ public class MatchResultHUD : MonoBehaviour
     [SerializeField] private Button returnButton;
     [SerializeField] private TextMeshProUGUI returnButtonText;
 
+    [Header("Yeni Mac Sonu Ekrani")]
+    [Tooltip("Doluysa sonuc Battlelands tarzi yeni ekranda gosterilir (Tools > NewBattle > Menu > Kur).")]
+    [SerializeField] private NewBattle.UI.MatchEndScreen endScreen;
+
     [Header("Sonuc Ayarlari")]
     [SerializeField, Min(3f)] private float returnButtonDelay = 3f;
     [SerializeField] private Color backgroundColor = new(0.025f, 0.04f, 0.065f, 1f);
@@ -48,6 +52,14 @@ public class MatchResultHUD : MonoBehaviour
     private void Start()
     {
         ResolveHierarchyReferences();
+
+        if (endScreen != null)
+        {
+            // Yeni ekran kullaniliyor; eski panel gizli kalsin.
+            if (resultRoot != null)
+                resultRoot.SetActive(false);
+            return;
+        }
 
         if (!ReferencesAreValid())
         {
@@ -189,6 +201,12 @@ public class MatchResultHUD : MonoBehaviour
 
     private void ShowResult()
     {
+        if (endScreen != null)
+        {
+            ShowEndScreen();
+            return;
+        }
+
         if (!ReferencesAreValid())
             return;
 
@@ -222,8 +240,86 @@ public class MatchResultHUD : MonoBehaviour
         _backgroundCamera.clearFlags = CameraClearFlags.SolidColor;
         _backgroundCamera.backgroundColor = panel.color;
         _backgroundCamera.targetDisplay = 0;
-        CreateCharacterPreview();
+        CreateCharacterPreview(characterPreview);
         StartCoroutine(RevealResult());
+    }
+
+    /// <summary>Sonucu yeni mac sonu ekraninda gosterir; oduller orada verilir.</summary>
+    private void ShowEndScreen()
+    {
+        _resultShown = true;
+        bool victory = IsVictory();
+        LocalGameplayStopped = true;
+        HideLocalControls();
+        if (IsNetworkObjectReady(_localStats)) _localStats.Runner.ProvideInput = false;
+
+        int kills = IsNetworkObjectReady(_localStats) ? _localStats.Kills : 0;
+        int placement = victory ? 1 : Mathf.Max(2, _capturedPlacement);
+
+        LobbyCountdownController lobby = UnityEngine.Object.FindFirstObjectByType<LobbyCountdownController>();
+        int total = lobby != null && lobby.Object != null && lobby.Object.IsValid && lobby.TotalContestants > 0
+            ? lobby.TotalContestants
+            : Mathf.Max(placement, CountAlivePlayers() + 1);
+
+        var outcome = new NewBattle.Progression.MatchOutcome
+        {
+            Victory = victory,
+            Placement = placement,
+            Kills = kills,
+            TotalPlayers = Mathf.Max(total, placement)
+        };
+
+        DisableGameplayCamera();
+        var background = new GameObject("ResultDisplayCamera", typeof(Camera));
+        _backgroundCamera = background.GetComponent<Camera>();
+        _backgroundCamera.cullingMask = 0;
+        _backgroundCamera.clearFlags = CameraClearFlags.SolidColor;
+        _backgroundCamera.backgroundColor = Color.black;
+        _backgroundCamera.targetDisplay = 0;
+
+        CreateCharacterPreview(endScreen.CharacterImage);
+        endScreen.Show(outcome, BuildEndMessage(victory), ReturnToMainMenu);
+    }
+
+    private bool IsVictory()
+    {
+        return IsNetworkObjectReady(_match) && _match.MatchEnded &&
+               (_match.Winner == _localPlayer ||
+                (NetworkBootstrap.ActiveMode == BattleGameMode.Squad && IsNetworkObjectReady(_localStats) &&
+                 _match.WinnerTeamId == _localStats.TeamId));
+    }
+
+    /// <summary>"Dorian seni Tufek ile vurdu!" gibi olum mesaji.</summary>
+    private string BuildEndMessage(bool victory)
+    {
+        if (victory)
+            return NetworkBootstrap.ActiveMode == BattleGameMode.Squad
+                ? "Takımınla son hayatta kalanlar sizsiniz!"
+                : "Son hayatta kalan sensin!";
+
+        if (!IsNetworkObjectReady(_localHealth) || _localHealth.currentHealth > 0f)
+            return "Maç sona erdi.";
+
+        if (_localHealth.LastDeathCause == HealthController.DeathCause.Zone)
+            return "Güvenli alanın dışında kaldın!";
+
+        string killer = "Bir rakip";
+        if (_localHealth.KillerObject.IsValid &&
+            _localHealth.Runner.TryFindObject(_localHealth.KillerObject, out NetworkObject killerObject) &&
+            killerObject != null &&
+            killerObject.TryGetComponent(out PlayerCombatStats killerStats))
+        {
+            killer = killerStats.NameOrDefault;
+        }
+
+        string weapon = _localHealth.KillerWeapon.ToString();
+        if (string.IsNullOrEmpty(weapon))
+            return $"{killer} seni vurdu!";
+
+        if (weapon == "Yumruk")
+            return $"{killer} seni yumrukla devirdi!";
+
+        return $"{killer} seni {weapon} ile vurdu!";
     }
 
     private IEnumerator RevealResult()
@@ -263,9 +359,9 @@ public class MatchResultHUD : MonoBehaviour
         }
     }
 
-    private void CreateCharacterPreview()
+    private void CreateCharacterPreview(RawImage target)
     {
-        if (_localStats == null || characterPreview == null)
+        if (_localStats == null || target == null)
             return;
 
         Animator sourceAnimator = _localStats.GetComponentInChildren<Animator>(true);
@@ -308,8 +404,8 @@ public class MatchResultHUD : MonoBehaviour
             antiAliasing = 2
         };
         _previewTexture.Create();
-        characterPreview.texture = _previewTexture;
-        characterPreview.color = Color.white;
+        target.texture = _previewTexture;
+        target.color = Color.white;
 
         _previewCameraObject = new GameObject("MatchResultPreviewCamera", typeof(Camera));
         Camera previewCamera = _previewCameraObject.GetComponent<Camera>();
@@ -340,7 +436,8 @@ public class MatchResultHUD : MonoBehaviour
             return;
 
         _returning = true;
-        returnButton.interactable = false;
+        if (returnButton != null)
+            returnButton.interactable = false;
         if (returnButtonText != null)
             returnButtonText.text = "DONULUYOR...";
 

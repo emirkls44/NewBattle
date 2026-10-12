@@ -184,6 +184,16 @@ namespace NewBattle.EditorTools
             if (UpdateDescentCameraPreset())
                 added.Add("İniş kamerası ayarları");
 
+            if (EnsureMatchEndScreen(canvas, rebuild))
+                added.Add("Maç sonu ekranı (kuruldu / yerleşim düzeltildi)");
+
+            if (EnsureScreenToasts(canvas))
+                added.Add("YAKINDA bildirimleri");
+
+            int pressables = EnsurePressables(canvas);
+            if (pressables > 0)
+                added.Add($"{pressables} kart basılabilir yapıldı");
+
             if (SetFinalCountdownSeconds(5f))
                 added.Add("Geri sayım 5 saniye");
 
@@ -1119,7 +1129,7 @@ namespace NewBattle.EditorTools
             scaler.matchWidthOrHeight = 0.5f;
             go.AddComponent<GraphicRaycaster>();
             CanvasGroup group = go.AddComponent<CanvasGroup>();
-            group.alpha = 0f;
+            group.alpha = 1f; // prefab duzenlenirken gorunsun; calisirken 0'dan acilir
 
             var root = (RectTransform)go.transform;
 

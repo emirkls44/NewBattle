@@ -54,6 +54,10 @@ namespace NewBattle.UI
         [SerializeField] private RectTransform countdownGroup;
         [SerializeField] private TextMeshProUGUI countdownText;
 
+        [Header("Bildirim")]
+        [Tooltip("Islevi henuz baglanmamis butonlara basinca 'YAKINDA!' gosterir.")]
+        [SerializeField] private ToastView toast;
+
         private DropPhaseController _dropPhase;
         private LobbyCountdownController _lobby;
         private PlayerController _localPlayer;
@@ -74,6 +78,15 @@ namespace NewBattle.UI
                 marker.gameObject.SetActive(false);
 
             SetVisible(false);
+            MenuButton.Unhandled += OnUnhandledButton;
+        }
+
+        private void OnDestroy() => MenuButton.Unhandled -= OnUnhandledButton;
+
+        private void OnUnhandledButton(MenuButton button)
+        {
+            if (toast != null && screenCanvas != null && screenCanvas.enabled)
+                toast.Show("YAKINDA!");
         }
 
         private void Update()

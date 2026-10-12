@@ -87,7 +87,23 @@ namespace NewBattle.UI
         private float _nextTipTime;
         private bool _initialized;
 
-        private void Awake() => Initialize();
+        private void Awake()
+        {
+            Initialize();
+
+            // Duzenlerken gorunur birakilmis olabilir (Ekran Duzenleyici);
+            // oyun her zaman pencere kapali baslar.
+            if (!IsOpen)
+            {
+                if (group != null)
+                {
+                    group.alpha = 0f;
+                    group.blocksRaycasts = false;
+                }
+
+                gameObject.SetActive(false);
+            }
+        }
 
         /// <summary>
         /// Butonlari baglar ve kayitli secimi yukler. Pencere kapali (inaktif)

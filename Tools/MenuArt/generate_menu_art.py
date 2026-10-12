@@ -613,8 +613,24 @@ def streak():
     img.save(os.path.join(OUT, "streak.png"))
 
 
+def result_background():
+    """Mac sonu ekrani: Battlelands moru, ortasi acik."""
+    w, h = 512, 256
+    img = Image.new("RGB", (w, h))
+    px_ = img.load()
+    inner, outer = (132, 88, 186), (78, 49, 137)
+    for y in range(h):
+        for x in range(w):
+            dx = (x - w * 0.5) / (w * 0.6)
+            dy = (y - h * 0.45) / (h * 0.8)
+            t = min(1.0, math.sqrt(dx * dx + dy * dy))
+            px_[x, y] = tuple(int(inner[i] + (outer[i] - inner[i]) * t) for i in range(3))
+    img.save(os.path.join(OUT, "bg_result.png"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    result_background()
     sky_dive()
     vignette()
     streak()

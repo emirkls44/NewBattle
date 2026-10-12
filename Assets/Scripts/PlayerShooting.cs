@@ -137,7 +137,7 @@ public class PlayerShooting : NetworkBehaviour
                 foundHit = true;
 
                 if (target != null)
-                    target.TakeDamage(weapon.damage, Object.InputAuthority);
+                    target.TakeDamage(weapon.damage, Object.InputAuthority, Object, weapon.label);
             }
 
             Rpc_ShowShot(origin, endPoint, foundHit, weapon.tracerColor);
@@ -250,7 +250,7 @@ public class PlayerShooting : NetworkBehaviour
             if (targetHealth == null || targetHealth == _ownHealth)
                 continue;
 
-            targetHealth.TakeDamage(weapon.damage, Object.InputAuthority);
+            targetHealth.TakeDamage(weapon.damage, Object.InputAuthority, Object, weapon.label);
             break;
         }
     }

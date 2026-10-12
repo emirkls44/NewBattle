@@ -98,6 +98,7 @@
     <Compile Include="Assets\Scripts\PlayerLife.cs" />
     <Compile Include="Assets\Scripts\CircularMinimapGraphic.cs" />
     <Compile Include="Assets\Scripts\UI\DropMapData.cs" />
+    <Compile Include="Assets\Scripts\UI\MatchEndScreen.cs" />
     <Compile Include="Assets\Scripts\DamageNumberPopup.cs" />
     <Compile Include="Assets\Scripts\UI\MenuButton.cs" />
     <Compile Include="Assets\Scripts\LocalPlayerHUD.cs" />
@@ -112,6 +113,7 @@
     <Compile Include="Assets\Scripts\Gameplay\PlayerVisibility.cs" />
     <Compile Include="Assets\Scripts\DropMapClickArea.cs" />
     <Compile Include="Assets\Scripts\PlayerIdleState.cs" />
+    <Compile Include="Assets\Scripts\UI\ToastView.cs" />
     <Compile Include="Assets\Scripts\MobileMaterialOptimizer.cs" />
     <Compile Include="Assets\Scripts\Gameplay\ScreenAnnouncer.cs" />
     <Compile Include="Assets\Scripts\Gameplay\ShellCasingPool.cs" />
@@ -154,6 +156,7 @@
     <Compile Include="Assets\Scripts\PlayerMoveState.cs" />
     <Compile Include="Assets\Scripts\Gameplay\LootZoneManager.cs" />
     <Compile Include="Assets\Scripts\UI\MainMenuScreen.cs" />
+    <Compile Include="Assets\Scripts\Progression\MatchRewards.cs" />
     <Compile Include="Assets\Scripts\CombatLoadoutHUD.cs" />
     <Compile Include="Assets\Scripts\CameraFollow.cs" />
     <Compile Include="Assets\Scripts\PlayerStateMachine.cs" />

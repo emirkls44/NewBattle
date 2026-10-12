@@ -68,6 +68,15 @@ namespace NewBattle.EditorTools
                     PlayerProgress.AddWin();
             }
 
+            using (new EditorGUI.DisabledScope(!Application.isPlaying))
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Maç Sonu Önizle (Zafer)"))
+                    PreviewMatchEnd(true);
+                if (GUILayout.Button("Maç Sonu Önizle (Elenme)"))
+                    PreviewMatchEnd(false);
+            }
+
             if (GUILayout.Button("Her Şeyi Sıfırla (ilk açılış gibi)"))
             {
                 if (EditorUtility.DisplayDialog("Oyuncu Profili", "Seviye, para, galibiyet ve animasyonlar sıfırlansın mı?", "Sıfırla", "Vazgeç"))
@@ -132,6 +141,28 @@ namespace NewBattle.EditorTools
             }
 
             EditorGUILayout.EndScrollView();
+        }
+
+        /// <summary>Mac sonu ekranini sahte bir sonucla acar (oduller gercekten eklenir).</summary>
+        private static void PreviewMatchEnd(bool victory)
+        {
+            MatchEndScreen screen = FindFirstObjectByType<MatchEndScreen>();
+            if (screen == null)
+            {
+                Debug.LogWarning("Mac sonu ekrani yok: 'Tools > NewBattle > Menü > Kur' çalıştır.");
+                return;
+            }
+
+            var outcome = new MatchOutcome
+            {
+                Victory = victory,
+                Placement = victory ? 1 : 7,
+                Kills = victory ? 5 : 2,
+                TotalPlayers = 16
+            };
+
+            screen.HideAndReset();
+            screen.Show(outcome, victory ? "Son hayatta kalan sensin!" : "Dorian seni Tufek ile vurdu!", screen.HideAndReset);
         }
 
         private void OnInspectorUpdate()

@@ -44,7 +44,7 @@ MonoBehaviour:
     icon: {fileID: 0}
   - id: nisan
     displayName: "Ni\u015Fan Al"
-    clip: {fileID: -623603649343465320, guid: b6f65edde4e50694598451a9cc90ab0e, type: 3}
+    clip: {fileID: -203655887218126122, guid: b6f65edde4e50694598451a9cc90ab0e, type: 3}
     unlock: 3
     requirement: 200
     speed: 1

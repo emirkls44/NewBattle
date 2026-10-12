@@ -6,10 +6,26 @@ public class PlayerCombatStats : NetworkBehaviour
     [Networked] public int Kills { get; private set; }
     [Networked] public int TeamId { get; private set; }
 
+    /// <summary>Oyuncunun adi (oldurme mesaji, ileride oldurme akisi icin).</summary>
+    [Networked] public NetworkString<_16> DisplayName { get; private set; }
+
     private static int _nextTrainingBotTeamId = 1000;
+    private static int _nextBotNameIndex;
+
+    private static readonly string[] BotNames =
+    {
+        "Dorian", "Kartal", "Poyraz", "Duman", "Panter", "Atmaca", "Şimşek", "Tayfun",
+        "Kuzgun", "Bulut", "Fırtına", "Kaplan", "Yıldız", "Efsane", "Zeytin", "Kurt",
+        "Alaz", "Boran", "Toprak", "Ateş", "Kılıç", "Rüzgar", "Çakal", "Volkan",
+        "Gölge", "Kobra", "Tilki", "Ayaz", "Kara", "Doruk", "Yaman", "Asena"
+    };
 
     public override void Spawned()
     {
+        // Gercek oyuncu kendi adini sunucuya bildirir.
+        if (HasInputAuthority)
+            RPC_SetDisplayName(NewBattle.Progression.PlayerProgress.PlayerName);
+
         if (!HasStateAuthority)
             return;
 
@@ -19,6 +35,7 @@ public class PlayerCombatStats : NetworkBehaviour
         {
             // Test botlari birbirinin takim arkadasi sayilmasin.
             TeamId = _nextTrainingBotTeamId++;
+            DisplayName = BotNames[_nextBotNameIndex++ % BotNames.Length];
             return;
         }
 
@@ -31,6 +48,25 @@ public class PlayerCombatStats : NetworkBehaviour
 
         // Herkes Tek modunda her gercek oyuncu kendi takimidir.
         TeamId = Object.InputAuthority.RawEncoded;
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_SetDisplayName(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+            return;
+
+        DisplayName = displayName.Length > 16 ? displayName.Substring(0, 16) : displayName;
+    }
+
+    /// <summary>Gosterilecek ad; bos ise "Oyuncu".</summary>
+    public string NameOrDefault
+    {
+        get
+        {
+            string value = DisplayName.ToString();
+            return string.IsNullOrEmpty(value) ? "Oyuncu" : value;
+        }
     }
 
     public void AssignTeam(int teamId)

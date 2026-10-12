@@ -46,7 +46,7 @@ namespace NewBattle.EditorTools
             Add(list, "rahat", "Rahat Duruş", Get(merged, "Idle_5"), LobbyUnlockType.Level, 3);
             Add(list, "onay", "Onaylama", Get(merged, "Agree_Gesture"), LobbyUnlockType.Wins, 1);
             Add(list, "sasirma", "Etrafa Bakınma", Get(merged, "Look_Around_Dumbfounded"), LobbyUnlockType.Level, 5);
-            Add(list, "nisan", "Nişan Al", Get(rifle, "Rifle Aiming Idle"), LobbyUnlockType.Coins, 200);
+            Add(list, "nisan", "Nişan Al", Get(rifle, "mixamo.com"), LobbyUnlockType.Coins, 200);
             Add(list, "havali", "Havalı Yürüyüş", Get(merged, "Proud_Strut"), LobbyUnlockType.Wins, 5);
 
             serialized.ApplyModifiedPropertiesWithoutUndo();

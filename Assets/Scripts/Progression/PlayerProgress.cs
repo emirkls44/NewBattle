@@ -19,6 +19,7 @@ namespace NewBattle.Progression
         private const string WinsKey = "nb_wins";
         private const string OwnedKey = "nb_owned_lobby_anims";
         private const string SelectedKey = "nb_selected_lobby_anim";
+        private const string PlayerNameKey = "nb_player_name";
 
         public const int StartingCoins = 100;
 
@@ -45,6 +46,33 @@ namespace NewBattle.Progression
             set
             {
                 PlayerPrefs.SetString(SelectedKey, value ?? string.Empty);
+                Save();
+            }
+        }
+
+        /// <summary>
+        /// Oyuncunun adi. Ilk acilista "Savasci#1234" gibi rastgele bir ad
+        /// uretilip kaydedilir. Macta diger oyunculara bu ad gorunur.
+        /// </summary>
+        public static string PlayerName
+        {
+            get
+            {
+                string saved = PlayerPrefs.GetString(PlayerNameKey, string.Empty);
+                if (!string.IsNullOrEmpty(saved))
+                    return saved;
+
+                string created = $"Savaşçı#{UnityEngine.Random.Range(1000, 10000)}";
+                PlayerPrefs.SetString(PlayerNameKey, created);
+                PlayerPrefs.Save();
+                return created;
+            }
+            set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                    return;
+
+                PlayerPrefs.SetString(PlayerNameKey, value.Trim());
                 Save();
             }
         }
