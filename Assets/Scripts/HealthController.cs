@@ -104,8 +104,56 @@ public class HealthController : NetworkBehaviour
         {
             RecordDeath(attacker, attackerObject, weaponLabel);
             AwardKill(attacker);
+            Rpc_AnnounceDeath(attackerObject != null ? attackerObject.Id : default, weaponLabel ?? string.Empty);
             Die();
         }
+    }
+
+    /// <summary>
+    /// Olumu tum cihazlara duyurur: oldurme akisi, oldurme afisi ve "son 3
+    /// oyuncu" uyarisi bunu dinler (bkz. KillEvents). Oldureni bos ise alan oldurdu.
+    /// </summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_AnnounceDeath(NetworkId killerId, string weaponLabel)
+    {
+        PlayerCombatStats victimStats = GetComponent<PlayerCombatStats>();
+        PlayerCombatStats killerStats = null;
+        if (killerId.IsValid && Runner != null && Runner.TryFindObject(killerId, out NetworkObject killerObject))
+            killerStats = killerObject.GetComponent<PlayerCombatStats>();
+
+        PlayerCombatStats local = FindLocalStats();
+
+        int alive = 0;
+        foreach (HealthController player in FindObjectsByType<HealthController>(FindObjectsSortMode.None))
+        {
+            if (player != this && player.Object != null && player.Object.IsValid && player.currentHealth > 0f)
+                alive++;
+        }
+
+        NewBattle.Gameplay.KillEvents.Raise(new NewBattle.Gameplay.KillInfo
+        {
+            KillerName = killerStats != null ? killerStats.NameOrDefault : string.Empty,
+            VictimName = victimStats != null ? victimStats.NameOrDefault : "Oyuncu",
+            Weapon = NewBattle.Gameplay.KillEvents.WeaponDisplayName(weaponLabel),
+            ByZone = killerStats == null,
+            KillerIsLocal = killerStats != null && killerStats.HasInputAuthority,
+            VictimIsLocal = HasInputAuthority,
+            KillerIsTeammate = killerStats != null && local != null && killerStats != local && local.IsTeammate(killerStats),
+            VictimIsTeammate = victimStats != null && local != null && victimStats != local && local.IsTeammate(victimStats),
+            AliveAfter = alive,
+            VictimPosition = transform.position
+        });
+    }
+
+    private static PlayerCombatStats FindLocalStats()
+    {
+        foreach (PlayerCombatStats stats in FindObjectsByType<PlayerCombatStats>(FindObjectsSortMode.None))
+        {
+            if (stats.Object != null && stats.Object.IsValid && stats.HasInputAuthority)
+                return stats;
+        }
+
+        return null;
     }
 
     private void RecordDeath(PlayerRef attacker, NetworkObject attackerObject, string weaponLabel)
@@ -197,6 +245,9 @@ public class HealthController : NetworkBehaviour
     {
         DamageNumberPopup.Show(transform.position, damage, shieldHit);
         PlayHitSounds(attacker, killed);
+
+        if (HasInputAuthority)
+            NewBattle.Gameplay.KillEvents.RaiseLocalDamaged(damage);
 
         // Govdenin kendisi de tepki versin: hasar sayisi karakterin ustunde
         // belirirken goz nisan alirken govdede oluyor.

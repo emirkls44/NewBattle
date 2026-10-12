@@ -8512,7 +8512,7 @@ Camera:
   far clip plane: 100
   field of view: 60
   orthographic: 1
-  orthographic size: 6
+  orthographic size: 7.1
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -8602,7 +8602,7 @@ MonoBehaviour:
   target: {fileID: 0}
   offset: {x: 0, y: 15, z: -10}
   followSpeed: 20
-  viewSize: 6
+  viewSize: 7.1
   mapCenter: {x: 0, y: 0}
   cameraFocusRadius: 38.399998
   cameraAngle: 55
@@ -26105,6 +26105,65 @@ MonoBehaviour:
   pressedScale: 0.93
   speed: 22
   clickSound: buton
+--- !u!1 &761166729
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 761166731}
+  - component: {fileID: 761166730}
+  m_Layer: 0
+  m_Name: GorselAyarlar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &761166730
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 761166729}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67c7ae6257dc359468f3fe6c471fcb61, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VisualSettings
+  cameraViewSize: 7.1
+  loot:
+    material: {fileID: 2100000, guid: 10bc9d45d6b193a48a2446332f5cabae, type: 2}
+    vertexColorIsSRGB: 1
+    saturation: 1.15
+    brightness: 1
+    shadowBrightness: 0.65
+    rimStrength: 0.18
+  world:
+    material: {fileID: 2100000, guid: be542fad40519094f99338d44f198893, type: 2}
+    vertexColorIsSRGB: 1
+    saturation: 1
+    brightness: 1
+    shadowBrightness: 0.55
+    rimStrength: 0.16
+--- !u!4 &761166731
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 761166729}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &761598088
 GameObject:
   m_ObjectHideFlags: 0
@@ -74975,3 +75034,4 @@ SceneRoots:
   - {fileID: 689722623}
   - {fileID: 1816366659}
   - {fileID: 1276479657}
+  - {fileID: 761166731}

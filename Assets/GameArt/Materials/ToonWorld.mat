@@ -12,7 +12,8 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
-  m_InvalidKeywords: []
+  m_InvalidKeywords:
+  - _VERTEXCOLORSRGB_ON
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
@@ -30,17 +31,20 @@ Material:
     m_Ints: []
     m_Floats:
     - _Ambient: 0.55
+    - _Brightness: 1
     - _DstBlend: 0
     - _Gloss: 0.1
     - _GlossSize: 24
     - _RimPower: 3
     - _RimStrength: 0.16
+    - _Saturation: 1
     - _ShadeBands: 2
     - _ShadeSoftness: 0.06
     - _ShadeThreshold: -0.05
     - _ShadowStrength: 0.8
     - _SrcBlend: 1
     - _Surface: 0
+    - _VertexColorSRGB: 1
     - _VertexColorStrength: 1
     - _ZWrite: 1
     m_Colors:

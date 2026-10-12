@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace NewBattle.EditorTools
 {
@@ -22,6 +23,30 @@ namespace NewBattle.EditorTools
             "Assets/Prefabs/Pickups/RiflePickup.prefab",
             "Assets/Prefabs/Pickups/ShieldPickup.prefab",
         };
+
+        /// <summary>
+        /// Sahneye "GorselAyarlar" nesnesini ekler: kamera yakinligi, esya ve
+        /// harita renkleri tek yerden. Degerleri mevcut ayarlardan okur (hicbir
+        /// sey degismez). Eklediyse true.
+        /// </summary>
+        private static bool EnsureVisualSettings()
+        {
+            if (Object.FindFirstObjectByType<VisualSettings>(FindObjectsInactive.Include) != null)
+                return false;
+
+            var go = new GameObject("GorselAyarlar");
+            Undo.RegisterCreatedObjectUndo(go, "Gorsel ayarlar");
+            VisualSettings settings = go.AddComponent<VisualSettings>();
+
+            CameraFollow follow = Object.FindFirstObjectByType<CameraFollow>(FindObjectsInactive.Include);
+            if (follow != null)
+                settings.cameraViewSize = follow.ViewSize;
+
+            settings.loot.ReadFrom(AssetDatabase.LoadAssetAtPath<Material>(LootMaterialPath));
+            settings.world.ReadFrom(AssetDatabase.LoadAssetAtPath<Material>(WorldMaterialPath));
+            EditorUtility.SetDirty(settings);
+            return true;
+        }
 
         /// <summary>PlayerOnline'a el IK'sini ve tutamak noktalarini ekler. Eklediyse true.</summary>
         private static bool EnsureWeaponHandIK()

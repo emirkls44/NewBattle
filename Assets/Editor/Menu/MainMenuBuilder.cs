@@ -179,8 +179,14 @@ namespace NewBattle.EditorTools
             if (lootChanged > 0)
                 added.Add($"{lootChanged} eşya canlı renk + %35 büyük");
 
+            if (EnsureMatchFeel(canvas, out string feel))
+                added.Add("Maç içi his: " + feel);
+
             if (EnsureCloserCamera())
                 added.Add("Kamera yaklaştırıldı (8.5 → 6)");
+
+            if (EnsureVisualSettings())
+                added.Add("Görsel Ayarlar (Hierarchy > GorselAyarlar: kamera ve renkler)");
 
             if (EnsureDescentCamera())
                 added.Add("İniş kamerası");
