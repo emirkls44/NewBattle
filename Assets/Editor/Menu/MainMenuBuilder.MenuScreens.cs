@@ -28,6 +28,9 @@ namespace NewBattle.EditorTools
             }
 
             SerializedProperty settingsProperty = serialized.FindProperty("settingsScreen");
+            if (settingsProperty.objectReferenceValue is SettingsScreen existingSettings && UpgradeSettingsLayout(existingSettings))
+                added.Add("Ayarlar: kamera yakınlığı kaldırıldı");
+
             if (settingsProperty.objectReferenceValue == null)
             {
                 settingsProperty.objectReferenceValue = Existing<SettingsScreen>(menu) ??
@@ -42,7 +45,27 @@ namespace NewBattle.EditorTools
                 added.Add("Seviye Yolu");
             }
 
+            SerializedProperty profileProperty = serialized.FindProperty("profileScreen");
+            if (profileProperty.objectReferenceValue == null)
+            {
+                profileProperty.objectReferenceValue = Existing<ProfileScreen>(menu) ?? (Object)BuildProfileScreen(root);
+                added.Add("Profil");
+            }
+
+            SerializedProperty challengesProperty = serialized.FindProperty("challengesScreen");
+            if (challengesProperty.objectReferenceValue == null)
+            {
+                challengesProperty.objectReferenceValue = Existing<ChallengesScreen>(menu) ?? (Object)BuildChallengesScreen(root, menu);
+                added.Add("Mücadeleler");
+            }
+
+            if (EnsureChallengeCardRefs(menu, serialized))
+                added.Add("Mücadeleler kartı sayaçları");
+
             serialized.ApplyModifiedProperties();
+
+            if (nameProperty.objectReferenceValue is NamePopup namePopup && EnsureNamePopupRefs(namePopup))
+                added.Add("İsim penceresi (ilk açılış)");
 
             if (EnsureCharacterTap(menu))
                 added.Add("Karaktere dokununca karakter ekranı");
@@ -134,7 +157,7 @@ namespace NewBattle.EditorTools
 
         private static SettingsScreen BuildSettingsScreen(RectTransform menuRoot, NamePopup namePopup)
         {
-            (RectTransform root, RectTransform window) = PopupShell(menuRoot, "AyarlarEkrani", "AYARLAR", new Vector2(1160f, 860f));
+            (RectTransform root, RectTransform window) = PopupShell(menuRoot, "AyarlarEkrani", "AYARLAR", new Vector2(1160f, 730f));
 
             Button close = AddButton(window, "KapatButonu", Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(-20f, -20f),
                 new Vector2(100f, 100f), Orange, OrangeLip);
@@ -146,20 +169,8 @@ namespace NewBattle.EditorTools
             SettingsRowLabel(window, "KareHiziYazisi", "KARE HIZI", -330f);
             Button frameRate = SettingsButton(window, "KareHiziButonu", "60 FPS", -330f, Blue, BlueLip, out TextMeshProUGUI frameRateLabel);
 
-            SettingsRowLabel(window, "KameraYazisi", "KAMERA YAKINLIĞI", -460f);
-            Button farther = AddButton(window, "UzaklastirButonu", Vector2.one, new Vector2(1f, 0.5f), new Vector2(-300f, -460f),
-                new Vector2(96f, 96f), Orange, OrangeLip, lipHeight: 7f);
-            TextMeshProUGUI minus = AddText(Face(farther), "Yazi", "-", 70f, Color.white, TextAlignmentOptions.Center, shadow: true);
-            Stretch(minus.rectTransform, 0f, 0f, 0f, 6f);
-            TextMeshProUGUI cameraLabel = AddText(window, "KameraDegeri", "6 / 9", 44f, Color.white, TextAlignmentOptions.Center, shadow: true);
-            Place(cameraLabel.rectTransform, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(-218f, -460f), new Vector2(140f, 70f));
-            Button closer = AddButton(window, "YaklastirButonu", Vector2.one, new Vector2(1f, 0.5f), new Vector2(-60f, -460f),
-                new Vector2(96f, 96f), Green, GreenLip, lipHeight: 7f);
-            TextMeshProUGUI plus = AddText(Face(closer), "Yazi", "+", 70f, Color.white, TextAlignmentOptions.Center, shadow: true);
-            Stretch(plus.rectTransform, 0f, 0f, 0f, 6f);
-
-            SettingsRowLabel(window, "IsimYazisi", "İSİM", -590f);
-            Button nameButton = SettingsButton(window, "IsimButonu", "DEĞİŞTİR", -590f, Blue, BlueLip, out _);
+            SettingsRowLabel(window, "IsimYazisi", "İSİM", -460f);
+            Button nameButton = SettingsButton(window, "IsimButonu", "DEĞİŞTİR", -460f, Blue, BlueLip, out _);
 
             TextMeshProUGUI version = AddText(window, "Surum", "Sürüm 0.1", 30f, ResultSoftText, TextAlignmentOptions.Left);
             Place(version.rectTransform, Vector2.zero, Vector2.zero, new Vector2(60f, 36f), new Vector2(500f, 44f));
@@ -171,22 +182,58 @@ namespace NewBattle.EditorTools
             serialized.FindProperty("soundLabel").objectReferenceValue = soundLabel;
             serialized.FindProperty("frameRateButton").objectReferenceValue = frameRate;
             serialized.FindProperty("frameRateLabel").objectReferenceValue = frameRateLabel;
-            serialized.FindProperty("cameraFartherButton").objectReferenceValue = farther;
-            serialized.FindProperty("cameraCloserButton").objectReferenceValue = closer;
-            serialized.FindProperty("cameraLabel").objectReferenceValue = cameraLabel;
             serialized.FindProperty("nameButton").objectReferenceValue = nameButton;
             serialized.FindProperty("namePopup").objectReferenceValue = namePopup;
             serialized.FindProperty("versionText").objectReferenceValue = version;
             serialized.FindProperty("closeButton").objectReferenceValue = close;
-
-            CameraFollow follow = Object.FindFirstObjectByType<CameraFollow>(FindObjectsInactive.Include);
-            if (follow != null)
-                serialized.FindProperty("defaultCameraSize").floatValue = follow.ViewSize;
+            serialized.FindProperty("layoutVersion").intValue = SettingsLayoutVersion;
 
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             root.gameObject.SetActive(false);
             return screen;
+        }
+
+        /// <summary>2: kamera yakinligi satiri kaldirildi (oyuncu degistiremez).</summary>
+        private const int SettingsLayoutVersion = 2;
+
+        private static bool UpgradeSettingsLayout(SettingsScreen screen)
+        {
+            var serialized = new SerializedObject(screen);
+            SerializedProperty version = serialized.FindProperty("layoutVersion");
+            if (version.intValue >= SettingsLayoutVersion)
+                return false;
+
+            Transform window = screen.transform.Find("Pencere");
+            if (window != null)
+            {
+                foreach (string name in new[] { "KameraYazisi", "UzaklastirButonu", "KameraDegeri", "YaklastirButonu" })
+                {
+                    Transform row = window.Find(name);
+                    if (row != null)
+                        Undo.DestroyObjectImmediate(row.gameObject);
+                }
+
+                // Isim satiri bosalan yere kayar (sen tasimadiysan).
+                foreach (string name in new[] { "IsimYazisi", "IsimButonu" })
+                {
+                    if (window.Find(name) is RectTransform row && Mathf.Approximately(row.anchoredPosition.y, -590f))
+                    {
+                        Undo.RecordObject(row, "Ayarlar yerlesimi");
+                        row.anchoredPosition = new Vector2(row.anchoredPosition.x, -460f);
+                    }
+                }
+
+                if (window is RectTransform windowRect && windowRect.sizeDelta == new Vector2(1160f, 860f))
+                {
+                    Undo.RecordObject(windowRect, "Ayarlar yerlesimi");
+                    windowRect.sizeDelta = new Vector2(1160f, 730f);
+                }
+            }
+
+            version.intValue = SettingsLayoutVersion;
+            serialized.ApplyModifiedProperties();
+            return true;
         }
 
         private static void SettingsRowLabel(RectTransform window, string name, string text, float y)
@@ -332,6 +379,203 @@ namespace NewBattle.EditorTools
             serialized.FindProperty("nextOutline").objectReferenceValue = outline.gameObject;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return component;
+        }
+
+        // ------------------------------------------------------------------
+        // Isim penceresi: baslik ve vazgec yazisi (ilk acilis modu icin)
+        // ------------------------------------------------------------------
+
+        private static bool EnsureNamePopupRefs(NamePopup popup)
+        {
+            var serialized = new SerializedObject(popup);
+            SerializedProperty title = serialized.FindProperty("titleText");
+            SerializedProperty cancelLabel = serialized.FindProperty("cancelLabel");
+            if (title.objectReferenceValue != null && cancelLabel.objectReferenceValue != null)
+                return false;
+
+            if (title.objectReferenceValue == null)
+                title.objectReferenceValue = popup.transform.Find("Pencere/Baslik/Yazi")?.GetComponent<TextMeshProUGUI>();
+
+            if (cancelLabel.objectReferenceValue == null && serialized.FindProperty("cancelButton").objectReferenceValue is Button cancel)
+                cancelLabel.objectReferenceValue = cancel.transform.Find("Yuz/Yazi")?.GetComponent<TextMeshProUGUI>();
+
+            serialized.ApplyModifiedProperties();
+            return true;
+        }
+
+        // ------------------------------------------------------------------
+        // Profil
+        // ------------------------------------------------------------------
+
+        private static ProfileScreen BuildProfileScreen(RectTransform menuRoot)
+        {
+            (RectTransform root, RectTransform window) = PopupShell(menuRoot, "ProfilEkrani", "PROFİL", new Vector2(1240f, 800f));
+            Button close = PopupCloseButton(window);
+
+            TextMeshProUGUI name = AddText(window, "Isim", "Savaşçı", 64f, Yellow, TextAlignmentOptions.Center, shadow: true);
+            Place(name.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(1000f, 80f));
+            TextMeshProUGUI level = AddText(window, "Seviye", "SEVİYE 1 · Er I", 40f, ResultSoftText, TextAlignmentOptions.Center);
+            Place(level.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0f, -240f), new Vector2(1000f, 56f));
+
+            TextMeshProUGUI StatBox(string objectName, string label, float x, float y)
+            {
+                RectTransform box = NewRect(objectName, window);
+                Place(box, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, y), new Vector2(340f, 200f));
+                AddImage(box, Sprite("ui_round"), ResultCardDim).pixelsPerUnitMultiplier = 1.6f;
+                TextMeshProUGUI value = AddText(box, "Deger", "0", 76f, ResultOrange, TextAlignmentOptions.Center, shadow: true);
+                Place(value.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -18f), new Vector2(320f, 100f));
+                TextMeshProUGUI caption = AddText(box, "Yazi", label, 32f, Color.white, TextAlignmentOptions.Center);
+                Place(caption.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 18f), new Vector2(320f, 50f));
+                return value;
+            }
+
+            TextMeshProUGUI matches = StatBox("Mac", "Maç", -370f, 10f);
+            TextMeshProUGUI wins = StatBox("Galibiyet", "Galibiyet", 0f, 10f);
+            TextMeshProUGUI winRate = StatBox("KazanmaOrani", "Kazanma Oranı", 370f, 10f);
+            TextMeshProUGUI kills = StatBox("Oldurme", "Öldürme", -370f, -230f);
+            TextMeshProUGUI killsPerMatch = StatBox("MacBasiOldurme", "Maç Başı Öldürme", 0f, -230f);
+            TextMeshProUGUI best = StatBox("EnIyiSira", "En İyi Sıra", 370f, -230f);
+
+            ProfileScreen screen = root.gameObject.AddComponent<ProfileScreen>();
+            var serialized = new SerializedObject(screen);
+            serialized.FindProperty("nameText").objectReferenceValue = name;
+            serialized.FindProperty("levelText").objectReferenceValue = level;
+            serialized.FindProperty("matchesText").objectReferenceValue = matches;
+            serialized.FindProperty("winsText").objectReferenceValue = wins;
+            serialized.FindProperty("winRateText").objectReferenceValue = winRate;
+            serialized.FindProperty("killsText").objectReferenceValue = kills;
+            serialized.FindProperty("killsPerMatchText").objectReferenceValue = killsPerMatch;
+            serialized.FindProperty("bestPlacementText").objectReferenceValue = best;
+            serialized.FindProperty("closeButton").objectReferenceValue = close;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            root.gameObject.SetActive(false);
+            return screen;
+        }
+
+        // ------------------------------------------------------------------
+        // Mucadeleler
+        // ------------------------------------------------------------------
+
+        private static ChallengesScreen BuildChallengesScreen(RectTransform menuRoot, MainMenuScreen menu)
+        {
+            (RectTransform root, RectTransform window) = PopupShell(menuRoot, "MucadelelerEkrani", "MÜCADELELER", new Vector2(1640f, 880f));
+            Button close = PopupCloseButton(window);
+
+            RectTransform Column(string prefix, string title, float x, out TextMeshProUGUI timer)
+            {
+                TextMeshProUGUI heading = AddText(window, prefix + "Baslik", title, 56f, Yellow, TextAlignmentOptions.Center, shadow: true);
+                Place(heading.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(x, -170f), new Vector2(740f, 70f));
+                timer = AddText(window, prefix + "Sure", "Yenilenme: 5 sa 20 dk", 30f, ResultSoftText, TextAlignmentOptions.Center);
+                Place(timer.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(x, -222f), new Vector2(740f, 44f));
+
+                RectTransform list = NewRect(prefix + "Liste", window);
+                Place(list, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(x, -260f), new Vector2(740f, 580f));
+                GridLayoutGroup grid = list.gameObject.AddComponent<GridLayoutGroup>();
+                grid.cellSize = new Vector2(740f, 170f);
+                grid.spacing = new Vector2(0f, 20f);
+                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                grid.constraintCount = 1;
+                return list;
+            }
+
+            RectTransform daily = Column("Gunluk", "GÜNLÜK", -400f, out TextMeshProUGUI dailyTimer);
+            RectTransform weekly = Column("Haftalik", "HAFTALIK", 400f, out TextMeshProUGUI weeklyTimer);
+            ChallengeRow template = BuildChallengeRow(daily);
+
+            ChallengesScreen screen = root.gameObject.AddComponent<ChallengesScreen>();
+            var serialized = new SerializedObject(screen);
+            serialized.FindProperty("dailyList").objectReferenceValue = daily;
+            serialized.FindProperty("weeklyList").objectReferenceValue = weekly;
+            serialized.FindProperty("rowTemplate").objectReferenceValue = template;
+            serialized.FindProperty("dailyTimerText").objectReferenceValue = dailyTimer;
+            serialized.FindProperty("weeklyTimerText").objectReferenceValue = weeklyTimer;
+            serialized.FindProperty("closeButton").objectReferenceValue = close;
+            serialized.FindProperty("menu").objectReferenceValue = menu;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            root.gameObject.SetActive(false);
+            return screen;
+        }
+
+        private static ChallengeRow BuildChallengeRow(RectTransform list)
+        {
+            RectTransform row = NewRect("SatirSablonu", list);
+            Image background = AddImage(row, Sprite("ui_round"), new Color(1f, 0.95f, 0.82f, 1f), raycast: true);
+            background.pixelsPerUnitMultiplier = 1.6f;
+            Button button = row.gameObject.AddComponent<Button>();
+            button.targetGraphic = background;
+            row.gameObject.AddComponent<UIPressScale>();
+
+            Vector2 topLeft = new(0f, 1f);
+            TextMeshProUGUI title = AddText(row, "Ad", "3 maç oyna", 40f, BrownDark, TextAlignmentOptions.Left);
+            Place(title.rectTransform, topLeft, topLeft, new Vector2(28f, -18f), new Vector2(480f, 56f));
+
+            TextMeshProUGUI reward = AddText(row, "Odul", "+80 XP", 40f, GreenLip, TextAlignmentOptions.Right);
+            Place(reward.rectTransform, Vector2.one, Vector2.one, new Vector2(-28f, -18f), new Vector2(200f, 56f));
+
+            RectTransform track = NewRect("Cubuk", row);
+            Place(track, Vector2.zero, Vector2.zero, new Vector2(28f, 30f), new Vector2(460f, 40f));
+            AddImage(track, Sprite("ui_round"), ResultTrack).pixelsPerUnitMultiplier = 2.2f;
+            RectTransform fill = NewRect("Dolum", track);
+            fill.anchorMin = Vector2.zero;
+            fill.anchorMax = new Vector2(0.3f, 1f);
+            fill.offsetMin = new Vector2(4f, 4f);
+            fill.offsetMax = new Vector2(0f, -4f);
+            AddImage(fill, Sprite("ui_round"), Yellow).pixelsPerUnitMultiplier = 2.8f;
+
+            TextMeshProUGUI progress = AddText(row, "Ilerleme", "1 / 3", 34f, BrownText, TextAlignmentOptions.Left);
+            Place(progress.rectTransform, Vector2.zero, new Vector2(0f, 0.5f), new Vector2(508f, 50f), new Vector2(200f, 50f));
+
+            RectTransform done = NewRect("Tamamlandi", row);
+            Place(done, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-24f, 24f), new Vector2(250f, 60f));
+            AddImage(done, Sprite("ui_round"), Green).pixelsPerUnitMultiplier = 2.4f;
+            TextMeshProUGUI doneText = AddText(done, "Yazi", "TAMAMLANDI", 30f, Color.white, TextAlignmentOptions.Center, shadow: true);
+            Stretch(doneText.rectTransform, 8f, 8f, 0f, 3f);
+            done.gameObject.SetActive(false);
+
+            ChallengeRow component = row.gameObject.AddComponent<ChallengeRow>();
+            var serialized = new SerializedObject(component);
+            serialized.FindProperty("background").objectReferenceValue = background;
+            serialized.FindProperty("titleText").objectReferenceValue = title;
+            serialized.FindProperty("progressText").objectReferenceValue = progress;
+            serialized.FindProperty("progressFill").objectReferenceValue = fill;
+            serialized.FindProperty("rewardText").objectReferenceValue = reward;
+            serialized.FindProperty("doneMark").objectReferenceValue = done.gameObject;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return component;
+        }
+
+        /// <summary>Menudeki MÜCADELELER kartinin yazilarini ve kutularini baglar.</summary>
+        private static bool EnsureChallengeCardRefs(MainMenuScreen menu, SerializedObject serialized)
+        {
+            SerializedProperty dailyText = serialized.FindProperty("challengeDailyText");
+            if (dailyText.objectReferenceValue != null)
+                return false;
+
+            Transform card = menu.transform.Find("OrtaAlan/MucadelelerKarti");
+            if (card == null)
+                return false;
+
+            dailyText.objectReferenceValue = card.Find("Gunluk")?.GetComponent<TextMeshProUGUI>();
+            serialized.FindProperty("challengeWeeklyText").objectReferenceValue = card.Find("Haftalik")?.GetComponent<TextMeshProUGUI>();
+            serialized.FindProperty("challengeDailyBox").objectReferenceValue = card.Find("GunlukKutu")?.GetComponent<Image>();
+            Transform weeklyBox = card.Find("HaftalıkKutu");
+            if (weeklyBox == null)
+                weeklyBox = card.Find("HaftalikKutu");
+            serialized.FindProperty("challengeWeeklyBox").objectReferenceValue = weeklyBox != null ? weeklyBox.GetComponent<Image>() : null;
+            Transform comingSoon = card.Find("Yakinda");
+            serialized.FindProperty("challengeComingSoon").objectReferenceValue = comingSoon != null ? comingSoon.gameObject : null;
+            return true;
+        }
+
+        /// <summary>Pencerenin sag ust kosesinde turuncu kapat butonu.</summary>
+        private static Button PopupCloseButton(RectTransform window)
+        {
+            Button close = AddButton(window, "KapatButonu", Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(-20f, -20f),
+                new Vector2(100f, 100f), Orange, OrangeLip);
+            AddIcon(Face(close), "Ikon", "icon_close", Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, 54f);
+            return close;
         }
 
         // ------------------------------------------------------------------

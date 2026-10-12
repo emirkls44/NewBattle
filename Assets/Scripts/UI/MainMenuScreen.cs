@@ -73,6 +73,20 @@ namespace NewBattle.UI
         [SerializeField] private NamePopup namePopup;
         [Tooltip("'sezon' karti ve 'seviye_yolu' (rutbe ikonu) butonlarinin actigi ekran.")]
         [SerializeField] private LevelRoadScreen levelRoadScreen;
+        [Tooltip("'liderlik' butonunun actigi profil / istatistik penceresi.")]
+        [SerializeField] private ProfileScreen profileScreen;
+        [Tooltip("'mucadeleler' kartinin actigi gunluk / haftalik gorevler.")]
+        [SerializeField] private ChallengesScreen challengesScreen;
+
+        [Header("Mucadeleler Karti")]
+        [SerializeField] private TextMeshProUGUI challengeDailyText;
+        [SerializeField] private TextMeshProUGUI challengeWeeklyText;
+        [Tooltip("Gorevlerin hepsi bitince yesile donen kutular.")]
+        [SerializeField] private Image challengeDailyBox;
+        [SerializeField] private Image challengeWeeklyBox;
+        [Tooltip("Eski 'YAKINDA' etiketi; gorevler gelince gizlenir.")]
+        [SerializeField] private GameObject challengeComingSoon;
+        [SerializeField] private Color challengeDoneColor = new(0.36f, 0.77f, 0.22f, 1f);
 
         [Header("Yukleme Ekrani")]
         [Tooltip("Mac aranirken gosterilen ekran (Assets/Prefabs/UI/YuklemeEkrani).")]
@@ -88,6 +102,7 @@ namespace NewBattle.UI
         private NetworkBootstrap _bootstrap;
         private Coroutine _toastRoutine;
         private string[] _doubleXpIdleTexts;
+        private Color _challengeBoxColor = Color.clear;
         private readonly System.Collections.Generic.List<(string, System.Action)> _boundActions = new();
         private float _nextBootstrapCheck;
 
@@ -149,6 +164,12 @@ namespace NewBattle.UI
             if (rewardPopup != null)
                 Bind("oduller", OpenDailyRewards);
 
+            if (profileScreen != null)
+                Bind("liderlik", profileScreen.Open);
+
+            if (challengesScreen != null)
+                Bind("mucadeleler", challengesScreen.Open);
+
             Bind("cift_xp", OnDoubleXpPressed);
             Bind("cift_xp_kart", OnDoubleXpPressed);
             CacheDoubleXpTexts();
@@ -175,7 +196,7 @@ namespace NewBattle.UI
             Refresh();
             SetStatus(string.Empty);
 
-            if (rewardPopup != null)
+            if (rewardPopup != null || namePopup != null)
                 StartCoroutine(ShowPendingRewards());
         }
 
@@ -243,6 +264,33 @@ namespace NewBattle.UI
             }
 
             RefreshDoubleXp();
+            RefreshChallengesCard();
+        }
+
+        private void RefreshChallengesCard()
+        {
+            if (challengeComingSoon != null && challengeComingSoon.activeSelf)
+                challengeComingSoon.SetActive(false);
+
+            if (challengeDailyText == null && challengeWeeklyText == null)
+                return;
+
+            var daily = Challenges.Daily;
+            var weekly = Challenges.Weekly;
+            int dailyDone = daily.FindAll(c => c.Done).Count;
+            int weeklyDone = weekly.FindAll(c => c.Done).Count;
+
+            SetText(challengeDailyText, $"Günlük  {dailyDone}/{daily.Count}");
+            SetText(challengeWeeklyText, $"Haftalık  {weeklyDone}/{weekly.Count}");
+
+            if (_challengeBoxColor == Color.clear)
+                _challengeBoxColor = challengeDailyBox != null ? challengeDailyBox.color
+                    : challengeWeeklyBox != null ? challengeWeeklyBox.color : Color.gray;
+
+            if (challengeDailyBox != null)
+                challengeDailyBox.color = daily.Count > 0 && dailyDone == daily.Count ? challengeDoneColor : _challengeBoxColor;
+            if (challengeWeeklyBox != null)
+                challengeWeeklyBox.color = weekly.Count > 0 && weeklyDone == weekly.Count ? challengeDoneColor : _challengeBoxColor;
         }
 
         // ------------------------------------------------------------------
@@ -256,6 +304,18 @@ namespace NewBattle.UI
         private IEnumerator ShowPendingRewards()
         {
             yield return new WaitForSecondsRealtime(rewardDelay);
+
+            // Ilk acilis: once kullanici adi sorulur.
+            if (namePopup != null && !PlayerProgress.HasChosenName)
+            {
+                bool named = false;
+                namePopup.OpenFirstTime(() => named = true);
+                while (!named)
+                    yield return null;
+            }
+
+            if (rewardPopup == null)
+                yield break;
 
             while (isActiveAndEnabled)
             {

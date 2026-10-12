@@ -117,6 +117,18 @@ namespace NewBattle.EditorTools
                     PlayerProgress.AddDoubleXpMatches(1);
             }
 
+            EditorGUILayout.LabelField("İsim", $"{PlayerProgress.PlayerName}  (değiştirme hakkı: {PlayerProgress.NameChangesAvailable})");
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("İlk açılış isim sorusunu tekrar göster"))
+                {
+                    PlayerPrefs.DeleteKey("nb_name_chosen");
+                    PlayerPrefs.Save();
+                }
+                if (GUILayout.Button("Görevleri sıfırla"))
+                    Challenges.Reset();
+            }
+
             EditorGUILayout.Space(14f);
             EditorGUILayout.LabelField("Lobi Animasyonları", EditorStyles.boldLabel);
 

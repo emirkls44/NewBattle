@@ -20,10 +20,17 @@ namespace NewBattle.Progression
         private const string OwnedKey = "nb_owned_lobby_anims";
         private const string SelectedKey = "nb_selected_lobby_anim";
         private const string PlayerNameKey = "nb_player_name";
+        private const string NameChosenKey = "nb_name_chosen";
+        private const string NameChangesUsedKey = "nb_name_changes_used";
+        private const string KillsKey = "nb_total_kills";
+        private const string BestPlacementKey = "nb_best_placement";
         private const string MatchesKey = "nb_matches_played";
         private const string DoubleXpKey = "nb_double_xp_matches";
 
         public const int StartingCoins = 100;
+
+        /// <summary>Isim degistirme hakki her bu kadar seviyede bir gelir (5, 10, 15...).</summary>
+        public const int NameChangeLevelStep = 5;
 
         private static readonly string[] RankNames =
         {
@@ -79,8 +86,48 @@ namespace NewBattle.Progression
                     return;
 
                 PlayerPrefs.SetString(PlayerNameKey, value.Trim());
+                PlayerPrefs.SetInt(NameChosenKey, 1);
                 Save();
             }
+        }
+
+        /// <summary>Oyuncu ilk acilista ismini sectiyse true (yoksa menu sorar).</summary>
+        public static bool HasChosenName => PlayerPrefs.GetInt(NameChosenKey, 0) == 1;
+
+        /// <summary>Kullanilmamis isim degistirme hakki (her 5 seviyede bir).</summary>
+        public static int NameChangesAvailable =>
+            Mathf.Max(0, Level / NameChangeLevelStep - PlayerPrefs.GetInt(NameChangesUsedKey, 0));
+
+        /// <summary>Hak yoksa: bir sonraki hakkin gelecegi seviye.</summary>
+        public static int NextNameChangeLevel =>
+            (PlayerPrefs.GetInt(NameChangesUsedKey, 0) + 1) * NameChangeLevelStep;
+
+        /// <summary>Ilk acilista isim secimi (hak harcamaz).</summary>
+        public static void ChooseFirstName(string name) => PlayerName = name;
+
+        /// <summary>Hakki varsa ismi degistirir ve bir hak harcar.</summary>
+        public static bool TryChangeName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name) || NameChangesAvailable <= 0)
+                return false;
+
+            PlayerPrefs.SetInt(NameChangesUsedKey, PlayerPrefs.GetInt(NameChangesUsedKey, 0) + 1);
+            PlayerName = name;
+            return true;
+        }
+
+        public static int TotalKills => Mathf.Max(0, PlayerPrefs.GetInt(KillsKey, 0));
+
+        /// <summary>En iyi bitirme sirasi. 0 = henuz mac yok.</summary>
+        public static int BestPlacement => Mathf.Max(0, PlayerPrefs.GetInt(BestPlacementKey, 0));
+
+        /// <summary>Profil istatistikleri icin mac sonucunu kaydeder.</summary>
+        public static void RecordMatchStats(int kills, int placement)
+        {
+            PlayerPrefs.SetInt(KillsKey, TotalKills + Mathf.Max(0, kills));
+            if (placement > 0 && (BestPlacement == 0 || placement < BestPlacement))
+                PlayerPrefs.SetInt(BestPlacementKey, placement);
+            Save();
         }
 
         /// <summary>Bir sonraki seviye icin gereken XP (bkz. IlerlemeAyarlari).</summary>
@@ -139,6 +186,9 @@ namespace NewBattle.Progression
                 AddOwned(reward.animationId);
                 parts.Add(string.IsNullOrEmpty(reward.animationLabel) ? "Yeni lobi animasyonu" : reward.animationLabel);
             }
+
+            if (level % NameChangeLevelStep == 0)
+                parts.Add("İsim değiştirme hakkı");
 
             RewardInbox.Add(new RewardNotice($"SEVİYE {level}!",
                 parts.Count > 0 ? string.Join("\n", parts) : "Tebrikler!", RewardNoticeIcon.LevelUp));
@@ -270,10 +320,15 @@ namespace NewBattle.Progression
         /// <summary>Test icin: tum ilerlemeyi ilk acilis haline dondurur.</summary>
         public static void ResetAll()
         {
-            foreach (string key in new[] { LevelKey, XpKey, CoinsKey, WinsKey, OwnedKey, SelectedKey, MatchesKey, DoubleXpKey })
+            foreach (string key in new[]
+                     {
+                         LevelKey, XpKey, CoinsKey, WinsKey, OwnedKey, SelectedKey, MatchesKey, DoubleXpKey,
+                         PlayerNameKey, NameChosenKey, NameChangesUsedKey, KillsKey, BestPlacementKey
+                     })
                 PlayerPrefs.DeleteKey(key);
 
             DailyLogin.Reset();
+            Challenges.Reset();
             RewardInbox.Clear();
             Save();
         }

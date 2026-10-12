@@ -1,3 +1,4 @@
+using System;
 using NewBattle.Progression;
 using TMPro;
 using UnityEngine;
@@ -6,22 +7,36 @@ using UnityEngine.UI;
 namespace NewBattle.UI
 {
     /// <summary>
-    /// "İSMİNİ DEĞİŞTİR" penceresi. Menudeki kalem butonu ve AYARLAR'daki
-    /// isim butonu acar. Isim 3-16 karakter olmali.
+    /// Isim penceresi, iki sekilde acilir:
+    ///   - Ilk acilis: "KULLANICI ADIN NE OLSUN?" Vazgec yok; isim girilmeden kapanmaz.
+    ///   - Degistirme (kalem / AYARLAR): sadece hak varsa. Hak her 5 seviyede
+    ///     bir gelir (5, 10, 15...); yoksa pencere hangi seviyede gelecegini soyler.
+    /// Isim 3-16 karakter olmali.
     /// </summary>
     public class NamePopup : MonoBehaviour
     {
         public const int MinLength = 3;
         public const int MaxLength = 16;
 
+        [SerializeField] private TextMeshProUGUI titleText;
         [SerializeField] private TMP_InputField input;
         [SerializeField] private Button saveButton;
         [SerializeField] private Button cancelButton;
+        [SerializeField] private TextMeshProUGUI cancelLabel;
         [SerializeField] private TextMeshProUGUI hintText;
         [SerializeField] private MainMenuScreen menu;
 
+        [Header("Yazilar")]
+        [SerializeField] private string firstTimeTitle = "KULLANICI ADIN NE OLSUN?";
+        [SerializeField] private string changeTitle = "İSMİNİ DEĞİŞTİR";
+
         private bool _initialized;
         private bool _opening;
+        private bool _firstTime;
+        private bool _locked;
+        private Action _onDone;
+
+        public bool IsOpen => gameObject.activeSelf;
 
         private void Awake()
         {
@@ -51,25 +66,57 @@ namespace NewBattle.UI
                 cancelButton.onClick.AddListener(Close);
         }
 
-        public void Open()
+        /// <summary>Kalem / AYARLAR: isim degistirme (hak varsa).</summary>
+        public void Open() => Show(firstTime: false, null);
+
+        /// <summary>Ilk acilis: isim secilmeden kapanmaz. Bitince onDone cagrilir.</summary>
+        public void OpenFirstTime(Action onDone) => Show(firstTime: true, onDone);
+
+        private void Show(bool firstTime, Action onDone)
         {
             Initialize();
+            _firstTime = firstTime;
+            _onDone = onDone;
+            _locked = !firstTime && PlayerProgress.NameChangesAvailable <= 0;
 
             _opening = true;
             gameObject.SetActive(true);
             _opening = false;
             transform.SetAsLastSibling();
 
+            if (titleText != null)
+                titleText.text = firstTime ? firstTimeTitle : changeTitle;
+
+            if (cancelButton != null)
+                cancelButton.gameObject.SetActive(!firstTime);
+            if (cancelLabel != null)
+                cancelLabel.text = _locked ? "TAMAM" : "VAZGEÇ";
+            if (saveButton != null)
+                saveButton.gameObject.SetActive(!_locked);
+
             if (input != null)
             {
-                input.text = PlayerProgress.PlayerName;
-                input.ActivateInputField(); // telefonda klavye acilir
+                // Ilk acilista bos baslar; rastgele uretilmis "Savaşçı#1234" yazmasin.
+                input.text = firstTime ? string.Empty : PlayerProgress.PlayerName;
+                input.interactable = !_locked;
+                if (!_locked)
+                    input.ActivateInputField(); // telefonda klavye acilir
             }
 
             RefreshHint();
         }
 
-        public void Close() => gameObject.SetActive(false);
+        public void Close()
+        {
+            // Ilk acilista isim secmeden kapatilamaz.
+            if (_firstTime && !PlayerProgress.HasChosenName)
+                return;
+
+            gameObject.SetActive(false);
+            Action done = _onDone;
+            _onDone = null;
+            done?.Invoke();
+        }
 
         private string Cleaned => input != null ? input.text.Trim() : string.Empty;
 
@@ -78,20 +125,55 @@ namespace NewBattle.UI
         private void RefreshHint()
         {
             if (hintText != null)
-                hintText.text = IsValid ? $"{Cleaned.Length} / {MaxLength}" : $"En az {MinLength}, en fazla {MaxLength} harf";
+            {
+                if (_locked)
+                    hintText.text = $"İsmini Seviye {Locative(PlayerProgress.NextNameChangeLevel)} değiştirebilirsin";
+                else if (!IsValid)
+                    hintText.text = $"En az {MinLength}, en fazla {MaxLength} harf";
+                else if (_firstTime)
+                    hintText.text = $"{Cleaned.Length} / {MaxLength}";
+                else
+                    hintText.text = $"{PlayerProgress.NameChangesAvailable} değiştirme hakkın var · {Cleaned.Length} / {MaxLength}";
+            }
 
             if (saveButton != null)
-                saveButton.interactable = IsValid;
+                saveButton.interactable = !_locked && IsValid;
+        }
+
+        /// <summary>Sayiya Turkce bulunma eki: 5'te, 10'da, 20'de, 40'ta.</summary>
+        private static string Locative(int number)
+        {
+            string[] units = { "", "'de", "'de", "'te", "'te", "'te", "'da", "'de", "'de", "'da" };
+            string[] tens = { "", "'da", "'de", "'da", "'ta", "'de", "'ta", "'te", "'de", "'da" };
+
+            string suffix = number % 10 != 0 ? units[number % 10]
+                : number % 100 != 0 ? tens[number / 10 % 10]
+                : "'de"; // yuz, bin
+            return number + suffix;
         }
 
         private void Save()
         {
-            if (!IsValid)
+            if (_locked || !IsValid)
                 return;
 
-            PlayerProgress.PlayerName = Cleaned;
-            Close();
+            if (_firstTime)
+            {
+                PlayerProgress.ChooseFirstName(Cleaned);
+                Close();
+                return;
+            }
 
+            if (Cleaned == PlayerProgress.PlayerName)
+            {
+                Close();
+                return;
+            }
+
+            if (!PlayerProgress.TryChangeName(Cleaned))
+                return;
+
+            Close();
             if (menu != null)
                 menu.ShowToast("İSİM DEĞİŞTİ!");
         }

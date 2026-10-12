@@ -45,6 +45,42 @@ namespace NewBattle.Progression
         public string animationLabel;
     }
 
+    public enum ChallengeGoal
+    {
+        [Tooltip("Mac oyna (her mac 1).")]
+        PlayMatches,
+        [Tooltip("Rakip yen (her oldurme 1).")]
+        Kills,
+        [Tooltip("Mac kazan.")]
+        Wins,
+        [Tooltip("Ilk 3'e gir.")]
+        TopThree,
+        [Tooltip("Ilk 10'a gir.")]
+        TopTen
+    }
+
+    /// <summary>Bir gunluk ya da haftalik gorev: "3 maç oyna" → +80 XP.</summary>
+    [Serializable]
+    public class ChallengeDef
+    {
+        public string id = "gorev";
+        public string title = "3 maç oyna";
+        public ChallengeGoal goal = ChallengeGoal.PlayMatches;
+        [Min(1)] public int target = 3;
+        [Min(0)] public int xp = 80;
+
+        public ChallengeDef() { }
+
+        public ChallengeDef(string id, string title, ChallengeGoal goal, int target, int xp)
+        {
+            this.id = id;
+            this.title = title;
+            this.goal = goal;
+            this.target = target;
+            this.xp = xp;
+        }
+    }
+
     /// <summary>Oyuncu seviyesine gore botlarin ne kadar zor oldugu.</summary>
     [Serializable]
     public class BotDifficultyStep
@@ -134,6 +170,33 @@ namespace NewBattle.Progression
             new() { level = 5, coins = 1000 }
         };
         [Min(0)] public int coinsPerLevelAfterList = 1000;
+
+        [Header("Mucadeleler (gunluk / haftalik gorevler)")]
+        [Tooltip("Her gun havuzdan kac gorev secilsin.")]
+        [Min(1)] public int dailyChallengeCount = 3;
+        [Tooltip("Gunluk gorev havuzu. Her gun bunlardan rastgele secilir.")]
+        public ChallengeDef[] dailyChallenges =
+        {
+            new("g_mac1", "1 maç oyna", ChallengeGoal.PlayMatches, 1, 30),
+            new("g_mac3", "3 maç oyna", ChallengeGoal.PlayMatches, 3, 80),
+            new("g_oldur5", "5 rakip yen", ChallengeGoal.Kills, 5, 80),
+            new("g_oldur10", "10 rakip yen", ChallengeGoal.Kills, 10, 120),
+            new("g_ilk10", "Bir maçta ilk 10'a gir", ChallengeGoal.TopTen, 1, 50),
+            new("g_ilk3", "Bir maçta ilk 3'e gir", ChallengeGoal.TopThree, 1, 100),
+            new("g_kazan", "Bir maç kazan", ChallengeGoal.Wins, 1, 150)
+        };
+
+        [Tooltip("Her hafta (pazartesi) havuzdan kac gorev secilsin.")]
+        [Min(1)] public int weeklyChallengeCount = 3;
+        [Tooltip("Haftalik gorev havuzu.")]
+        public ChallengeDef[] weeklyChallenges =
+        {
+            new("h_mac15", "15 maç oyna", ChallengeGoal.PlayMatches, 15, 400),
+            new("h_oldur30", "30 rakip yen", ChallengeGoal.Kills, 30, 400),
+            new("h_oldur50", "50 rakip yen", ChallengeGoal.Kills, 50, 700),
+            new("h_ilk3", "5 kez ilk 3'e gir", ChallengeGoal.TopThree, 5, 500),
+            new("h_kazan3", "3 maç kazan", ChallengeGoal.Wins, 3, 600)
+        };
 
         [Header("Bot Zorlugu (oyuncu seviyesine gore)")]
         [Tooltip("Oyuncunun seviyesine en uygun (fromLevel'i en buyuk) satir kullanilir.")]

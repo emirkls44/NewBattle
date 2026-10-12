@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace NewBattle.UI
 {
     /// <summary>
-    /// AYARLAR penceresi: ses, kare hizi, kamera yakinligi ve isim degistirme.
+    /// AYARLAR penceresi: ses, kare hizi ve isim degistirme.
     /// Ana menudeki "ayarlar" butonu acar. Degerler GameSettings'te saklanir.
     /// </summary>
     public class SettingsScreen : MonoBehaviour
@@ -19,13 +19,6 @@ namespace NewBattle.UI
         [SerializeField] private Button frameRateButton;
         [SerializeField] private TextMeshProUGUI frameRateLabel;
 
-        [Header("Kamera Yakinligi")]
-        [SerializeField] private Button cameraFartherButton;
-        [SerializeField] private Button cameraCloserButton;
-        [SerializeField] private TextMeshProUGUI cameraLabel;
-        [Tooltip("Oyuncu hic degistirmediyse gosterilen deger (CameraFollow'daki ile ayni olsun).")]
-        [SerializeField] private float defaultCameraSize = 8.5f;
-
         [Header("Diger")]
         [SerializeField] private Button nameButton;
         [SerializeField] private NamePopup namePopup;
@@ -35,6 +28,9 @@ namespace NewBattle.UI
         [Header("Renkler")]
         [SerializeField] private Color onColor = new(0.36f, 0.77f, 0.22f, 1f);
         [SerializeField] private Color offColor = new(0.6f, 0.6f, 0.62f, 1f);
+
+        [Tooltip("Kurulum aracinin yerlesim surumu.")]
+        [SerializeField, HideInInspector] private int layoutVersion;
 
         private bool _initialized;
         private bool _opening;
@@ -59,10 +55,6 @@ namespace NewBattle.UI
                 soundButton.onClick.AddListener(() => GameSettings.SoundOn = !GameSettings.SoundOn);
             if (frameRateButton != null)
                 frameRateButton.onClick.AddListener(() => GameSettings.FrameRate = GameSettings.FrameRate == 60 ? 30 : 60);
-            if (cameraCloserButton != null)
-                cameraCloserButton.onClick.AddListener(() => ChangeCamera(-GameSettings.CameraStep));
-            if (cameraFartherButton != null)
-                cameraFartherButton.onClick.AddListener(() => ChangeCamera(GameSettings.CameraStep));
             if (nameButton != null)
                 nameButton.onClick.AddListener(() =>
                 {
@@ -95,13 +87,6 @@ namespace NewBattle.UI
 
         private void OnDestroy() => GameSettings.Changed -= Refresh;
 
-        private float CurrentCamera => GameSettings.HasCameraViewSize ? GameSettings.CameraViewSize : defaultCameraSize;
-
-        private void ChangeCamera(float delta)
-        {
-            GameSettings.CameraViewSize = CurrentCamera + delta;
-        }
-
         private void Refresh()
         {
             bool sound = GameSettings.SoundOn;
@@ -112,17 +97,6 @@ namespace NewBattle.UI
 
             if (frameRateLabel != null)
                 frameRateLabel.text = $"{GameSettings.FrameRate} FPS";
-
-            float size = CurrentCamera;
-            int level = GameSettings.CameraLevel(size);
-            int maxLevel = GameSettings.CameraLevel(GameSettings.CameraMin);
-            if (cameraLabel != null)
-                cameraLabel.text = $"{level} / {maxLevel}";
-
-            if (cameraCloserButton != null)
-                cameraCloserButton.interactable = size > GameSettings.CameraMin + 0.01f;
-            if (cameraFartherButton != null)
-                cameraFartherButton.interactable = size < GameSettings.CameraMax - 0.01f;
 
             if (versionText != null)
                 versionText.text = $"Sürüm {Application.version}";

@@ -99,6 +99,10 @@ namespace NewBattle.Progression
             }
 
             PlayerProgress.AddMatchPlayed();
+            PlayerProgress.RecordMatchStats(outcome.Kills, outcome.Victory ? 1 : outcome.Placement);
+
+            // Gorevler: tamamlananin XP'si verilir, penceresi menude acilir.
+            Challenges.RecordMatch(outcome);
             return result;
         }
     }
