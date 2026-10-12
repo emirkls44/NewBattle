@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using UnityEngine;
 
 namespace NewBattle.Gameplay
@@ -110,6 +111,9 @@ namespace NewBattle.Gameplay
             Vector3 side = Vector3.Cross(Vector3.up, forward) * (_steppedRight ? footSpacing : -footSpacing);
 
             SpawnPrint(position + side, forward);
+            // Gizlenen (calida) oyuncunun adimi duyulmasin: ses de iz gibi gorunurluge bagli.
+            if (_visible)
+                Sfx.Play("adim", position);
         }
 
         private void SpawnPrint(Vector3 position, Vector3 forward)

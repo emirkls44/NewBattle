@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using Fusion;
 using NewBattle.Gameplay;
 using UnityEngine;
@@ -263,6 +264,7 @@ public class PlayerShooting : NetworkBehaviour
         if (_animator != null)
             _animator.SetTrigger(PunchHash);
 
+        Sfx.Play("yumruk", transform.position);
         ShakeOwnCamera(0.12f);
     }
 
@@ -280,6 +282,9 @@ public class PlayerShooting : NetworkBehaviour
         if (_lastCasingFrame != Time.frameCount)
         {
             _lastCasingFrame = Time.frameCount;
+
+            // Ses de kare basina bir kez (pompalinin her sacmasi ayri patlamasin).
+            Sfx.Play(weapon != null ? weapon.FireSoundId : "ates_tufek", origin);
 
             Vector3 aim = endPoint - origin;
             ShellCasingPool.Eject(origin, aim, transform.position.y);

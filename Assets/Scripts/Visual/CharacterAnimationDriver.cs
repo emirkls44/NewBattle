@@ -146,6 +146,22 @@ public class CharacterAnimationDriver : MonoBehaviour
         CacheBones();
     }
 
+    private void OnEnable() => NewBattle.Gameplay.CharacterModelSwap.Swapped += OnModelSwapped;
+
+    private void OnDisable() => NewBattle.Gameplay.CharacterModelSwap.Swapped -= OnModelSwapped;
+
+    /// <summary>Karakter degisti (ornek: hediye melek): yeni govde ve kemikleri bul.</summary>
+    private void OnModelSwapped(Animator swapped)
+    {
+        if (swapped != animator)
+            return;
+
+        if (model != null)
+            _bodyRenderers = model.GetComponentsInChildren<Renderer>(true);
+
+        CacheBones();
+    }
+
     private void CacheAnimatorLayout()
     {
         if (animator == null || animator.runtimeAnimatorController == null)

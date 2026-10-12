@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -12,10 +13,13 @@ namespace NewBattle.UI
     /// doner. (Eskiden olcegi her zaman 1'e cekiyordu ve senin ayarini
     /// bozuyordu.)
     /// </summary>
-    public class UIPressScale : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
+    public class UIPressScale : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler,
+        IPointerClickHandler
     {
         [SerializeField, Range(0.8f, 1f)] private float pressedScale = 0.93f;
         [SerializeField, Min(1f)] private float speed = 22f;
+        [Tooltip("Basinca calan ses (SesKutuphanesi'ndeki ad). Bos = sessiz.")]
+        [SerializeField] private string clickSound = "buton";
 
         private Selectable _selectable;
         private Vector3 _baseScale = Vector3.one;
@@ -51,6 +55,12 @@ namespace NewBattle.UI
         }
 
         public void OnPointerUp(PointerEventData eventData) => _target = 1f;
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (!string.IsNullOrEmpty(clickSound) && (_selectable == null || _selectable.IsInteractable()))
+                Sfx.PlayUI(clickSound);
+        }
 
         public void OnPointerExit(PointerEventData eventData) => _target = 1f;
     }

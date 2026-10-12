@@ -237,8 +237,17 @@ public class SafeZoneController : NetworkBehaviour
         }
     }
 
+    private bool _wasShrinking;
+    private int _lastHeartbeat = -1;
+
     public override void Render()
     {
+        // Daralma basladiginda siren (bir kez).
+        bool shrinking = IsShrinking;
+        if (shrinking && !_wasShrinking)
+            NewBattle.Audio.Sfx.PlayUI("alan_daraliyor");
+        _wasShrinking = shrinking;
+
         // Kendi oyuncumuz havadayken (dusus + parasut) alan cizgisi, kirmizi
         // sis ve tehlike efekti gorunmez; yere inince geri gelir.
         bool airborne = IsLocalPlayerAirborne();
@@ -876,6 +885,14 @@ public class SafeZoneController : NetworkBehaviour
         float alpha = 0f;
         if (isOutside)
         {
+            // Kalp atisi sesi ekrandaki kirmizi nabizla ayni anda.
+            int beat = Mathf.FloorToInt(Time.unscaledTime * heartbeatRate);
+            if (beat != _lastHeartbeat)
+            {
+                _lastHeartbeat = beat;
+                NewBattle.Audio.Sfx.PlayUI("alan_kalp");
+            }
+
             float phase = Mathf.Repeat(Time.unscaledTime * heartbeatRate, 1f);
             float firstBeat = Mathf.Exp(-Mathf.Pow((phase - 0.12f) / 0.055f, 2f));
             float secondBeat = 0.62f * Mathf.Exp(-Mathf.Pow((phase - 0.29f) / 0.07f, 2f));

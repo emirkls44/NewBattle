@@ -38,6 +38,9 @@ namespace NewBattle.EditorTools
                 added.Add("Ayarlar");
             }
 
+            if (settingsProperty.objectReferenceValue is SettingsScreen musicSettings && UpgradeSettingsMusic(musicSettings))
+                added.Add("Ayarlar: müzik satırı");
+
             SerializedProperty roadProperty = serialized.FindProperty("levelRoadScreen");
             if (roadProperty.objectReferenceValue == null)
             {

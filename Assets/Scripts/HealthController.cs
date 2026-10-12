@@ -98,7 +98,7 @@ public class HealthController : NetworkBehaviour
         // sadece bu pencere boyunca gorunur (bkz. WorldHealthBar).
         MarkCombatants(attacker);
 
-        Rpc_ShowDamageNumber(baseDamage, shieldWasHit);
+        Rpc_ShowDamageNumber(baseDamage, shieldWasHit, attacker, currentHealth <= 0f);
 
         if (currentHealth <= 0f)
         {
@@ -193,9 +193,10 @@ public class HealthController : NetworkBehaviour
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_ShowDamageNumber(float damage, bool shieldHit)
+    private void Rpc_ShowDamageNumber(float damage, bool shieldHit, PlayerRef attacker, bool killed)
     {
         DamageNumberPopup.Show(transform.position, damage, shieldHit);
+        PlayHitSounds(attacker, killed);
 
         // Govdenin kendisi de tepki versin: hasar sayisi karakterin ustunde
         // belirirken goz nisan alirken govdede oluyor.
@@ -203,6 +204,26 @@ public class HealthController : NetworkBehaviour
 
         if (_animationDriver != null)
             _animationDriver.PlayHitFlinch();
+    }
+
+    /// <summary>
+    /// Vuran bensem isabet "tik"i (oldurduysem zil), vurulan bensem darbe
+    /// (oldusem olum sesi). Baskalarinin birbirini vurmasi sessiz; onu
+    /// zaten atis sesinden duyuyoruz.
+    /// </summary>
+    private void PlayHitSounds(PlayerRef attacker, bool killed)
+    {
+        if (Runner == null)
+            return;
+
+        if (HasInputAuthority)
+        {
+            NewBattle.Audio.Sfx.PlayUI(killed ? "olum" : "hasar_al");
+            return;
+        }
+
+        if (attacker != PlayerRef.None && attacker == Runner.LocalPlayer)
+            NewBattle.Audio.Sfx.PlayUI(killed ? "oldurme" : "isabet");
     }
 
     private void Die()

@@ -65,6 +65,28 @@ namespace NewBattle.Gameplay
         [Tooltip("Ates ederken kameranin ne kadar sarsilacagi. Seri ateste birikir.")]
         [Range(0f, 1f)] public float shakeStrength = 0.18f;
 
+        [Header("Ses")]
+        [Tooltip("Atis sesi (SesKutuphanesi'ndeki ad: ates_tufek, ates_agir, ates_tabanca, ates_pompali, yumruk). " +
+                 "Bos birakilirsa silahin turune gore secilir.")]
+        public string fireSound;
+
+        /// <summary>Atis sesinin adi: elle verilmemisse silahin ozelliklerinden tahmin edilir.</summary>
+        public string FireSoundId
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(fireSound))
+                    return fireSound;
+                if (isMelee)
+                    return "yumruk";
+                if (pellets > 1)
+                    return "ates_pompali";
+                if (damage >= 25f || label.ToLowerInvariant().Contains("airdrop"))
+                    return "ates_agir";
+                return "ates_tufek";
+            }
+        }
+
         /// <summary>
         /// Varsayilan silah seti. Prefab'da dizi bos birakilirsa bu kullanilir,
         /// boylece proje hicbir Inspector ayari yapilmadan calisir.

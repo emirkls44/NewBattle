@@ -224,7 +224,20 @@ public abstract class TimedLootPickup : NetworkBehaviour
         return delta.sqrMagnitude <= ringVisibleDistance * ringVisibleDistance;
     }
 
-    public override void Despawned(NetworkRunner runner, bool hasState) { Cleanup(); }
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        // Yaninda durdugumuz esya kayboldu = biz (ya da yanimizdaki) aldi.
+        // Uzaktaki bolge bosaltmalari ses cikarmaz.
+        if (!MatchResultHUD.LocalGameplayStopped && CameraFollow.Active != null && CameraFollow.Active.target != null)
+        {
+            Vector3 offset = CameraFollow.Active.target.position - transform.position;
+            offset.y = 0f;
+            if (offset.magnitude <= collectionRadius + 1f)
+                NewBattle.Audio.Sfx.PlayUI("toplama");
+        }
+
+        Cleanup();
+    }
     private void OnDestroy() { Cleanup(); }
     private void Cleanup()
     {

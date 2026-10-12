@@ -1,3 +1,5 @@
+using NewBattle.Gameplay;
+using NewBattle.Progression;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -46,6 +48,10 @@ namespace NewBattle.UI
         {
             _image = GetComponent<RawImage>();
 
+            // Karakterin yuzu sahnenin gunesine bagli kalmasin: on taraftan aydinlat.
+            if (stageCamera != null && stageCamera.GetComponent<ToonPreviewLight>() == null)
+                stageCamera.gameObject.AddComponent<ToonPreviewLight>();
+
             if (turntable != null)
                 _restRotation = turntable.localRotation;
         }
@@ -54,12 +60,17 @@ namespace NewBattle.UI
 
         private void OnEnable()
         {
+            CharacterLibrary.CharacterSelectionChanged += ShowSelectedCharacter;
+            ShowSelectedCharacter();
+
             if (lobbyAnimator != null)
                 lobbyAnimator.enabled = true;
         }
 
         private void OnDisable()
         {
+            CharacterLibrary.CharacterSelectionChanged -= ShowSelectedCharacter;
+
             if (lobbyAnimator != null)
                 lobbyAnimator.enabled = false;
 
@@ -73,6 +84,39 @@ namespace NewBattle.UI
                 _image.texture = null;
 
             ReleaseTexture();
+        }
+
+        /// <summary>Oyuncunun secili karakterini gosterir.</summary>
+        public void ShowSelectedCharacter()
+        {
+            CharacterLibrary library = CharacterLibrary.Instance;
+            if (library != null)
+                ShowCharacter(library.Current);
+        }
+
+        /// <summary>
+        /// Menudeki modeli verilen karakterle degistirir (karakter ekraninda
+        /// onizleme). Lobi animasyonu yeni iskelete yeniden baglanir, kamera
+        /// yeni boya gore cercevelenir.
+        /// </summary>
+        public void ShowCharacter(CharacterDefinition character)
+        {
+            CharacterLibrary library = CharacterLibrary.Instance;
+            Animator animator = turntable != null ? turntable.GetComponentInChildren<Animator>(true) : null;
+            if (library == null || character == null || animator == null)
+                return;
+
+            bool restart = lobbyAnimator != null && lobbyAnimator.isActiveAndEnabled;
+            if (restart)
+                lobbyAnimator.enabled = false;
+
+            bool changed = CharacterModelSwap.Apply(animator, character, library.Default);
+
+            if (restart)
+                lobbyAnimator.enabled = true;
+
+            if (changed)
+                FrameCharacter();
         }
 
         private void LateUpdate()

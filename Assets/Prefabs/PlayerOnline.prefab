@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &96929111771368704
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9107244738292587008}
+  m_Layer: 0
+  m_Name: SagElTutamak
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9107244738292587008
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 96929111771368704}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.02, y: -0.06, z: -0.03}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 9194732246280358278}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1415688254850790928
 GameObject:
   m_ObjectHideFlags: 0
@@ -32,6 +63,37 @@ Transform:
   - {fileID: 9194732246280358278}
   m_Father: {fileID: 5745676278015780383}
   m_LocalEulerAnglesHint: {x: -58.647, y: 185.125, z: -182.699}
+--- !u!1 &1659128174847809893
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4599733473004268889}
+  m_Layer: 0
+  m_Name: SolElTutamak
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4599733473004268889
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1659128174847809893}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.03, y: -0.08, z: 0.28}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 9194732246280358278}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2132539817856472277
 GameObject:
   m_ObjectHideFlags: 0
@@ -63,6 +125,8 @@ Transform:
   m_Children:
   - {fileID: 7412178973339156575}
   - {fileID: 8874506665785929604}
+  - {fileID: 9107244738292587008}
+  - {fileID: 4599733473004268889}
   m_Father: {fileID: 6517979436657607219}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5194772379612365859
@@ -273,6 +337,7 @@ GameObject:
   - component: {fileID: 594635409095441111}
   - component: {fileID: 5290710232284382774}
   - component: {fileID: 377978771089137873}
+  - component: {fileID: 4397515353977930705}
   m_Layer: 0
   m_Name: PlayerOnline
   m_TagString: Player
@@ -469,6 +534,7 @@ MonoBehaviour:
     tracerColor: {r: 1, g: 0.93, b: 0.55, a: 1}
     heldMesh: {fileID: 0}
     shakeStrength: 0.18
+    fireSound: 
   - label: Tufek
     isMelee: 0
     damage: 15
@@ -481,6 +547,7 @@ MonoBehaviour:
     tracerColor: {r: 1, g: 0.93, b: 0.55, a: 1}
     heldMesh: {fileID: 4300000, guid: df481f349dc17cf44851ec0c060a7e4d, type: 2}
     shakeStrength: 0.18
+    fireSound: 
   - label: Airdrop Tufegi
     isMelee: 0
     damage: 31
@@ -493,6 +560,7 @@ MonoBehaviour:
     tracerColor: {r: 1, g: 0.55, b: 0.15, a: 1}
     heldMesh: {fileID: 4300000, guid: 8ad339b610682814283d2bfadb52cc41, type: 2}
     shakeStrength: 0.18
+    fireSound: 
   meleeHitLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -517,6 +585,13 @@ MonoBehaviour:
   maxShield: 100
   _currentShield: 0
   shieldAbsorbRatio: 1
+  _LastDeathCause: 0
+  _KillerObject:
+    Raw: 0
+  _KillerWeapon:
+    _length: 0
+    _data:
+      Data: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 --- !u!114 &5450176138272360823
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -630,6 +705,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCombatStats
   _Kills: 0
   _TeamId: 0
+  _DisplayName:
+    _length: 0
+    _data:
+      Data: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+  _CharacterId:
+    _length: 0
+    _data:
+      Data: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 --- !u!114 &4868397180321765481
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -843,6 +926,24 @@ MonoBehaviour:
   kickRecovery: 16
   hitFlinchDegrees: 12
   flinchRecovery: 9
+--- !u!114 &4397515353977930705
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191300631739292116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70f5ff3df28a55f47a5df03d283d5cc6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponHandIK
+  weapon: {fileID: 2132539817856472277}
+  rightGrip: {fileID: 9107244738292587008}
+  leftGrip: {fileID: 4599733473004268889}
+  weight: 1
+  blendSpeed: 8
+  matchHandRotation: 0
 --- !u!1001 &582848730256727992
 PrefabInstance:
   m_ObjectHideFlags: 0

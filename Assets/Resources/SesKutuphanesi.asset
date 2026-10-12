@@ -1,0 +1,308 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da343d04de2070d4cba3cd173007c1e7, type: 3}
+  m_Name: SesKutuphanesi
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Audio.SoundLibrary
+  maxVoices: 16
+  effectsVolume: 0.811
+  musicVolume: 0.55
+  sounds:
+  - id: buton
+    clips:
+    - {fileID: 8300000, guid: 5ff2df5ff10f6484ab1d27a61e2fc720, type: 3}
+    channel: 1
+    volume: 0.55
+    pitchJitter: 0.06
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: kart
+    clips:
+    - {fileID: 8300000, guid: 43e550cdec5c44a43bac0608f567b739, type: 3}
+    channel: 1
+    volume: 0.5
+    pitchJitter: 0.08
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.05
+  - id: para
+    clips:
+    - {fileID: 8300000, guid: e3ce26faaaa4d9747b5ddf8b80623401, type: 3}
+    channel: 1
+    volume: 0.7
+    pitchJitter: 0.04
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: satin_al
+    clips:
+    - {fileID: 8300000, guid: 1719bb00bb96aeb4db8bcc2a9092fdf5, type: 3}
+    channel: 1
+    volume: 0.8
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: hata
+    clips:
+    - {fileID: 8300000, guid: 2919b1568001af84a94a2ccf91d57f0f, type: 3}
+    channel: 1
+    volume: 0.45
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.2
+  - id: xp
+    clips:
+    - {fileID: 8300000, guid: ed74603a627698c4e84118d0bd4d4732, type: 3}
+    channel: 1
+    volume: 0.65
+    pitchJitter: 0.04
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: odul
+    clips:
+    - {fileID: 8300000, guid: 94fb8b4e8927f3f4784512c5351dac92, type: 3}
+    channel: 1
+    volume: 0.8
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: seviye_atla
+    clips:
+    - {fileID: 8300000, guid: c337b3866bbd2ac43af53eda4e76b387, type: 3}
+    channel: 1
+    volume: 0.85
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: geri_sayim
+    clips:
+    - {fileID: 8300000, guid: b527451fb8a8995428cf5ea910b489a3, type: 3}
+    channel: 1
+    volume: 0.4
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: basla
+    clips:
+    - {fileID: 8300000, guid: 167be0471e24f4d4f81a1305a9728a56, type: 3}
+    channel: 1
+    volume: 0.7
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: ruzgar
+    clips:
+    - {fileID: 8300000, guid: 49baa6f7765071a4fb1fdc9b46b0e8ec, type: 3}
+    channel: 0
+    volume: 0.45
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: parasut
+    clips:
+    - {fileID: 8300000, guid: 0d0a5a8df03ffe548b4821aad54c91a8, type: 3}
+    channel: 0
+    volume: 0.7
+    pitchJitter: 0.04
+    spatial: 1
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: inis
+    clips:
+    - {fileID: 8300000, guid: 3c572c6e8aab6564b9e40e30de0996e2, type: 3}
+    channel: 0
+    volume: 0.8
+    pitchJitter: 0.04
+    spatial: 1
+    fullVolumeDistance: 4
+    maxDistance: 25
+    minInterval: 0.03
+  - id: ates_tufek
+    clips:
+    - {fileID: 8300000, guid: f90a9e35de4c7754ebd448defc2edcc6, type: 3}
+    channel: 0
+    volume: 0.7
+    pitchJitter: 0.06
+    spatial: 1
+    fullVolumeDistance: 5
+    maxDistance: 40
+    minInterval: 0.02
+  - id: ates_agir
+    clips:
+    - {fileID: 8300000, guid: 55e396e7a56adb74e8db9d4c10168cd5, type: 3}
+    channel: 0
+    volume: 0.8
+    pitchJitter: 0.05
+    spatial: 1
+    fullVolumeDistance: 6
+    maxDistance: 45
+    minInterval: 0.02
+  - id: ates_tabanca
+    clips:
+    - {fileID: 8300000, guid: fa4cfcb41af4e4d478ce2627fc789b64, type: 3}
+    channel: 0
+    volume: 0.65
+    pitchJitter: 0.06
+    spatial: 1
+    fullVolumeDistance: 5
+    maxDistance: 35
+    minInterval: 0.02
+  - id: ates_pompali
+    clips:
+    - {fileID: 8300000, guid: d90fea0184a6ddf4dbf1d302496a2ace, type: 3}
+    channel: 0
+    volume: 0.85
+    pitchJitter: 0.05
+    spatial: 1
+    fullVolumeDistance: 5
+    maxDistance: 40
+    minInterval: 0.02
+  - id: yumruk
+    clips:
+    - {fileID: 8300000, guid: 053dc88b94851e74f84d343ff9386095, type: 3}
+    channel: 0
+    volume: 0.7
+    pitchJitter: 0.08
+    spatial: 1
+    fullVolumeDistance: 3
+    maxDistance: 18
+    minInterval: 0.03
+  - id: isabet
+    clips:
+    - {fileID: 8300000, guid: 83f8af3909a596340aa5d743c01b524c, type: 3}
+    channel: 1
+    volume: 0.5
+    pitchJitter: 0.08
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.04
+  - id: oldurme
+    clips:
+    - {fileID: 8300000, guid: 2db6dbae379dcfe4f9c7923b9fb85e5b, type: 3}
+    channel: 1
+    volume: 0.8
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: hasar_al
+    clips:
+    - {fileID: 8300000, guid: 2cf3a467efc577547aa80d7886d89c62, type: 3}
+    channel: 1
+    volume: 0.6
+    pitchJitter: 0.08
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.08
+  - id: olum
+    clips:
+    - {fileID: 8300000, guid: 09fb1a6f342f34e4ca631b93968647c4, type: 3}
+    channel: 1
+    volume: 0.8
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: toplama
+    clips:
+    - {fileID: 8300000, guid: 1e7853c54eb90fa4abcb5c7b524ef795, type: 3}
+    channel: 1
+    volume: 0.65
+    pitchJitter: 0.04
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: adim
+    clips:
+    - {fileID: 8300000, guid: d9f65e3a18ff66c4da2b29a4c8500b83, type: 3}
+    channel: 0
+    volume: 0.25
+    pitchJitter: 0.15
+    spatial: 1
+    fullVolumeDistance: 2
+    maxDistance: 12
+    minInterval: 0.05
+  - id: alan_daraliyor
+    clips:
+    - {fileID: 8300000, guid: f894b970357c25a43840ddf71b606ea0, type: 3}
+    channel: 1
+    volume: 0.45
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 1
+  - id: alan_kalp
+    clips:
+    - {fileID: 8300000, guid: f3b8ef603db49204fb67175213b8cdc5, type: 3}
+    channel: 1
+    volume: 0.6
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.2
+  - id: zafer
+    clips:
+    - {fileID: 8300000, guid: 0c37f49a9c069124e8413f6d4d24e1fc, type: 3}
+    channel: 1
+    volume: 0.8
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: elenme
+    clips:
+    - {fileID: 8300000, guid: 9ad3ada8418b3d1408590de9b3541666, type: 3}
+    channel: 1
+    volume: 0.75
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0.03
+  - id: menu_muzigi
+    clips:
+    - {fileID: 8300000, guid: 14cc37928a2aa38489b90dec691fdf67, type: 3}
+    channel: 2
+    volume: 0.8
+    pitchJitter: 0
+    spatial: 0
+    fullVolumeDistance: 4
+    maxDistance: 30
+    minInterval: 0

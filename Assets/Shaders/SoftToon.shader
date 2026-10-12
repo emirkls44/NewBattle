@@ -17,6 +17,7 @@ Shader "NewBattle/SoftToon"
         [MainTexture] _BaseMap ("Albedo", 2D) = "white" {}
         [MainColor] _BaseColor ("Tint", Color) = (1,1,1,1)
         _VertexColorStrength ("Vertex Color", Range(0,1)) = 0
+        [Toggle] _VertexColorSRGB ("Vertex Color is sRGB", Float) = 0
 
         [Header(Isik)]
         _ShadeThreshold ("Shade Threshold", Range(-1,1)) = -0.05
@@ -31,6 +32,10 @@ Shader "NewBattle/SoftToon"
         _RimPower ("Rim Power", Range(0.5,8)) = 3
         _Gloss ("Soft Highlight", Range(0,1)) = 0.1
         _GlossSize ("Highlight Size", Range(2,128)) = 24
+
+        [Header(Renk)]
+        _Saturation ("Saturation", Range(0,2)) = 1
+        _Brightness ("Brightness", Range(0.5,2)) = 1
 
         // PlayerVisibility cimendeki yerel oyuncuyu yari saydam cizerken URP
         // Lit'in ayni adli ozelliklerini yaziyor. Burada da olmalari, o gecisin
@@ -53,6 +58,7 @@ Shader "NewBattle/SoftToon"
 
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+        #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 
         // SRP Batcher: butun materyal ozellikleri tek CBUFFER'da olmali.
         CBUFFER_START(UnityPerMaterial)
@@ -69,7 +75,15 @@ Shader "NewBattle/SoftToon"
             float _RimPower;
             float _Gloss;
             float _GlossSize;
+            float _Saturation;
+            float _Brightness;
+            float _VertexColorSRGB;
         CBUFFER_END
+
+        // Menu / mac sonu onizleme kameralari karakteri cizerken kendi isigini
+        // verir (ToonPreviewLight). w = 0: normal sahne isigi, w = 1: onizleme isigi.
+        float4 _ToonPreviewLightDir;
+        float4 _ToonPreviewLightColor;
 
         TEXTURE2D(_BaseMap);
         SAMPLER(sampler_BaseMap);
@@ -139,10 +153,25 @@ Shader "NewBattle/SoftToon"
                 float3 viewWS = normalize(GetWorldSpaceViewDir(IN.positionWS));
 
                 float4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv) * _BaseColor;
-                albedo.rgb *= lerp(float3(1, 1, 1), IN.color.rgb, _VertexColorStrength);
+                // Vertex renkleri sRGB olarak girildiyse (renk seciciden alinan
+                // degerler) lineer uzaya cevir; yoksa ekranda soluk/pembe gorunur.
+                float3 vertexColor = _VertexColorSRGB > 0.5 ? SRGBToLinear(IN.color.rgb) : IN.color.rgb;
+                albedo.rgb *= lerp(float3(1, 1, 1), vertexColor, _VertexColorStrength);
+
+                // Renk canliligi (loot gibi one cikmasi gereken nesneler icin).
+                float luma = dot(albedo.rgb, float3(0.299, 0.587, 0.114));
+                albedo.rgb = saturate(lerp(luma.xxx, albedo.rgb, _Saturation) * _Brightness);
 
                 float4 shadowCoord = TransformWorldToShadowCoord(IN.positionWS);
                 Light mainLight = GetMainLight(shadowCoord);
+
+                float preview = _ToonPreviewLightDir.w;
+                if (preview > 0.0)
+                {
+                    mainLight.direction = normalize(lerp(mainLight.direction, _ToonPreviewLightDir.xyz, preview));
+                    mainLight.color = lerp(mainLight.color, _ToonPreviewLightColor.rgb, preview);
+                    mainLight.shadowAttenuation = lerp(mainLight.shadowAttenuation, 1.0, preview);
+                }
 
                 // Genis, yumusak terminator: isik yuzeyin uzerinde "akar",
                 // bantlara bolunmez.

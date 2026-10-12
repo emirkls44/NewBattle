@@ -9,6 +9,11 @@ public class PlayerCombatStats : NetworkBehaviour
     /// <summary>Oyuncunun adi (oldurme mesaji, ileride oldurme akisi icin).</summary>
     [Networked] public NetworkString<_16> DisplayName { get; private set; }
 
+    /// <summary>Oyuncunun sectigi karakter (bos = varsayilan). Herkes bu modeli gorur.</summary>
+    [Networked] public NetworkString<_16> CharacterId { get; private set; }
+
+    private string _appliedCharacter;
+
     private static int _nextTrainingBotTeamId = 1000;
     private static int _nextBotNameIndex;
 
@@ -24,7 +29,15 @@ public class PlayerCombatStats : NetworkBehaviour
     {
         // Gercek oyuncu kendi adini sunucuya bildirir.
         if (HasInputAuthority)
+        {
             RPC_SetDisplayName(NewBattle.Progression.PlayerProgress.PlayerName);
+
+            NewBattle.Progression.CharacterLibrary characters = NewBattle.Progression.CharacterLibrary.Instance;
+            if (characters != null && characters.Current != null)
+                RPC_SetCharacter(characters.Current.id);
+        }
+
+        ApplyCharacter();
 
         if (!HasStateAuthority)
             return;
@@ -57,6 +70,34 @@ public class PlayerCombatStats : NetworkBehaviour
             return;
 
         DisplayName = displayName.Length > 16 ? displayName.Substring(0, 16) : displayName;
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_SetCharacter(string characterId)
+    {
+        if (string.IsNullOrEmpty(characterId) || characterId.Length > 16)
+            return;
+
+        CharacterId = characterId;
+    }
+
+    public override void Render() => ApplyCharacter();
+
+    /// <summary>Ag uzerinden gelen karakter degistiyse modeli degistirir (her cihazda).</summary>
+    private void ApplyCharacter()
+    {
+        string id = CharacterId.ToString();
+        if (id == _appliedCharacter)
+            return;
+
+        _appliedCharacter = id;
+
+        NewBattle.Progression.CharacterLibrary characters = NewBattle.Progression.CharacterLibrary.Instance;
+        if (characters == null)
+            return;
+
+        NewBattle.Progression.CharacterDefinition character = characters.Find(id) ?? characters.Default;
+        NewBattle.Gameplay.CharacterModelSwap.Apply(GetComponentInChildren<Animator>(true), character, characters.Default);
     }
 
     /// <summary>Gosterilecek ad; bos ise "Oyuncu".</summary>

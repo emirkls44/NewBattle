@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using Fusion;
 using UnityEngine;
 
@@ -270,12 +271,15 @@ namespace NewBattle.Gameplay
         {
             DescentPhase phase = Phase;
 
+            UpdateWindSound(phase);
+
             if (phase != _renderedPhase)
             {
                 if (phase == DescentPhase.Parachute)
                 {
                     _chuteTimer = 0f;
                     _chuteClosing = false;
+                    Sfx.Play("parasut", transform.position);
                 }
                 else if (phase == DescentPhase.Landed && _renderedPhase == DescentPhase.Parachute)
                 {
@@ -285,6 +289,8 @@ namespace NewBattle.Gameplay
                     // Yere degince hafif sarsinti (sadece kendi kameramizda).
                     if (HasInputAuthority)
                         CameraFollow.Shake(0.35f);
+
+                    Sfx.Play("inis", transform.position);
                 }
 
                 _renderedPhase = phase;
@@ -318,6 +324,43 @@ namespace NewBattle.Gameplay
             }
 
             SetChute(false, 1f);
+        }
+
+        private int _windLoop;
+
+        /// <summary>
+        /// Serbest duseste sadece KENDI oyuncumuz ruzgar duyar; paraşut
+        /// acilinca ruzgar kisilip biter.
+        /// </summary>
+        private void UpdateWindSound(DescentPhase phase)
+        {
+            bool wantWind = HasInputAuthority && (phase == DescentPhase.Freefall || phase == DescentPhase.Parachute);
+
+            if (wantWind && _windLoop == 0)
+                _windLoop = Sfx.StartLoop("ruzgar");
+
+            if (_windLoop == 0)
+                return;
+
+            if (!wantWind)
+            {
+                Sfx.StopLoop(_windLoop);
+                _windLoop = 0;
+                return;
+            }
+
+            // Dususte tam, parasutte yavasca kisilir.
+            float volume = phase == DescentPhase.Freefall ? 1f : Mathf.Clamp01(1f - _chuteTimer / 1.2f) * 0.6f;
+            Sfx.SetLoopVolume(_windLoop, volume);
+        }
+
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            if (_windLoop != 0)
+            {
+                Sfx.StopLoop(_windLoop);
+                _windLoop = 0;
+            }
         }
 
         private void SetChute(bool visible, float scale)

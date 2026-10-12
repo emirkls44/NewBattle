@@ -172,6 +172,16 @@ namespace NewBattle.EditorTools
             if (RemoveDropBackButton(canvas))
                 added.Add("Geri butonu kaldırıldı");
 
+            if (EnsureWeaponHandIK())
+                added.Add("Eller tüfeğe oturuyor (SagElTutamak / SolElTutamak)");
+
+            int lootChanged = EnsureLootLook();
+            if (lootChanged > 0)
+                added.Add($"{lootChanged} eşya canlı renk + %35 büyük");
+
+            if (EnsureCloserCamera())
+                added.Add("Kamera yaklaştırıldı (8.5 → 6)");
+
             if (EnsureDescentCamera())
                 added.Add("İniş kamerası");
 
@@ -198,6 +208,23 @@ namespace NewBattle.EditorTools
 
             if (screen != null && EnsureMenuScreens(screen, out string menuScreens))
                 added.Add(menuScreens);
+
+            string characters = EnsureCharacterLibrary(out _);
+            if (characters.Length > 0)
+                added.Add("Karakterler: " + characters);
+
+            if (screen != null && EnsureCharacterTabs(screen))
+                added.Add("Karakter ekranı sekmeleri");
+
+            if (screen != null && EnsureGiftCodeUi(screen))
+                added.Add("Hediye kodu (Ayarlar)");
+
+            if (EnsureGiftCodeCatalog(out _))
+                added.Add("Hediye kodları (Assets/Resources/HediyeKodlari)");
+
+            int sounds = EnsureSoundLibrary(out _);
+            if (sounds > 0)
+                added.Add($"{sounds} ses (Assets/Resources/SesKutuphanesi)");
 
             if (EnsureProgressionSettings(out _))
                 added.Add("İlerleme ayarları (Assets/Resources/IlerlemeAyarlari)");

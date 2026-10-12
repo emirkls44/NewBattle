@@ -5,12 +5,17 @@ using UnityEngine.UI;
 namespace NewBattle.UI
 {
     /// <summary>
-    /// AYARLAR penceresi: ses, kare hizi ve isim degistirme.
+    /// AYARLAR penceresi: muzik, efektler, kare hizi ve isim degistirme.
     /// Ana menudeki "ayarlar" butonu acar. Degerler GameSettings'te saklanir.
     /// </summary>
     public class SettingsScreen : MonoBehaviour
     {
-        [Header("Ses")]
+        [Header("Muzik")]
+        [SerializeField] private Button musicButton;
+        [SerializeField] private Image musicFace;
+        [SerializeField] private TextMeshProUGUI musicLabel;
+
+        [Header("Efektler")]
         [SerializeField] private Button soundButton;
         [SerializeField] private Image soundFace;
         [SerializeField] private TextMeshProUGUI soundLabel;
@@ -22,6 +27,8 @@ namespace NewBattle.UI
         [Header("Diger")]
         [SerializeField] private Button nameButton;
         [SerializeField] private NamePopup namePopup;
+        [SerializeField] private Button giftCodeButton;
+        [SerializeField] private GiftCodePopup giftCodePopup;
         [SerializeField] private TextMeshProUGUI versionText;
         [SerializeField] private Button closeButton;
 
@@ -52,7 +59,9 @@ namespace NewBattle.UI
             _initialized = true;
 
             if (soundButton != null)
-                soundButton.onClick.AddListener(() => GameSettings.SoundOn = !GameSettings.SoundOn);
+                soundButton.onClick.AddListener(() => GameSettings.EffectsOn = !GameSettings.EffectsOn);
+            if (musicButton != null)
+                musicButton.onClick.AddListener(() => GameSettings.MusicOn = !GameSettings.MusicOn);
             if (frameRateButton != null)
                 frameRateButton.onClick.AddListener(() => GameSettings.FrameRate = GameSettings.FrameRate == 60 ? 30 : 60);
             if (nameButton != null)
@@ -60,6 +69,12 @@ namespace NewBattle.UI
                 {
                     if (namePopup != null)
                         namePopup.Open();
+                });
+            if (giftCodeButton != null)
+                giftCodeButton.onClick.AddListener(() =>
+                {
+                    if (giftCodePopup != null)
+                        giftCodePopup.Open();
                 });
             if (closeButton != null)
                 closeButton.onClick.AddListener(Close);
@@ -87,13 +102,18 @@ namespace NewBattle.UI
 
         private void OnDestroy() => GameSettings.Changed -= Refresh;
 
+        private void PaintToggle(TextMeshProUGUI label, Image face, bool on)
+        {
+            if (label != null)
+                label.text = on ? "AÇIK" : "KAPALI";
+            if (face != null)
+                face.color = on ? onColor : offColor;
+        }
+
         private void Refresh()
         {
-            bool sound = GameSettings.SoundOn;
-            if (soundLabel != null)
-                soundLabel.text = sound ? "AÇIK" : "KAPALI";
-            if (soundFace != null)
-                soundFace.color = sound ? onColor : offColor;
+            PaintToggle(soundLabel, soundFace, GameSettings.EffectsOn);
+            PaintToggle(musicLabel, musicFace, GameSettings.MusicOn);
 
             if (frameRateLabel != null)
                 frameRateLabel.text = $"{GameSettings.FrameRate} FPS";

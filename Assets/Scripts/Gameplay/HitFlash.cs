@@ -44,6 +44,23 @@ namespace NewBattle.Gameplay
             Collect();
         }
 
+        private void OnEnable() => CharacterModelSwap.Swapped += OnModelSwapped;
+
+        private void OnDisable() => CharacterModelSwap.Swapped -= OnModelSwapped;
+
+        /// <summary>Karakter modeli degisti: yeni govdeyi topla.</summary>
+        private void OnModelSwapped(Animator swapped)
+        {
+            if (swapped == null || !swapped.transform.IsChildOf(transform))
+                return;
+
+            _renderers.Clear();
+            _colorIds.Clear();
+            _originalColors.Clear();
+            _flashing = false;
+            Collect();
+        }
+
         /// <summary>
         /// Govde renderer'larini toplar ve her birinin ozgun rengini saklar.
         ///

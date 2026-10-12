@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -123,6 +124,7 @@ namespace NewBattle.UI
 
             PaintDays(todayIndex, amounts);
             Open(onClaimed);
+            Sfx.PlayUI("odul");
         }
 
         /// <summary>
@@ -176,6 +178,13 @@ namespace NewBattle.UI
             }
 
             Open(onClosed);
+            Sfx.PlayUI(notice.icon switch
+            {
+                RewardNoticeIcon.LevelUp => "seviye_atla",
+                RewardNoticeIcon.Xp => "xp",
+                RewardNoticeIcon.Coins => "para",
+                _ => "odul"
+            });
         }
 
         private void PaintDays(int todayIndex, IReadOnlyList<int> amounts)
@@ -229,6 +238,10 @@ namespace NewBattle.UI
         {
             if (!IsOpen)
                 return;
+
+            // Gunluk odul alinirken XP sesi.
+            if (_todayIndex >= 0)
+                Sfx.PlayUI("xp");
 
             IsOpen = false;
             Animate(false);

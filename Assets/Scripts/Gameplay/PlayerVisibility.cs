@@ -98,6 +98,28 @@ namespace NewBattle.Gameplay
             }
         }
 
+        private void OnEnable() => CharacterModelSwap.Swapped += OnModelSwapped;
+
+        private void OnDisable() => CharacterModelSwap.Swapped -= OnModelSwapped;
+
+        /// <summary>Karakter modeli degisti: yeni govdeyi topla, mevcut gorunurlugu uygula.</summary>
+        private void OnModelSwapped(Animator swapped)
+        {
+            if (swapped == null || !swapped.transform.IsChildOf(transform))
+                return;
+
+            // Cimendeki yari saydamlik eski materyallere gore saklanmisti; sifirla.
+            _selfFaded = false;
+            _originalMaterials = null;
+
+            CollectBodyRenderers();
+            foreach (Renderer renderer in _bodyRenderers)
+            {
+                if (renderer != null)
+                    renderer.enabled = _bodyVisible;
+            }
+        }
+
         private void LateUpdate()
         {
             RelationToLocalPlayer = LocalPlayerContext.GetRelation(_stats);

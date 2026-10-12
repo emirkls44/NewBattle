@@ -419,11 +419,14 @@ public class MatchResultHUD : MonoBehaviour
         previewCamera.fieldOfView = 28f;
         previewCamera.nearClipPlane = 0.05f;
         previewCamera.targetTexture = _previewTexture;
+        _previewCameraObject.AddComponent<ToonPreviewLight>(); // yuz hep aydinlik
 
         float height = Mathf.Max(1f, bounds.size.y);
         float distance = height / (2f * Mathf.Tan(previewCamera.fieldOfView * 0.5f * Mathf.Deg2Rad));
         Vector3 lookTarget = bounds.center + Vector3.up * height * 0.03f;
-        previewCamera.transform.position = lookTarget + new Vector3(0f, height * 0.03f, -distance * 1.25f);
+        // Karakter +Z'ye (one) bakiyor: kamera da onune (+Z) gecer. Eskiden
+        // -Z'deydi ve karakter sirtini donuyordu.
+        previewCamera.transform.position = lookTarget + new Vector3(0f, height * 0.03f, distance * 1.25f);
         previewCamera.transform.LookAt(lookTarget);
 
         _previewLightObject = new GameObject("MatchResultPreviewLight", typeof(Light));
@@ -431,7 +434,8 @@ public class MatchResultHUD : MonoBehaviour
         previewLight.type = LightType.Directional;
         previewLight.intensity = 1.35f;
         previewLight.cullingMask = 1 << PreviewLayer;
-        previewLight.transform.rotation = Quaternion.Euler(38f, -32f, 0f);
+        // Isik da kameranin tarafindan, hafif soldan-yukaridan karakterin yuzune vurur.
+        previewLight.transform.rotation = Quaternion.Euler(38f, 148f, 0f);
     }
 
     private async void ReturnToMainMenu()

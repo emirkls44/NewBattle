@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using System;
 using System.Collections.Generic;
 using NewBattle.Progression;
@@ -393,6 +394,7 @@ namespace NewBattle.UI
             if (PlayerProgress.Coins < animation.requirement)
             {
                 Toast("PARA YETMİYOR!");
+                Sfx.PlayUI("hata");
                 return;
             }
 
@@ -402,10 +404,12 @@ namespace NewBattle.UI
                 {
                     library.Select(animation);
                     Toast("SATIN ALINDI!");
+                    Sfx.PlayUI("satin_al");
                 }
                 else
                 {
                     Toast("PARA YETMİYOR!");
+                    Sfx.PlayUI("hata");
                 }
             });
         }
@@ -430,6 +434,7 @@ namespace NewBattle.UI
                 PlayerPrefs.SetInt(AdKey(item), AdWatchesToday(item) + 1);
                 PlayerProgress.AddCoins(item.coins);
                 Toast($"+{item.coins} PARA!");
+                Sfx.PlayUI("para");
             });
         }
 

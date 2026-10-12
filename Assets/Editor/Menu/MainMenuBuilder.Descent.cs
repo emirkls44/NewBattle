@@ -16,6 +16,26 @@ namespace NewBattle.EditorTools
         private const int StreakCount = 10;
 
         /// <summary>Oyun kamerasina inis kamerasini ekler.</summary>
+        /// <summary>
+        /// Kamerayi yaklastirir (8.5 -> 6): karakterler kucuk gorunuyordu.
+        /// Sadece eski varsayilan degerdeyse; senin ayarladigin degere dokunmaz.
+        /// </summary>
+        private static bool EnsureCloserCamera()
+        {
+            CameraFollow follow = Object.FindFirstObjectByType<CameraFollow>(FindObjectsInactive.Include);
+            if (follow == null)
+                return false;
+
+            var serialized = new SerializedObject(follow);
+            SerializedProperty size = serialized.FindProperty("viewSize");
+            if (size == null || !Mathf.Approximately(size.floatValue, 8.5f))
+                return false;
+
+            size.floatValue = 6f;
+            serialized.ApplyModifiedProperties();
+            return true;
+        }
+
         private static bool EnsureDescentCamera()
         {
             CameraFollow follow = Object.FindFirstObjectByType<CameraFollow>(FindObjectsInactive.Include);

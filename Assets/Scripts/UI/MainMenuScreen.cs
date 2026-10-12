@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using System.Collections;
 using NewBattle.Progression;
 using TMPro;
@@ -198,6 +199,8 @@ namespace NewBattle.UI
 
             if (rewardPopup != null || namePopup != null)
                 StartCoroutine(ShowPendingRewards());
+
+            Music.Play("menu_muzigi");
         }
 
         private void Update()
@@ -212,7 +215,10 @@ namespace NewBattle.UI
             // ekranda kalmamali.
             NetworkBootstrap running = FindBootstrap();
             if (running != null && running.IsRunning)
+            {
+                Music.Stop();
                 gameObject.SetActive(false);
+            }
         }
 
         private void OnDestroy()
@@ -361,6 +367,13 @@ namespace NewBattle.UI
             _boundActions.Add((actionId, handler));
         }
 
+        /// <summary>Hemen bir odul penceresi gosterir (hediye kodu gibi).</summary>
+        public void ShowNotice(RewardNotice notice)
+        {
+            if (rewardPopup != null && notice != null)
+                rewardPopup.ShowNotice(notice, null);
+        }
+
         /// <summary>"Odul" butonu: bugun alinabiliyorsa al, yoksa 7 gunluk durumu goster.</summary>
         private void OpenDailyRewards()
         {
@@ -391,7 +404,10 @@ namespace NewBattle.UI
             RewardedAds.Show(this, watched =>
             {
                 if (watched && PlayerProgress.AddDoubleXpMatches(settings.doubleXpMatchesPerAd))
+                {
                     ShowToast("ÇİFT XP ETKİN!");
+                    Sfx.PlayUI("xp");
+                }
             });
         }
 
@@ -438,6 +454,7 @@ namespace NewBattle.UI
             if (playButton != null)
                 playButton.interactable = false;
 
+            Music.Stop();
             LoadingScreen.Show(loadingScreenPrefab, _bootstrap);
             _bootstrap.StartMatchmaking(mode);
         }

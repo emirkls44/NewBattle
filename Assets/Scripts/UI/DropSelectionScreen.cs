@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using System.Collections;
 using NewBattle.Progression;
 using TMPro;
@@ -179,6 +180,7 @@ namespace NewBattle.UI
             if (_markerPop != null)
                 StopCoroutine(_markerPop);
             _markerPop = StartCoroutine(Pop(markerPin != null ? markerPin : marker, 1.35f, 0.25f));
+            Sfx.PlayUI("kart");
         }
 
         // ------------------------------------------------------------------
@@ -274,6 +276,7 @@ namespace NewBattle.UI
 
             _lastCountdown = value;
             countdownText.text = value.ToString();
+            Sfx.PlayUI(value > 0 ? "geri_sayim" : "basla");
 
             if (_countdownPop != null)
                 StopCoroutine(_countdownPop);

@@ -1,3 +1,4 @@
+using NewBattle.Audio;
 using System;
 using System.Collections;
 using NewBattle.Progression;
@@ -154,6 +155,7 @@ namespace NewBattle.UI
             MenuButton.Unhandled += OnUnhandledButton;
 
             transform.SetAsLastSibling();
+            Sfx.PlayUI(outcome.Victory ? "zafer" : "elenme");
             StartCoroutine(Reveal(outcome, rewards));
         }
 
@@ -165,7 +167,10 @@ namespace NewBattle.UI
             for (int i = 0; i < cards.Length; i++)
             {
                 if (cards[i] != null)
+                {
                     StartCoroutine(Pop(cards[i]));
+                    Sfx.PlayUI("kart");
+                }
 
                 if (i < values.Length)
                     StartCoroutine(CountUp(targets[i], values[i]));
@@ -178,6 +183,7 @@ namespace NewBattle.UI
             if (rewards.DoubleXp && doubleXpBadge != null)
             {
                 StartCoroutine(Pop(doubleXpBadge));
+                Sfx.PlayUI("xp");
                 yield return new WaitForSecondsRealtime(0.3f);
             }
 
@@ -187,6 +193,7 @@ namespace NewBattle.UI
             {
                 continueButton.interactable = true;
                 StartCoroutine(Pop((RectTransform)continueButton.transform));
+                Sfx.PlayUI("kart");
             }
         }
 
@@ -214,6 +221,7 @@ namespace NewBattle.UI
                     {
                         levelUpBanner.gameObject.SetActive(true);
                         StartCoroutine(Pop(levelUpBanner));
+                        Sfx.PlayUI("seviye_atla");
                     }
 
                     yield return new WaitForSecondsRealtime(0.35f);

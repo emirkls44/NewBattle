@@ -21,7 +21,7 @@ namespace NewBattle.EditorTools
         [MenuItem("Tools/NewBattle/Ekran Düzenleyici", false, 30)]
         public static void Open()
         {
-            GetWindow<ScreenEditorWindow>("Ekran Düzenleyici").minSize = new Vector2(360f, 530f);
+            GetWindow<ScreenEditorWindow>("Ekran Düzenleyici").minSize = new Vector2(360f, 560f);
         }
 
         private void OnGUI()
@@ -43,6 +43,7 @@ namespace NewBattle.EditorTools
                 Row("Seviye Yolu", () => ShowChild<LevelRoadScreen>());
                 Row("Profil (Liderlik)", () => ShowChild<ProfileScreen>());
                 Row("Mücadeleler", () => ShowChild<ChallengesScreen>());
+                Row("Hediye Kodu Penceresi", () => ShowChild<GiftCodePopup>());
                 Row("Harita Seçimi (Aksiyona Hazırlan)", ShowDropScreen);
                 Row("Maç Sonu", ShowMatchEnd);
                 Row("Yükleme Ekranı (prefab)", OpenLoadingPrefab);
@@ -222,6 +223,7 @@ namespace NewBattle.EditorTools
             HideChild<LevelRoadScreen>();
             HideChild<ProfileScreen>();
             HideChild<ChallengesScreen>();
+            HideChild<GiftCodePopup>();
 
             ShopScreen shop = FindFirstObjectByType<ShopScreen>(FindObjectsInactive.Include);
             if (shop != null && shop.gameObject.activeSelf)

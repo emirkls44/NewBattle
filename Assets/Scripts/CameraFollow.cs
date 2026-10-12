@@ -9,8 +9,8 @@ public class CameraFollow : MonoBehaviour
 
     [Header("Yakinlik")]
     [Tooltip("Kameranin ekranda gosterdigi alan. KUCUK deger = DAHA YAKIN. " +
-             "Oyun calisirken de degistirebilirsin; aninda uygulanir. (Eski deger 11.5'ti.)")]
-    [SerializeField, Range(4f, 20f)] private float viewSize = 8.5f;
+             "Oyun calisirken de degistirebilirsin; aninda uygulanir. (Once 11.5, sonra 8.5'ti.)")]
+    [SerializeField, Range(4f, 20f)] private float viewSize = 6f;
 
     [Header("Harita Kamera Siniri")]
     public Vector2 mapCenter = Vector2.zero;

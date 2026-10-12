@@ -64,20 +64,71 @@ namespace NewBattle.Gameplay
             return false;
         }
 
-        /// <summary>Tek nokta sorgusu; zemin yoksa false.</summary>
+        /// <summary>Zemin sayilmasi icin bir yuzeyin en az bu kadar genis olmasi (metre). Agac ve kaya bundan kucuk.</summary>
+        private const float MinGroundSpan = 6f;
+
+        private static readonly RaycastHit[] Hits = new RaycastHit[32];
+
+        /// <summary>
+        /// Tek nokta sorgusu; zemin yoksa false.
+        ///
+        /// Isin yukaridan iner ve ilk carptigi seyi DEGIL, ilk ZEMINI alir:
+        /// agac tepesi, kaya, sandik ve karakterler atlanir. Eskiden ilk
+        /// carpani aliyordu ve agacin ustune dusen oyuncu agacin tepesinde
+        /// kaliyordu.
+        /// </summary>
         public static bool TrySampleAt(float x, float z, LayerMask mask, out Vector3 ground)
         {
             Vector3 origin = new(x, RayStartHeight, z);
+            int count = Physics.RaycastNonAlloc(origin, Vector3.down, Hits, RayLength, mask, QueryTriggerInteraction.Ignore);
 
-            if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, RayLength, mask,
-                    QueryTriggerInteraction.Ignore))
+            float best = float.MaxValue;
+            float lowest = float.MaxValue;
+            int bestIndex = -1;
+            int lowestIndex = -1;
+
+            for (int i = 0; i < count; i++)
             {
-                ground = hit.point;
+                RaycastHit hit = Hits[i];
+                if (hit.collider.GetComponentInParent<HealthController>() != null)
+                    continue; // karakterler zemin degil
+
+                if (hit.point.y < lowest)
+                {
+                    lowest = hit.point.y;
+                    lowestIndex = i;
+                }
+
+                if (IsGroundLike(hit) && hit.distance < best)
+                {
+                    best = hit.distance;
+                    bestIndex = i;
+                }
+            }
+
+            // Genis zemin bulunamadiysa en alttaki yuzey (yine de agac tepesinden iyidir).
+            int chosen = bestIndex >= 0 ? bestIndex : lowestIndex;
+            if (chosen >= 0)
+            {
+                ground = Hits[chosen].point;
                 return true;
             }
 
             ground = new Vector3(x, 0f, z);
             return false;
+        }
+
+        /// <summary>Yukari bakan, genis bir yuzey mi (arazi, zemin kutusu) - agac ya da kaya degil.</summary>
+        private static bool IsGroundLike(RaycastHit hit)
+        {
+            if (hit.normal.y < 0.7f)
+                return false;
+
+            if (hit.collider is TerrainCollider)
+                return true;
+
+            Vector3 size = hit.collider.bounds.size;
+            return size.x >= MinGroundSpan && size.z >= MinGroundSpan;
         }
 
         /// <summary>
