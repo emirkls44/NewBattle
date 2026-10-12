@@ -21,7 +21,7 @@ namespace NewBattle.EditorTools
         [MenuItem("Tools/NewBattle/Ekran Düzenleyici", false, 30)]
         public static void Open()
         {
-            GetWindow<ScreenEditorWindow>("Ekran Düzenleyici").minSize = new Vector2(360f, 330f);
+            GetWindow<ScreenEditorWindow>("Ekran Düzenleyici").minSize = new Vector2(360f, 360f);
         }
 
         private void OnGUI()
@@ -36,6 +36,7 @@ namespace NewBattle.EditorTools
                 Row("Ana Menü", ShowMainMenu);
                 Row("Oyun Modu Penceresi", ShowModePanel);
                 Row("Karakter (Lobi Animasyonu)", ShowCharacterScreen);
+                Row("Ödül Penceresi (günlük / hediye)", ShowRewardPopup);
                 Row("Harita Seçimi (Aksiyona Hazırlan)", ShowDropScreen);
                 Row("Maç Sonu", ShowMatchEnd);
                 Row("Yükleme Ekranı (prefab)", OpenLoadingPrefab);
@@ -97,6 +98,24 @@ namespace NewBattle.EditorTools
             Finish(screen.gameObject);
         }
 
+        private static void ShowRewardPopup()
+        {
+            HideAll();
+            RewardPopup popup = Find<RewardPopup>();
+            if (popup == null)
+                return;
+
+            Undo.RecordObject(popup.gameObject, "Ekran goster");
+            popup.gameObject.SetActive(true);
+            if (popup.TryGetComponent(out CanvasGroup group))
+            {
+                Undo.RecordObject(group, "Ekran goster");
+                group.alpha = 1f;
+            }
+
+            Finish(popup.gameObject);
+        }
+
         private static void ShowDropScreen()
         {
             HideAll();
@@ -155,6 +174,13 @@ namespace NewBattle.EditorTools
             {
                 Undo.RecordObject(character.gameObject, "Ekranlari gizle");
                 character.gameObject.SetActive(false);
+            }
+
+            RewardPopup popup = FindFirstObjectByType<RewardPopup>(FindObjectsInactive.Include);
+            if (popup != null && popup.gameObject.activeSelf)
+            {
+                Undo.RecordObject(popup.gameObject, "Ekranlari gizle");
+                popup.gameObject.SetActive(false);
             }
 
             DropSelectionScreen drop = Find<DropSelectionScreen>();

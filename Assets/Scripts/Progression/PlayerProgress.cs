@@ -20,6 +20,8 @@ namespace NewBattle.Progression
         private const string OwnedKey = "nb_owned_lobby_anims";
         private const string SelectedKey = "nb_selected_lobby_anim";
         private const string PlayerNameKey = "nb_player_name";
+        private const string MatchesKey = "nb_matches_played";
+        private const string DoubleXpKey = "nb_double_xp_matches";
 
         public const int StartingCoins = 100;
 
@@ -38,6 +40,10 @@ namespace NewBattle.Progression
         public static int Xp => Mathf.Max(0, PlayerPrefs.GetInt(XpKey, 0));
         public static int Coins => Mathf.Max(0, PlayerPrefs.GetInt(CoinsKey, StartingCoins));
         public static int Wins => Mathf.Max(0, PlayerPrefs.GetInt(WinsKey, 0));
+        public static int MatchesPlayed => Mathf.Max(0, PlayerPrefs.GetInt(MatchesKey, 0));
+
+        /// <summary>Reklamla kazanilmis, henuz kullanilmamis cift XP maci sayisi.</summary>
+        public static int DoubleXpMatches => Mathf.Max(0, PlayerPrefs.GetInt(DoubleXpKey, 0));
 
         /// <summary>Bos ise kutuphanedeki default animasyon kullanilir.</summary>
         public static string SelectedLobbyAnimation
@@ -77,8 +83,8 @@ namespace NewBattle.Progression
             }
         }
 
-        /// <summary>Bir sonraki seviye icin gereken XP.</summary>
-        public static int XpForNextLevel(int level) => 50 + (Mathf.Max(1, level) - 1) * 20;
+        /// <summary>Bir sonraki seviye icin gereken XP (bkz. IlerlemeAyarlari).</summary>
+        public static int XpForNextLevel(int level) => ProgressionSettings.Instance.XpForLevel(level);
 
         /// <summary>Seviye 1 = Er I, 2 = Er II, 3 = Er III, 4 = Onbaşı I ...</summary>
         public static string RankName(int level)
@@ -89,13 +95,18 @@ namespace NewBattle.Progression
             return $"{RankNames[rank]} {tier}";
         }
 
+        /// <summary>
+        /// XP ekler. Seviye atlanirsa her yeni seviyenin odulu aninda verilir
+        /// ve menude gosterilmek uzere RewardInbox'a yazilir.
+        /// </summary>
         public static void AddXp(int amount)
         {
             if (amount <= 0)
                 return;
 
-            int level = Level;
-            int xp = Xp + amount;
+            int startLevel = Level;
+            int level = startLevel;
+            long xp = (long)Xp + amount;
 
             while (xp >= XpForNextLevel(level))
             {
@@ -104,8 +115,93 @@ namespace NewBattle.Progression
             }
 
             PlayerPrefs.SetInt(LevelKey, level);
-            PlayerPrefs.SetInt(XpKey, xp);
+            PlayerPrefs.SetInt(XpKey, (int)xp);
+
+            for (int reached = startLevel + 1; reached <= level; reached++)
+                GrantLevelReward(reached);
+
             Save();
+        }
+
+        private static void GrantLevelReward(int level)
+        {
+            LevelReward reward = ProgressionSettings.Instance.LevelRewardFor(level);
+            var parts = new List<string>();
+
+            if (reward.coins > 0)
+            {
+                PlayerPrefs.SetInt(CoinsKey, Coins + reward.coins);
+                parts.Add($"+{reward.coins} Para");
+            }
+
+            if (!string.IsNullOrEmpty(reward.animationId) && !Owns(reward.animationId))
+            {
+                AddOwned(reward.animationId);
+                parts.Add(string.IsNullOrEmpty(reward.animationLabel) ? "Yeni lobi animasyonu" : reward.animationLabel);
+            }
+
+            RewardInbox.Add(new RewardNotice($"SEVİYE {level}!",
+                parts.Count > 0 ? string.Join("\n", parts) : "Tebrikler!", RewardNoticeIcon.LevelUp));
+        }
+
+        /// <summary>
+        /// Bir odulu verir (para, XP ya da animasyon) ve pencerede yazacak
+        /// metni dondurur. Animasyona zaten sahipse yerine para verilir.
+        /// </summary>
+        public static string GrantReward(RewardEntry reward, out RewardNoticeIcon icon)
+        {
+            icon = RewardNoticeIcon.Gift;
+            if (reward == null)
+                return string.Empty;
+
+            switch (reward.type)
+            {
+                case RewardType.Xp:
+                    icon = RewardNoticeIcon.Xp;
+                    AddXp(reward.amount);
+                    return $"+{reward.amount} XP";
+
+                case RewardType.LobbyAnimation when !string.IsNullOrEmpty(reward.animationId) && !Owns(reward.animationId):
+                    icon = RewardNoticeIcon.Animation;
+                    GrantOwnership(reward.animationId);
+                    return string.IsNullOrEmpty(reward.label) ? "Yeni lobi animasyonu!" : $"{reward.label}\nlobi animasyonu";
+
+                default:
+                    int coins = reward.type == RewardType.Coins ? reward.amount : 200;
+                    icon = RewardNoticeIcon.Coins;
+                    AddCoins(coins);
+                    return $"+{coins} Para";
+            }
+        }
+
+        /// <summary>Oynanan mac sayisini bir artirir.</summary>
+        public static void AddMatchPlayed()
+        {
+            PlayerPrefs.SetInt(MatchesKey, MatchesPlayed + 1);
+            Save();
+        }
+
+        /// <summary>Cift XP maci ekler (reklam izlendi). Sinira takilirsa false.</summary>
+        public static bool AddDoubleXpMatches(int amount)
+        {
+            int limit = ProgressionSettings.Instance.maxStoredDoubleXp;
+            if (DoubleXpMatches >= limit)
+                return false;
+
+            PlayerPrefs.SetInt(DoubleXpKey, Mathf.Min(limit, DoubleXpMatches + Mathf.Max(1, amount)));
+            Save();
+            return true;
+        }
+
+        /// <summary>Bir cift XP macini kullanir. Hic yoksa false.</summary>
+        public static bool ConsumeDoubleXpMatch()
+        {
+            if (DoubleXpMatches <= 0)
+                return false;
+
+            PlayerPrefs.SetInt(DoubleXpKey, DoubleXpMatches - 1);
+            Save();
+            return true;
         }
 
         public static void AddWin()
@@ -140,11 +236,24 @@ namespace NewBattle.Progression
             if (string.IsNullOrEmpty(id))
                 return;
 
+            if (AddOwned(id))
+                Save();
+        }
+
+        private static bool AddOwned(string id)
+        {
             HashSet<string> owned = LoadOwned();
             if (!owned.Add(id))
-                return;
+                return false;
 
             PlayerPrefs.SetString(OwnedKey, string.Join(",", owned));
+            return true;
+        }
+
+        /// <summary>Test icin: ilk mac hediyesi tekrar verilsin.</summary>
+        public static void ResetMatchesPlayed()
+        {
+            PlayerPrefs.DeleteKey(MatchesKey);
             Save();
         }
 
@@ -161,9 +270,11 @@ namespace NewBattle.Progression
         /// <summary>Test icin: tum ilerlemeyi ilk acilis haline dondurur.</summary>
         public static void ResetAll()
         {
-            foreach (string key in new[] { LevelKey, XpKey, CoinsKey, WinsKey, OwnedKey, SelectedKey })
+            foreach (string key in new[] { LevelKey, XpKey, CoinsKey, WinsKey, OwnedKey, SelectedKey, MatchesKey, DoubleXpKey })
                 PlayerPrefs.DeleteKey(key);
 
+            DailyLogin.Reset();
+            RewardInbox.Clear();
             Save();
         }
 

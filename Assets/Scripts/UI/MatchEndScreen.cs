@@ -32,6 +32,8 @@ namespace NewBattle.UI
         [SerializeField] private TextMeshProUGUI killsText;
         [SerializeField] private TextMeshProUGUI xpText;
         [SerializeField] private TextMeshProUGUI coinsText;
+        [Tooltip("Reklamla kazanilan cift XP bu macta kullanildiysa XP kartinda gorunen '2x' rozeti.")]
+        [SerializeField] private RectTransform doubleXpBadge;
 
         [Header("Karakter")]
         [SerializeField] private RawImage characterImage;
@@ -113,6 +115,13 @@ namespace NewBattle.UI
             if (levelUpBanner != null)
                 levelUpBanner.gameObject.SetActive(false);
 
+            if (doubleXpBadge != null)
+            {
+                UIBaseScale.Get(doubleXpBadge);
+                doubleXpBadge.localScale = Vector3.zero;
+                doubleXpBadge.gameObject.SetActive(rewards.DoubleXp);
+            }
+
             if (continueButton != null)
             {
                 continueButton.gameObject.SetActive(true);
@@ -165,6 +174,13 @@ namespace NewBattle.UI
             }
 
             yield return new WaitForSecondsRealtime(countSeconds);
+
+            if (rewards.DoubleXp && doubleXpBadge != null)
+            {
+                StartCoroutine(Pop(doubleXpBadge));
+                yield return new WaitForSecondsRealtime(0.3f);
+            }
+
             yield return AnimateXpBar(rewards);
 
             if (continueButton != null)

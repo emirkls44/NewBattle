@@ -84,6 +84,40 @@ namespace NewBattle.EditorTools
             }
 
             EditorGUILayout.Space(14f);
+            EditorGUILayout.LabelField("XP Yapısı", EditorStyles.boldLabel);
+
+            if (GUILayout.Button("İlerleme Ayarlarını Aç (XP eğrisi, ödüller, bot zorluğu)"))
+            {
+                MainMenuBuilder.EnsureProgressionSettings(out ProgressionSettings settings);
+                Selection.activeObject = settings;
+                EditorGUIUtility.PingObject(settings);
+            }
+
+            EditorGUILayout.LabelField("Oynanan maç", PlayerProgress.MatchesPlayed.ToString());
+            EditorGUILayout.LabelField("Çift XP maçı (biriken)", PlayerProgress.DoubleXpMatches.ToString());
+            EditorGUILayout.LabelField("Günlük ödül", $"{DailyLogin.ClaimedDays} / {DailyLogin.TotalDays} gün alındı" +
+                                                     (DailyLogin.CanClaim(out _, out _) ? "  (bugünkü alınabilir)" : ""));
+            BotDifficultyStep bots = ProgressionSettings.Instance.BotDifficultyFor(PlayerProgress.Level);
+            EditorGUILayout.LabelField("Bot zorluğu (şu an)",
+                $"hasar x{bots.damageMultiplier:0.##}, dayanıklılık x{bots.toughness:0.##}");
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Günlük ödülü bugün tekrar ver"))
+                    DailyLogin.AllowAgainToday();
+                if (GUILayout.Button("Günlük ödülü 1. güne al"))
+                    DailyLogin.Reset();
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("İlk oyun hediyesini tekrar ver"))
+                    PlayerProgress.ResetMatchesPlayed();
+                if (GUILayout.Button("+1 Çift XP maçı"))
+                    PlayerProgress.AddDoubleXpMatches(1);
+            }
+
+            EditorGUILayout.Space(14f);
             EditorGUILayout.LabelField("Lobi Animasyonları", EditorStyles.boldLabel);
 
             if (_library == null)

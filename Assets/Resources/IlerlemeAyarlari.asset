@@ -1,0 +1,97 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d296841b5aac7224fba846f364442f8d, type: 3}
+  m_Name: IlerlemeAyarlari
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Progression.ProgressionSettings
+  levelXp: c8000000f4010000e8030000
+  growthAfterList: 2
+  maxXpPerLevel: 0
+  participationXp: 40
+  xpPerKill: 15
+  maxPlacementXp: 0
+  victoryXp: 100
+  coinsPerKill: 5
+  topThreeCoins: 10
+  victoryCoins: 25
+  doubleXpMatchesPerAd: 1
+  maxStoredDoubleXp: 3
+  dailyLoginXp: 320000006400000096000000c80000002c0100009001000020030000
+  firstGameGifts:
+  - type: 0
+    amount: 150
+    animationId: 
+    label: 
+    weight: 3
+  - type: 0
+    amount: 300
+    animationId: 
+    label: 
+    weight: 2
+  - type: 0
+    amount: 500
+    animationId: 
+    label: 
+    weight: 1
+  - type: 2
+    amount: 0
+    animationId: nisan
+    label: "Ni\u015Fan Al"
+    weight: 1
+  levelRewards:
+  - level: 2
+    coins: 100
+    animationId: 
+    animationLabel: 
+  - level: 3
+    coins: 250
+    animationId: 
+    animationLabel: 
+  - level: 4
+    coins: 500
+    animationId: 
+    animationLabel: 
+  - level: 5
+    coins: 1000
+    animationId: 
+    animationLabel: 
+  coinsPerLevelAfterList: 1000
+  botDifficulty:
+  - fromLevel: 1
+    damageMultiplier: 0.35
+    toughness: 0.5
+    aimErrorMultiplier: 2
+    reactionMultiplier: 1.8
+  - fromLevel: 2
+    damageMultiplier: 0.6
+    toughness: 0.7
+    aimErrorMultiplier: 1.5
+    reactionMultiplier: 1.4
+  - fromLevel: 3
+    damageMultiplier: 0.8
+    toughness: 0.85
+    aimErrorMultiplier: 1.2
+    reactionMultiplier: 1.15
+  - fromLevel: 4
+    damageMultiplier: 1
+    toughness: 1
+    aimErrorMultiplier: 1
+    reactionMultiplier: 1
+  - fromLevel: 6
+    damageMultiplier: 1.3
+    toughness: 1.3
+    aimErrorMultiplier: 0.75
+    reactionMultiplier: 0.85
+  - fromLevel: 8
+    damageMultiplier: 1.6
+    toughness: 1.7
+    aimErrorMultiplier: 0.55
+    reactionMultiplier: 0.7

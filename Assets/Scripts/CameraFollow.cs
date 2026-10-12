@@ -7,6 +7,11 @@ public class CameraFollow : MonoBehaviour
     public Vector3 offset = new(0f, 15f, -10f);
     public float followSpeed = 25f;
 
+    [Header("Yakinlik")]
+    [Tooltip("Kameranin ekranda gosterdigi alan. KUCUK deger = DAHA YAKIN. " +
+             "Oyun calisirken de degistirebilirsin; aninda uygulanir. (Eski deger 11.5'ti.)")]
+    [SerializeField, Range(4f, 20f)] private float viewSize = 8.5f;
+
     [Header("Harita Kamera Siniri")]
     public Vector2 mapCenter = Vector2.zero;
     public float cameraFocusRadius = 25f;
@@ -44,12 +49,44 @@ public class CameraFollow : MonoBehaviour
 
     private Quaternion _baseRotation;
     private float _noiseSeed;
+    private Camera _camera;
+
+    /// <summary>Kamera yakinligi (ortografik boyut). Kucuk = yakin.</summary>
+    public float ViewSize
+    {
+        get => viewSize;
+        set
+        {
+            viewSize = Mathf.Clamp(value, 4f, 20f);
+            ApplyViewSize();
+        }
+    }
 
     private void Awake()
     {
         // Her kameranin kendi gurultu tohumu olsun ki iki kamera ayni anda
         // birebir ayni titremeyi uretmesin.
         _noiseSeed = Random.value * 1000f;
+        _camera = GetComponent<Camera>();
+        ApplyViewSize();
+    }
+
+    private void OnValidate()
+    {
+        if (_camera == null)
+            _camera = GetComponent<Camera>();
+
+        ApplyViewSize();
+    }
+
+    /// <summary>
+    /// Ortografik kamerada yakinligi uygular. Serbest dusus kamerasi
+    /// (DescentCameraRig) bu boyutu temel alip perspektife gecer.
+    /// </summary>
+    private void ApplyViewSize()
+    {
+        if (_camera != null && _camera.orthographic && !Mathf.Approximately(_camera.orthographicSize, viewSize))
+            _camera.orthographicSize = viewSize;
     }
 
     private void OnEnable()
@@ -83,6 +120,8 @@ public class CameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
+        ApplyViewSize();
+
         if (target == null)
             return;
 

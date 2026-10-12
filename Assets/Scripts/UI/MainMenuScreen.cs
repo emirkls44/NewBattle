@@ -47,6 +47,21 @@ namespace NewBattle.UI
         [SerializeField, Min(1)] private int seasonNumber = 1;
         [SerializeField, Min(0)] private int onlinePlayers = 1;
 
+        [Header("Oduller")]
+        [Tooltip("Gunluk giris, ilk oyun hediyesi ve seviye odullerini gosteren pencere.")]
+        [SerializeField] private RewardPopup rewardPopup;
+        [Tooltip("Menu acildiktan kac saniye sonra odul penceresi gelsin.")]
+        [SerializeField, Min(0f)] private float rewardDelay = 0.5f;
+
+        [Header("Iki Kat XP")]
+        [Tooltip("Cift XP etkinken 'Sonraki N maç çift XP!' yazan yazilar.")]
+        [SerializeField] private TextMeshProUGUI[] doubleXpTexts;
+        [SerializeField] private string doubleXpActiveFormat = "Sonraki {0} maç çift XP!";
+        [Tooltip("Biriken cift XP maclarini gosteren kutucuklar (oyun modu penceresi).")]
+        [SerializeField] private Image[] doubleXpSteps;
+        [SerializeField] private Color doubleXpStepOn = new(1f, 0.78f, 0.1f, 1f);
+        [SerializeField] private Color doubleXpStepOff = new(0.18f, 0.24f, 0.27f, 1f);
+
         [Header("Alt Ekranlar")]
         [Tooltip("'karakter' butonunun actigi lobi animasyonu secim ekrani.")]
         [SerializeField] private LobbyAnimationScreen characterScreen;
@@ -64,6 +79,7 @@ namespace NewBattle.UI
 
         private NetworkBootstrap _bootstrap;
         private Coroutine _toastRoutine;
+        private string[] _doubleXpIdleTexts;
         private float _nextBootstrapCheck;
 
         public string PlayerName { get; private set; }
@@ -102,6 +118,10 @@ namespace NewBattle.UI
             if (characterScreen != null)
                 MenuButton.Register("karakter", characterScreen.Open);
 
+            MenuButton.Register("cift_xp", OnDoubleXpPressed);
+            MenuButton.Register("cift_xp_kart", OnDoubleXpPressed);
+            CacheDoubleXpTexts();
+
             if (comingSoonButtons != null)
             {
                 foreach (Button button in comingSoonButtons)
@@ -123,6 +143,9 @@ namespace NewBattle.UI
             PlayerProgress.Changed += Refresh;
             Refresh();
             SetStatus(string.Empty);
+
+            if (rewardPopup != null)
+                StartCoroutine(ShowPendingRewards());
         }
 
         private void Update()
@@ -146,6 +169,9 @@ namespace NewBattle.UI
             MenuButton.Unhandled -= OnUnhandledButton;
             if (characterScreen != null)
                 MenuButton.Unregister("karakter", characterScreen.Open);
+
+            MenuButton.Unregister("cift_xp", OnDoubleXpPressed);
+            MenuButton.Unregister("cift_xp_kart", OnDoubleXpPressed);
 
             if (modePanel != null)
             {
@@ -184,6 +210,113 @@ namespace NewBattle.UI
             {
                 float fill = Mathf.Clamp01(xp / (float)Mathf.Max(1, xpForNextLevel));
                 xpFill.anchorMax = new Vector2(fill, xpFill.anchorMax.y);
+            }
+
+            RefreshDoubleXp();
+        }
+
+        // ------------------------------------------------------------------
+        // Oduller
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Once gunluk giris odulu (bugun alinmadiysa), sonra bekleyen
+        /// bildirimler (ilk oyun hediyesi, seviye odulleri) sirayla gosterilir.
+        /// </summary>
+        private IEnumerator ShowPendingRewards()
+        {
+            yield return new WaitForSecondsRealtime(rewardDelay);
+
+            while (isActiveAndEnabled)
+            {
+                // Oyuncu bu arada OYNA'ya basip mod penceresini actiysa bekle.
+                if (modePanel != null && modePanel.IsOpen)
+                {
+                    yield return null;
+                    continue;
+                }
+
+                bool closed = false;
+
+                if (DailyLogin.CanClaim(out int day, out _))
+                {
+                    rewardPopup.ShowDaily(day, ProgressionSettings.Instance.dailyLoginXp, () =>
+                    {
+                        DailyLogin.Claim();
+                        closed = true;
+                    });
+                }
+                else
+                {
+                    RewardNotice notice = RewardInbox.TakeNext();
+                    if (notice == null)
+                        yield break;
+
+                    rewardPopup.ShowNotice(notice, () => closed = true);
+                }
+
+                while (!closed)
+                    yield return null;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Iki Kat XP
+        // ------------------------------------------------------------------
+
+        private void OnDoubleXpPressed()
+        {
+            ProgressionSettings settings = ProgressionSettings.Instance;
+
+            if (PlayerProgress.DoubleXpMatches >= settings.maxStoredDoubleXp)
+            {
+                ShowToast($"EN FAZLA {settings.maxStoredDoubleXp} MAÇ!");
+                return;
+            }
+
+            if (RewardedAds.IsShowing)
+                return;
+
+            ShowToast("REKLAM İZLENİYOR...");
+            RewardedAds.Show(this, watched =>
+            {
+                if (watched && PlayerProgress.AddDoubleXpMatches(settings.doubleXpMatchesPerAd))
+                    ShowToast("ÇİFT XP ETKİN!");
+            });
+        }
+
+        private void CacheDoubleXpTexts()
+        {
+            if (doubleXpTexts == null)
+                return;
+
+            _doubleXpIdleTexts = new string[doubleXpTexts.Length];
+            for (int i = 0; i < doubleXpTexts.Length; i++)
+                _doubleXpIdleTexts[i] = doubleXpTexts[i] != null ? doubleXpTexts[i].text : string.Empty;
+        }
+
+        private void RefreshDoubleXp()
+        {
+            int matches = PlayerProgress.DoubleXpMatches;
+
+            if (doubleXpTexts != null && _doubleXpIdleTexts != null)
+            {
+                for (int i = 0; i < doubleXpTexts.Length; i++)
+                {
+                    if (doubleXpTexts[i] != null)
+                        doubleXpTexts[i].text = matches > 0
+                            ? string.Format(doubleXpActiveFormat, matches)
+                            : _doubleXpIdleTexts[i];
+                }
+            }
+
+            if (doubleXpSteps == null)
+                return;
+
+            for (int i = 0; i < doubleXpSteps.Length; i++)
+            {
+                if (doubleXpSteps[i] != null)
+                    doubleXpSteps[i].color = i < matches ? doubleXpStepOn : doubleXpStepOff;
             }
         }
 

@@ -71,6 +71,11 @@ public class HealthController : NetworkBehaviour
         if (IsFriendlyFire(attacker))
             return;
 
+        // Bot zorlugu (oyuncu seviyesine gore): bkz. BotDifficulty.
+        baseDamage *= NewBattle.Gameplay.BotDifficulty.DamageScale(attackerObject, Object);
+        if (baseDamage <= 0f)
+            return;
+
         bool shieldWasHit = currentShield > 0f;
 
         // Kalkan EMER, bagisiklik vermez. Hasarin shieldAbsorbRatio kadari once

@@ -1,4 +1,5 @@
 using System.Collections;
+using NewBattle.Progression;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -58,6 +59,17 @@ namespace NewBattle.UI
         [Tooltip("Islevi henuz baglanmamis butonlara basinca 'YAKINDA!' gosterir.")]
         [SerializeField] private ToastView toast;
 
+        [Header("Cift XP Durumu")]
+        [Tooltip("Reklamla cift XP kazanilmissa bu yazi 'ÇİFT XP ETKİN!' olur.")]
+        [SerializeField] private TextMeshProUGUI doubleXpText;
+        [SerializeField] private Image doubleXpIcon;
+        [SerializeField] private string doubleXpActiveLabel = "ÇİFT XP ETKİN!";
+        [SerializeField] private Color doubleXpActiveColor = new(1f, 0.78f, 0.1f, 1f);
+
+        private string _doubleXpIdleLabel;
+        private Color _doubleXpIdleColor;
+        private Color _doubleXpIdleIconColor;
+
         private DropPhaseController _dropPhase;
         private LobbyCountdownController _lobby;
         private PlayerController _localPlayer;
@@ -76,6 +88,15 @@ namespace NewBattle.UI
 
             if (marker != null)
                 marker.gameObject.SetActive(false);
+
+            if (doubleXpText != null)
+            {
+                _doubleXpIdleLabel = doubleXpText.text;
+                _doubleXpIdleColor = doubleXpText.color;
+            }
+
+            if (doubleXpIcon != null)
+                _doubleXpIdleIconColor = doubleXpIcon.color;
 
             SetVisible(false);
             MenuButton.Unhandled += OnUnhandledButton;
@@ -103,6 +124,7 @@ namespace NewBattle.UI
                 return;
 
             RefreshMode();
+            RefreshDoubleXp();
             RefreshSlots();
             RefreshCountdown();
         }
@@ -176,6 +198,20 @@ namespace NewBattle.UI
                 if (icon != null)
                     modeIcon.sprite = icon;
             }
+        }
+
+        private void RefreshDoubleXp()
+        {
+            bool active = PlayerProgress.DoubleXpMatches > 0;
+
+            if (doubleXpText != null)
+            {
+                doubleXpText.text = active ? doubleXpActiveLabel : _doubleXpIdleLabel;
+                doubleXpText.color = active ? doubleXpActiveColor : _doubleXpIdleColor;
+            }
+
+            if (doubleXpIcon != null)
+                doubleXpIcon.color = active ? doubleXpActiveColor : _doubleXpIdleIconColor;
         }
 
         private void RefreshSlots()

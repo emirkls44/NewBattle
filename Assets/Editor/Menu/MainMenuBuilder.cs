@@ -193,6 +193,21 @@ namespace NewBattle.EditorTools
             if (screen != null && EnsureCharacterScreen(screen))
                 added.Add("Karakter (lobi animasyonu) ekranı");
 
+            if (EnsureProgressionSettings(out _))
+                added.Add("İlerleme ayarları (Assets/Resources/IlerlemeAyarlari)");
+
+            if (screen != null && EnsureRewardPopup(screen))
+                added.Add("Ödül penceresi");
+
+            if (screen != null && EnsureDoubleXpRefs(screen))
+                added.Add("İki Kat XP göstergeleri");
+
+            if (EnsureDropDoubleXpRefs(canvas))
+                added.Add("Harita ekranı çift XP durumu");
+
+            if (EnsureMatchEndDoubleXpBadge(canvas))
+                added.Add("Maç sonu 2x rozeti");
+
             int pressables = EnsurePressables(canvas);
             if (pressables > 0)
                 added.Add($"{pressables} kart basılabilir yapıldı");

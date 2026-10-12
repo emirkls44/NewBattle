@@ -126,6 +126,10 @@ public class TrainingBot : NetworkBehaviour
     private float _lastHealth;
     private float _alertUntil;
 
+    // Oyuncu seviyesine gore zorluk (bkz. BotDifficulty).
+    private float _aimErrorScale = 1f;
+    private float _reactionScale = 1f;
+
     private readonly RaycastHit[] _sightHits = new RaycastHit[16];
 
     private void Awake()
@@ -149,7 +153,13 @@ public class TrainingBot : NetworkBehaviour
         enabled = Object.InputAuthority == PlayerRef.None;
 
         if (enabled)
+        {
             _stateMachine.MoveSpeedMultiplier = moveSpeedMultiplier;
+
+            NewBattle.Progression.BotDifficultyStep difficulty = BotDifficulty.Current;
+            _aimErrorScale = difficulty.aimErrorMultiplier;
+            _reactionScale = difficulty.reactionMultiplier;
+        }
     }
 
     public override void FixedUpdateNetwork()
@@ -224,11 +234,11 @@ public class TrainingBot : NetworkBehaviour
             _lastKnownTargetPosition = _target.transform.position;
 
             if (_target != previousTarget)
-                _reactionReadyAt = now + Random.Range(reactionSeconds.x, reactionSeconds.y);
+                _reactionReadyAt = now + Random.Range(reactionSeconds.x, reactionSeconds.y) * _reactionScale;
         }
 
         // Nisan hatasi karar basina degisir; her tick degisseydi karakter titrerdi.
-        _aimError = Random.Range(-aimErrorDegrees, aimErrorDegrees);
+        _aimError = Random.Range(-aimErrorDegrees, aimErrorDegrees) * _aimErrorScale;
 
         if (now >= _strafeSwitchAt)
         {
