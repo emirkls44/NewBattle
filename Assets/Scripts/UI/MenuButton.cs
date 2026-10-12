@@ -49,6 +49,16 @@ namespace NewBattle.UI
 
         public static bool IsRegistered(string actionId) => actionId != null && Handlers.ContainsKey(actionId);
 
+        /// <summary>Kodun icinden bir eylemi calistirir (ornek: "magaza"). Kayitli degilse false.</summary>
+        public static bool TryInvoke(string actionId)
+        {
+            if (actionId == null || !Handlers.TryGetValue(actionId, out Action handler))
+                return false;
+
+            handler();
+            return true;
+        }
+
         private void Awake()
         {
             GetComponent<Button>().onClick.AddListener(Press);

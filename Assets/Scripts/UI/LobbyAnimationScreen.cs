@@ -39,6 +39,8 @@ namespace NewBattle.UI
         [Header("Islem Butonu")]
         [SerializeField] private Button actionButton;
         [SerializeField] private Image actionFace;
+        [Tooltip("Butonun alt kenari; yuzle birlikte renk degistirir.")]
+        [SerializeField] private Image actionLip;
         [SerializeField] private TextMeshProUGUI actionLabel;
         [SerializeField] private Color selectColor = new(0.36f, 0.77f, 0.22f, 1f);
         [SerializeField] private Color buyColor = new(1f, 0.78f, 0.1f, 1f);
@@ -60,7 +62,11 @@ namespace NewBattle.UI
             if (closeButton != null)
                 closeButton.onClick.AddListener(Close);
             if (actionButton != null)
+            {
                 actionButton.onClick.AddListener(OnActionPressed);
+                // Renkleri bu script yonetiyor; Unity'nin kendi gecisi ust uste binip titretmesin.
+                actionButton.transition = Selectable.Transition.None;
+            }
             if (cardTemplate != null)
                 cardTemplate.gameObject.SetActive(false);
         }
@@ -149,6 +155,7 @@ namespace NewBattle.UI
 
                 LobbyAnimationCard card = Instantiate(cardTemplate, listContent);
                 card.name = $"Kart_{animation.id}";
+                card.Setup(animation);
                 card.gameObject.SetActive(true);
                 LobbyAnimation captured = animation;
                 card.Button.onClick.AddListener(() => OnCardPressed(captured));
@@ -160,9 +167,17 @@ namespace NewBattle.UI
         {
             _preview = animation;
 
+            // Kilitli olsa da onizlenir; oyuncu neyi alacagini gorsun.
             LobbyCharacterAnimator animator = characterStage != null ? characterStage.LobbyAnimator : null;
             if (animator != null)
                 animator.Play(animation);
+
+            if (!library.IsUnlocked(animation) && menu != null)
+            {
+                menu.ShowToast(animation.unlock == LobbyUnlockType.Coins
+                    ? "ÖNCE SATIN ALMAN LAZIM!"
+                    : $"{TurkishUpper(library.RequirementText(animation))} GEREKLİ!");
+            }
 
             Refresh();
         }
@@ -178,14 +193,13 @@ namespace NewBattle.UI
                 return;
             }
 
-            if (_preview.unlock == LobbyUnlockType.Coins)
-            {
-                if (library.TryPurchase(_preview))
-                    library.Select(_preview);
-                else if (menu != null)
-                    menu.ShowToast("Para yetmiyor!");
-            }
+            // Parayla acilanlar magazadan alinir.
+            if (_preview.unlock == LobbyUnlockType.Coins && !MenuButton.TryInvoke("magaza") && menu != null)
+                menu.ShowToast("ÖNCE SATIN ALMAN LAZIM!");
         }
+
+        /// <summary>"Seviye" -> "SEVİYE" (ToUpperInvariant noktali I'yi kaybeder).</summary>
+        private static string TurkishUpper(string text) => text.Replace('i', 'İ').ToUpperInvariant();
 
         private void Refresh()
         {
@@ -232,13 +246,13 @@ namespace NewBattle.UI
             }
             else if (_preview.unlock == LobbyUnlockType.Coins)
             {
-                label = $"SATIN AL  {_preview.requirement}";
+                label = "MAĞAZAYA GİT";
                 color = buyColor;
                 interactable = true;
             }
             else
             {
-                label = $"KİLİTLİ – {library.RequirementText(_preview)}";
+                label = $"{TurkishUpper(library.RequirementText(_preview))} GEREKLİ";
                 color = disabledColor;
                 interactable = false;
             }
@@ -247,6 +261,8 @@ namespace NewBattle.UI
                 actionLabel.text = label;
             if (actionFace != null)
                 actionFace.color = color;
+            if (actionLip != null)
+                actionLip.color = Color.Lerp(color, Color.black, 0.28f);
             actionButton.interactable = interactable;
         }
     }

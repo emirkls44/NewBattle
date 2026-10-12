@@ -125,6 +125,35 @@ namespace NewBattle.UI
             Open(onClaimed);
         }
 
+        /// <summary>
+        /// Odul alinamayan gunde (bugunku alinmis ya da 7 gun bitmis) sadece
+        /// durumu gosterir: alinanlar tikli, siradaki gun yarin icin.
+        /// </summary>
+        public void ShowDailyStatus(int claimedDays, IReadOnlyList<int> amounts, Action onClosed)
+        {
+            _todayIndex = -1;
+            int total = amounts?.Count ?? 0;
+
+            SetText(titleText, dailyTitle);
+            SetText(bodyText, claimedDays >= total
+                ? $"{total} günün ödüllerini topladın!"
+                : $"Yarın gel: +{amounts[claimedDays]} XP");
+            SetText(claimLabel, okText);
+
+            if (icon != null)
+                icon.gameObject.SetActive(false);
+
+            if (daysRoot != null)
+                daysRoot.SetActive(true);
+
+            // Siradaki gun "bugun" rengiyle degil, gelecek gibi gorunsun.
+            PaintDays(claimedDays, amounts);
+            if (days != null && claimedDays < days.Length && days[claimedDays]?.background != null)
+                days[claimedDays].background.color = futureColor;
+
+            Open(onClosed);
+        }
+
         /// <summary>Tek bir odul bildirimi. onClosed, TAMAM'a basilip pencere kapaninca cagrilir.</summary>
         public void ShowNotice(RewardNotice notice, Action onClosed)
         {

@@ -16,8 +16,8 @@ namespace NewBattle.EditorTools
         {
             var serializedMenu = new SerializedObject(menu);
             SerializedProperty property = serializedMenu.FindProperty("characterScreen");
-            if (property.objectReferenceValue != null)
-                return false;
+            if (property.objectReferenceValue is LobbyAnimationScreen existing)
+                return EnsureCharacterActionLip(existing);
 
             LobbyAnimationScreen screen = BuildCharacterScreen((RectTransform)menu.transform, menu);
             property.objectReferenceValue = screen;
@@ -134,11 +134,30 @@ namespace NewBattle.EditorTools
             serialized.FindProperty("closeButton").objectReferenceValue = close;
             serialized.FindProperty("actionButton").objectReferenceValue = action;
             serialized.FindProperty("actionFace").objectReferenceValue = Face(action).GetComponent<Image>();
+            serialized.FindProperty("actionLip").objectReferenceValue = action.transform.Find("Alt").GetComponent<Image>();
             serialized.FindProperty("actionLabel").objectReferenceValue = actionLabel;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             root.gameObject.SetActive(false);
             return screen;
+        }
+
+        /// <summary>Islem butonunun alt kenarini baglar (yuzle birlikte renk degistirsin).</summary>
+        private static bool EnsureCharacterActionLip(LobbyAnimationScreen screen)
+        {
+            var serialized = new SerializedObject(screen);
+            SerializedProperty lip = serialized.FindProperty("actionLip");
+            if (lip.objectReferenceValue != null)
+                return false;
+
+            var button = serialized.FindProperty("actionButton").objectReferenceValue as Button;
+            Image image = button != null ? button.transform.Find("Alt")?.GetComponent<Image>() : null;
+            if (image == null)
+                return false;
+
+            lip.objectReferenceValue = image;
+            serialized.ApplyModifiedProperties();
+            return true;
         }
 
         /// <summary>Kart sablonu: ekran bunu her animasyon icin cogaltir.</summary>

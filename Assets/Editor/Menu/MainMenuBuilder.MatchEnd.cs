@@ -14,7 +14,7 @@ namespace NewBattle.EditorTools
         private const string MatchEndName = "MacSonuEkrani";
 
         /// <summary>Yerlesim degisince artar; Kur eski kurulumlari yerinde duzeltir.</summary>
-        private const int MatchEndLayoutVersion = 2;
+        private const int MatchEndLayoutVersion = 3;
 
         private static readonly Color ResultOrange = Hex("#FF9A1F");
         private static readonly Color ResultCard = new(0.23f, 0.15f, 0.40f, 0.92f);
@@ -99,6 +99,7 @@ namespace NewBattle.EditorTools
             Place(passBody.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(210f, 64f));
             AttachActions(new[] { passButton });
             SetActionId(new SerializedObject(passButton.GetComponent<MenuButton>()), "battle_pass_bonus");
+            pass.gameObject.SetActive(false); // Battle Pass simdilik yok
 
             // Seviye bari (alt orta).
             Vector2 bottom = new(0.5f, 0f);
@@ -219,19 +220,67 @@ namespace NewBattle.EditorTools
                 LayoutLevelTexts(level, numbers, next);
             }
 
-            MoveCard(root, "OldurmeKarti", 120f);
-            MoveCard(root, "XpKarti", 335f);
-            MoveCard(root, "ParaKarti", 550f);
-
-            if (root.Find("Karakter") is RectTransform character)
+            if (version.intValue < 2)
             {
-                Undo.RecordObject(character, "Mac sonu yerlesimi");
-                character.anchoredPosition = new Vector2(60f, character.anchoredPosition.y);
+                MoveCard(root, "OldurmeKarti", 120f);
+                MoveCard(root, "XpKarti", 335f);
+                MoveCard(root, "ParaKarti", 550f);
+
+                if (root.Find("Karakter") is RectTransform character)
+                {
+                    Undo.RecordObject(character, "Mac sonu yerlesimi");
+                    character.anchoredPosition = new Vector2(60f, character.anchoredPosition.y);
+                }
             }
+
+            if (version.intValue < 3)
+                AlignMatchEndV3(root);
 
             version.intValue = MatchEndLayoutVersion;
             serialized.ApplyModifiedProperties();
             return true;
+        }
+
+        /// <summary>
+        /// v3: senin ayarladigin olcek ve konumlar korunur, sadece hizalanir:
+        ///   - mesaj, basligin sol kenarina hizalanir,
+        ///   - kartlar ilk kartin yerinden baslayip esit araliklarla dizilir,
+        ///   - "SEVIYE ATLADIN" afisi mesajin ustunden XP barinin ustune iner,
+        ///   - Battle Pass karti (simdilik yok) gizlenir.
+        /// </summary>
+        private static void AlignMatchEndV3(Transform root)
+        {
+            if (root.Find("Baslik") is RectTransform title && root.Find("Mesaj") is RectTransform message &&
+                title.anchorMin == message.anchorMin && title.pivot.x == message.pivot.x)
+            {
+                Undo.RecordObject(message, "Mac sonu hizalama");
+                message.anchoredPosition = new Vector2(title.anchoredPosition.x, message.anchoredPosition.y);
+            }
+
+            var cards = new[] { root.Find("OldurmeKarti") as RectTransform, root.Find("XpKarti") as RectTransform, root.Find("ParaKarti") as RectTransform };
+            if (cards[0] != null && cards[1] != null && cards[2] != null)
+            {
+                float width = cards[0].rect.width * cards[0].localScale.x;
+                float gap = Mathf.Max(20f, (cards[2].anchoredPosition.x - cards[0].anchoredPosition.x - 2f * width) / 2f);
+                for (int i = 1; i < cards.Length; i++)
+                {
+                    Undo.RecordObject(cards[i], "Mac sonu hizalama");
+                    cards[i].anchoredPosition = new Vector2(cards[0].anchoredPosition.x + i * (width + gap), cards[0].anchoredPosition.y);
+                }
+            }
+
+            if (root.Find("SeviyeAtladin") is RectTransform banner)
+            {
+                Undo.RecordObject(banner, "Mac sonu hizalama");
+                Vector2 barPosition = root.Find("XpBari") is RectTransform bar ? bar.anchoredPosition : new Vector2(-40f, 96f);
+                Place(banner, new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(barPosition.x, barPosition.y + 140f), new Vector2(760f, 90f));
+            }
+
+            if (root.Find("BattlePassKarti") is Transform pass && pass.gameObject.activeSelf)
+            {
+                Undo.RecordObject(pass.gameObject, "Mac sonu hizalama");
+                pass.gameObject.SetActive(false);
+            }
         }
 
         private static void MoveCard(Transform root, string name, float x)

@@ -191,7 +191,13 @@ namespace NewBattle.EditorTools
                 added.Add("YAKINDA bildirimleri");
 
             if (screen != null && EnsureCharacterScreen(screen))
-                added.Add("Karakter (lobi animasyonu) ekranı");
+                added.Add("Karakter ekranı (kuruldu / güncellendi)");
+
+            if (screen != null && EnsureShopScreen(screen))
+                added.Add("Mağaza (kuruldu / karakter önizlemesi eklendi)");
+
+            if (screen != null && EnsureMenuScreens(screen, out string menuScreens))
+                added.Add(menuScreens);
 
             if (EnsureProgressionSettings(out _))
                 added.Add("İlerleme ayarları (Assets/Resources/IlerlemeAyarlari)");

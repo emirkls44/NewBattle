@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5bbdc26136fc1b42b6118278b5c0540, type: 3}
+  m_Name: MagazaUrunleri
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Progression.ShopCatalog
+  autoAddCoinAnimations: 1
+  items:
+  - id: reklam_para
+    kind: 1
+    displayName: Bedava Para
+    icon: {fileID: 0}
+    animationId: 
+    coins: 50
+    priceLabel: 
+    dailyLimit: 5
+  - id: paket_kucuk
+    kind: 2
+    displayName: "Bir Avu\xE7 Para"
+    icon: {fileID: 0}
+    animationId: 
+    coins: 500
+    priceLabel: 29,99 TL
+    dailyLimit: 5
+  - id: paket_orta
+    kind: 2
+    displayName: Para Kesesi
+    icon: {fileID: 0}
+    animationId: 
+    coins: 1200
+    priceLabel: 59,99 TL
+    dailyLimit: 5
+  - id: paket_buyuk
+    kind: 2
+    displayName: "Para Sand\u0131\u011F\u0131"
+    icon: {fileID: 0}
+    animationId: 
+    coins: 3000
+    priceLabel: 129,99 TL
+    dailyLimit: 5

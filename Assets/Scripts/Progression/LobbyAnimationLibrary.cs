@@ -86,6 +86,10 @@ namespace NewBattle.Progression
             if (animation == Default)
                 return true;
 
+            // Hediye ya da seviye odulu olarak verilmis olabilir.
+            if (PlayerProgress.Owns(animation.id))
+                return true;
+
             return animation.unlock switch
             {
                 LobbyUnlockType.Free => true,

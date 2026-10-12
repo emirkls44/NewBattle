@@ -21,7 +21,7 @@ namespace NewBattle.EditorTools
         [MenuItem("Tools/NewBattle/Ekran Düzenleyici", false, 30)]
         public static void Open()
         {
-            GetWindow<ScreenEditorWindow>("Ekran Düzenleyici").minSize = new Vector2(360f, 360f);
+            GetWindow<ScreenEditorWindow>("Ekran Düzenleyici").minSize = new Vector2(360f, 470f);
         }
 
         private void OnGUI()
@@ -37,6 +37,10 @@ namespace NewBattle.EditorTools
                 Row("Oyun Modu Penceresi", ShowModePanel);
                 Row("Karakter (Lobi Animasyonu)", ShowCharacterScreen);
                 Row("Ödül Penceresi (günlük / hediye)", ShowRewardPopup);
+                Row("Mağaza", ShowShop);
+                Row("Ayarlar", () => ShowChild<SettingsScreen>());
+                Row("İsim Penceresi", () => ShowChild<NamePopup>());
+                Row("Seviye Yolu", () => ShowChild<LevelRoadScreen>());
                 Row("Harita Seçimi (Aksiyona Hazırlan)", ShowDropScreen);
                 Row("Maç Sonu", ShowMatchEnd);
                 Row("Yükleme Ekranı (prefab)", OpenLoadingPrefab);
@@ -116,6 +120,41 @@ namespace NewBattle.EditorTools
             Finish(popup.gameObject);
         }
 
+        private static void ShowShop()
+        {
+            HideAll();
+            ShopScreen shop = Find<ShopScreen>();
+            if (shop == null)
+                return;
+
+            Undo.RecordObject(shop.gameObject, "Ekran goster");
+            shop.gameObject.SetActive(true);
+            Finish(shop.gameObject);
+        }
+
+        /// <summary>Kendini Awake'te kapatan bir menu penceresini gorunur yapar.</summary>
+        private static void ShowChild<T>() where T : Component
+        {
+            HideAll();
+            T screen = Find<T>();
+            if (screen == null)
+                return;
+
+            Undo.RecordObject(screen.gameObject, "Ekran goster");
+            screen.gameObject.SetActive(true);
+            Finish(screen.gameObject);
+        }
+
+        private static void HideChild<T>() where T : Component
+        {
+            T screen = FindFirstObjectByType<T>(FindObjectsInactive.Include);
+            if (screen != null && screen.gameObject.activeSelf)
+            {
+                Undo.RecordObject(screen.gameObject, "Ekranlari gizle");
+                screen.gameObject.SetActive(false);
+            }
+        }
+
         private static void ShowDropScreen()
         {
             HideAll();
@@ -174,6 +213,17 @@ namespace NewBattle.EditorTools
             {
                 Undo.RecordObject(character.gameObject, "Ekranlari gizle");
                 character.gameObject.SetActive(false);
+            }
+
+            HideChild<SettingsScreen>();
+            HideChild<NamePopup>();
+            HideChild<LevelRoadScreen>();
+
+            ShopScreen shop = FindFirstObjectByType<ShopScreen>(FindObjectsInactive.Include);
+            if (shop != null && shop.gameObject.activeSelf)
+            {
+                Undo.RecordObject(shop.gameObject, "Ekranlari gizle");
+                shop.gameObject.SetActive(false);
             }
 
             RewardPopup popup = FindFirstObjectByType<RewardPopup>(FindObjectsInactive.Include);

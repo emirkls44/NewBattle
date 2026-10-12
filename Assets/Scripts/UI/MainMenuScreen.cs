@@ -65,6 +65,14 @@ namespace NewBattle.UI
         [Header("Alt Ekranlar")]
         [Tooltip("'karakter' butonunun actigi lobi animasyonu secim ekrani.")]
         [SerializeField] private LobbyAnimationScreen characterScreen;
+        [Tooltip("'magaza', 'para_ekle' ve 'para_paneli' butonlarinin actigi magaza.")]
+        [SerializeField] private ShopScreen shopScreen;
+        [Tooltip("'ayarlar' butonunun actigi pencere.")]
+        [SerializeField] private SettingsScreen settingsScreen;
+        [Tooltip("'isim_duzenle' (kalem) butonunun actigi pencere.")]
+        [SerializeField] private NamePopup namePopup;
+        [Tooltip("'sezon' karti ve 'seviye_yolu' (rutbe ikonu) butonlarinin actigi ekran.")]
+        [SerializeField] private LevelRoadScreen levelRoadScreen;
 
         [Header("Yukleme Ekrani")]
         [Tooltip("Mac aranirken gosterilen ekran (Assets/Prefabs/UI/YuklemeEkrani).")]
@@ -80,6 +88,7 @@ namespace NewBattle.UI
         private NetworkBootstrap _bootstrap;
         private Coroutine _toastRoutine;
         private string[] _doubleXpIdleTexts;
+        private readonly System.Collections.Generic.List<(string, System.Action)> _boundActions = new();
         private float _nextBootstrapCheck;
 
         public string PlayerName { get; private set; }
@@ -116,10 +125,32 @@ namespace NewBattle.UI
 
             // Baglanan butonlar.
             if (characterScreen != null)
-                MenuButton.Register("karakter", characterScreen.Open);
+                Bind("karakter", characterScreen.Open);
 
-            MenuButton.Register("cift_xp", OnDoubleXpPressed);
-            MenuButton.Register("cift_xp_kart", OnDoubleXpPressed);
+            if (shopScreen != null)
+            {
+                Bind("magaza", shopScreen.Open);
+                Bind("para_ekle", shopScreen.OpenCoins);
+                Bind("para_paneli", shopScreen.OpenCoins);
+            }
+
+            if (settingsScreen != null)
+                Bind("ayarlar", settingsScreen.Open);
+
+            if (namePopup != null)
+                Bind("isim_duzenle", namePopup.Open);
+
+            if (levelRoadScreen != null)
+            {
+                Bind("sezon", levelRoadScreen.Open);
+                Bind("seviye_yolu", levelRoadScreen.Open);
+            }
+
+            if (rewardPopup != null)
+                Bind("oduller", OpenDailyRewards);
+
+            Bind("cift_xp", OnDoubleXpPressed);
+            Bind("cift_xp_kart", OnDoubleXpPressed);
             CacheDoubleXpTexts();
 
             if (comingSoonButtons != null)
@@ -167,11 +198,9 @@ namespace NewBattle.UI
         {
             PlayerProgress.Changed -= Refresh;
             MenuButton.Unhandled -= OnUnhandledButton;
-            if (characterScreen != null)
-                MenuButton.Unregister("karakter", characterScreen.Open);
-
-            MenuButton.Unregister("cift_xp", OnDoubleXpPressed);
-            MenuButton.Unregister("cift_xp_kart", OnDoubleXpPressed);
+            foreach ((string id, System.Action handler) in _boundActions)
+                MenuButton.Unregister(id, handler);
+            _boundActions.Clear();
 
             if (modePanel != null)
             {
@@ -194,6 +223,7 @@ namespace NewBattle.UI
             int xp = PlayerProgress.Xp;
             int xpForNextLevel = PlayerProgress.XpForNextLevel(level);
 
+            PlayerName = PlayerProgress.PlayerName;
             SetText(playerNameText, PlayerName);
             SetText(coinText, PlayerProgress.Coins.ToString());
             SetText(seasonText, $"SEZON {seasonNumber}");
@@ -263,6 +293,26 @@ namespace NewBattle.UI
         // ------------------------------------------------------------------
         // Iki Kat XP
         // ------------------------------------------------------------------
+
+        /// <summary>Eylem kimligine islev baglar; menu kapanirken hepsi geri alinir.</summary>
+        private void Bind(string actionId, System.Action handler)
+        {
+            MenuButton.Register(actionId, handler);
+            _boundActions.Add((actionId, handler));
+        }
+
+        /// <summary>"Odul" butonu: bugun alinabiliyorsa al, yoksa 7 gunluk durumu goster.</summary>
+        private void OpenDailyRewards()
+        {
+            if (rewardPopup == null || rewardPopup.IsOpen)
+                return;
+
+            int[] amounts = ProgressionSettings.Instance.dailyLoginXp;
+            if (DailyLogin.CanClaim(out int day, out _))
+                rewardPopup.ShowDaily(day, amounts, () => DailyLogin.Claim());
+            else
+                rewardPopup.ShowDailyStatus(DailyLogin.ClaimedDays, amounts, null);
+        }
 
         private void OnDoubleXpPressed()
         {

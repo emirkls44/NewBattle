@@ -28,6 +28,9 @@ namespace NewBattle.UI
         public LobbyAnimation Animation { get; private set; }
         public Button Button => GetComponent<Button>();
 
+        /// <summary>Kart olusturulurken hangi animasyonu gosterecegini bildirir.</summary>
+        public void Setup(LobbyAnimation animation) => Animation = animation;
+
         public void Bind(LobbyAnimation animation, LobbyAnimationLibrary library, bool selected, bool previewing)
         {
             Animation = animation;

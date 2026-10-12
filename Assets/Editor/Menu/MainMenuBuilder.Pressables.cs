@@ -23,6 +23,7 @@ namespace NewBattle.EditorTools
             ("OrtaAlan/Oduller", "oduller"),
             ("OrtaAlan/CiftXpKarti", "cift_xp_kart"),
             ("UstBar/ParaPaneli", "para_paneli"),
+            ("OrtaAlan/IsimEtiketi/RutbeIkon", "seviye_yolu"),
         };
 
         private static readonly (string path, string id)[] DropPressables =

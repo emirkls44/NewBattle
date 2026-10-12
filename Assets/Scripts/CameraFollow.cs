@@ -68,6 +68,11 @@ public class CameraFollow : MonoBehaviour
         // birebir ayni titremeyi uretmesin.
         _noiseSeed = Random.value * 1000f;
         _camera = GetComponent<Camera>();
+
+        // Oyuncu AYARLAR'dan yakinligi degistirdiyse o gecerli.
+        if (Application.isPlaying && GameSettings.HasCameraViewSize)
+            viewSize = GameSettings.CameraViewSize;
+
         ApplyViewSize();
     }
 
