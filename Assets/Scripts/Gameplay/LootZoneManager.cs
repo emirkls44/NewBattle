@@ -62,7 +62,6 @@ namespace NewBattle.Gameplay
         [SerializeField, Min(1)] private int placementAttempts = 24;
         [SerializeField, Min(0.05f)] private float obstacleCheckRadius = 0.45f;
         [SerializeField] private LayerMask obstacleLayerMask = ~0;
-        [SerializeField] private float groundRaycastHeight = 40f;
 
         [Header("Loot Tablosu")]
         [SerializeField] private LootEntry[] lootTable;
