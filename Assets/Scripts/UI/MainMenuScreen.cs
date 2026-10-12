@@ -96,6 +96,8 @@ namespace NewBattle.UI
         [Header("Mod")]
         [Tooltip("OYNA'ya basinca acilan oyun modu penceresi.")]
         [SerializeField] private ModeSelectPanel modePanel;
+        [Tooltip("Arkadas Ikilisi secilince acilan oda kur / kodla katil penceresi.")]
+        [SerializeField] private FriendRoomPopup friendRoomPopup;
         [Tooltip("Pencere yoksa OYNA dogrudan bu modla baslar.")]
         [SerializeField] private BattleGameMode defaultMode = BattleGameMode.Bots;
         [SerializeField] private string defaultModeLabel = "SOLO";
@@ -201,6 +203,13 @@ namespace NewBattle.UI
                 StartCoroutine(ShowPendingRewards());
 
             Music.Play("menu_muzigi");
+
+            // Onceki baglanti basarisiz olduysa (ornek: yanlis oda kodu) nedeni.
+            if (!string.IsNullOrEmpty(NetworkBootstrap.PendingMenuMessage))
+            {
+                ShowToast(NetworkBootstrap.PendingMenuMessage);
+                NetworkBootstrap.PendingMenuMessage = null;
+            }
         }
 
         private void Update()
@@ -484,7 +493,28 @@ namespace NewBattle.UI
         private void OnModePlayRequested(ModeSelectPanel.ModeOption option)
         {
             modePanel.Hide();
+
+            if (option.id == "arkadas_ikilisi" && friendRoomPopup != null)
+            {
+                friendRoomPopup.Open();
+                return;
+            }
+
             StartMatch(option.mode);
+        }
+
+        /// <summary>Arkadas Ikilisi: kodla oda kurar ya da var olan odaya katilir.</summary>
+        public void StartFriendRoom(bool createRoom, string code)
+        {
+            if (_bootstrap == null || _bootstrap.IsRunning)
+                return;
+
+            if (playButton != null)
+                playButton.interactable = false;
+
+            Music.Stop();
+            LoadingScreen.Show(loadingScreenPrefab, _bootstrap);
+            _bootstrap.StartFriendRoom(createRoom, code);
         }
 
         private void OnModeSelectionChanged(ModeSelectPanel.ModeOption option)

@@ -68,6 +68,17 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>Squad modunda (menude "Rastgele Ikili") bir takimdaki oyuncu sayisi.</summary>
     public const int SquadTeamSize = 2;
 
+    /// <summary>
+    /// Arkadas Ikilisi odasinin 4 haneli kodu; normal macta null. Sahne yeniden
+    /// yuklense de kalir (lobi ve harita ekrani okur).
+    /// </summary>
+    public static string FriendRoomCode { get; private set; }
+
+    public static bool IsFriendRoom => !string.IsNullOrEmpty(FriendRoomCode);
+
+    /// <summary>Baglanti basarisiz olup menuye donulunce gosterilecek mesaj (bir kez).</summary>
+    public static string PendingMenuMessage { get; set; }
+
     public int MatchCapacity
     {
         get
@@ -144,19 +155,30 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         StartMatchmaking(BattleGameMode.EveryoneSolo);
     }
 
-    public async void StartMatchmaking(BattleGameMode mode)
+    public void StartMatchmaking(BattleGameMode mode) => StartSession(mode, null, false);
+
+    /// <summary>
+    /// Arkadas Ikilisi: createRoom = true ise bu kodla gizli bir oda kurar
+    /// (rastgele oyuncular giremez); false ise SADECE var olan odaya katilir.
+    /// Ikisi ayni takima duser, kalan yerler botla dolar.
+    /// </summary>
+    public void StartFriendRoom(bool createRoom, string code) => StartSession(BattleGameMode.Squad, code, createRoom);
+
+    private async void StartSession(BattleGameMode mode, string friendCode, bool createFriendRoom)
     {
         if (_startRequested)
             return;
+
+        FriendRoomCode = string.IsNullOrEmpty(friendCode) ? null : friendCode;
 
         SelectedMode = mode;
         ActiveMode = mode;
         ActiveMapIndex = SelectedMapIndex;
         _startRequested = true;
         _runner.ProvideInput = true;
-        StatusChanged?.Invoke(mode == BattleGameMode.Bots
-            ? "BOT MACI HAZIRLANIYOR..."
-            : "ESLESME ARANIYOR...");
+        StatusChanged?.Invoke(IsFriendRoom
+            ? createFriendRoom ? $"ODA KURULUYOR...  KOD: {FriendRoomCode}" : $"ODAYA KATILINIYOR...  KOD: {FriendRoomCode}"
+            : mode == BattleGameMode.Bots ? "BOT MACI HAZIRLANIYOR..." : "ESLESME ARANIYOR...");
 
         // Harita listesi doluysa o haritanin sahnesini, degilse mevcut sahneyi
         // yukle. Boylece tek sahneli mevcut proje de calismaya devam eder.
@@ -182,7 +204,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         // odasini acar; Harita 2 secen oyuncu hicbir zaman Harita 1 odasina
         // dusmez. Oyuncu sayisini elle bolmeye gerek yok, dagitim kendiliginden
         // olusur.
-        Dictionary<string, SessionProperty> sessionProperties = isBotMode
+        Dictionary<string, SessionProperty> sessionProperties = isBotMode || IsFriendRoom
             ? null
             : new Dictionary<string, SessionProperty>
             {
@@ -192,16 +214,25 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 { "flow", 2 }
             };
 
+        // Arkadas odasi: kuran Host olur; katilan Client olarak SADECE var olan
+        // odaya baglanir (yanlis kodla yeni bos oda acilmasin). Oda gorunmez:
+        // rastgele eslestirme onu bulamaz.
+        GameMode gameMode = isBotMode ? GameMode.Single
+            : IsFriendRoom ? createFriendRoom ? GameMode.Host : GameMode.Client
+            : GameMode.AutoHostOrClient;
+
+        string session = isBotMode ? null
+            : IsFriendRoom ? $"NB_ARKADAS_{FriendRoomCode}_v2"
+            : useFixedSessionName ? $"{sessionName}_{mode}_{SelectedMapIndex}_{MatchCapacity}_v2" : null;
+
         StartGameResult result = await _runner.StartGame(new StartGameArgs
         {
-            GameMode = isBotMode ? GameMode.Single : GameMode.AutoHostOrClient,
-            SessionName = isBotMode
-                ? null
-                : useFixedSessionName ? $"{sessionName}_{mode}_{SelectedMapIndex}_{MatchCapacity}_v2" : null,
+            GameMode = gameMode,
+            SessionName = session,
             SessionProperties = sessionProperties,
             PlayerCount = isBotMode ? 1 : MatchCapacity,
             IsOpen = !isBotMode,
-            IsVisible = !isBotMode,
+            IsVisible = !isBotMode && !IsFriendRoom,
             Scene = sceneInfo,
             SceneManager = GetComponent<NetworkSceneManagerDefault>()
         });
@@ -209,6 +240,20 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         if (!result.Ok)
         {
             _startRequested = false;
+
+            if (IsFriendRoom)
+            {
+                // Yanlis kod / oda dolu / kod cakismasi. Basarisiz runner tekrar
+                // baslatilamaz: kisa bir mesajdan sonra menuyu temiz yeniden yukle.
+                string message = createFriendRoom ? "ODA KURULAMADI, TEKRAR DENE" : "ODA BULUNAMADI";
+                PendingMenuMessage = message;
+                StatusChanged?.Invoke(message);
+                ConnectionCompleted?.Invoke(false);
+                FriendRoomCode = null;
+                Invoke(nameof(ReloadMenu), 1.8f);
+                return;
+            }
+
             StatusChanged?.Invoke($"BAGLANTI HATASI: {result.ShutdownReason}");
             ConnectionCompleted?.Invoke(false);
             Debug.LogError(
@@ -223,6 +268,11 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             ConnectionCompleted?.Invoke(true);
             Debug.Log($"Photon started successfully. Mode: {_runner.GameMode}");
         }
+    }
+
+    private void ReloadMenu()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)

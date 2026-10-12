@@ -53,6 +53,8 @@ namespace NewBattle.UI
         [Header("Bekleme ve Geri Sayim")]
         [SerializeField] private TextMeshProUGUI waitingText;
         [SerializeField] private string waitingFormat = "Oyuncular bekleniyor...\n{0}";
+        [Tooltip("Arkadas Ikilisi odasinda: {0} = kalan saniye, {1} = oda kodu.")]
+        [SerializeField] private string friendWaitingFormat = "Arkadaşın bekleniyor... {0}\nODA KODU: {1}";
         [SerializeField] private RectTransform countdownGroup;
         [SerializeField] private TextMeshProUGUI countdownText;
 
@@ -257,7 +259,9 @@ namespace NewBattle.UI
                     string seconds = _lobby.CountdownRunning
                         ? Mathf.CeilToInt(_lobby.RemainingSeconds).ToString()
                         : string.Empty;
-                    waitingText.text = string.Format(waitingFormat, seconds);
+                    waitingText.text = NetworkBootstrap.IsFriendRoom
+                        ? string.Format(friendWaitingFormat, seconds, NetworkBootstrap.FriendRoomCode)
+                        : string.Format(waitingFormat, seconds);
                 }
             }
 

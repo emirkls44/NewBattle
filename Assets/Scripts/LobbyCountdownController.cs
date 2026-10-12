@@ -6,6 +6,8 @@ public class LobbyCountdownController : NetworkBehaviour
 {
     [SerializeField, Min(1f)] private float waitSeconds = 20f;
     [SerializeField, Min(1f)] private float finalCountdownSeconds = 3f;
+    [Tooltip("Arkadas Ikilisi odasinda arkadasin gelmesi icin en fazla bekleme (sonra botlarla baslar).")]
+    [SerializeField, Min(5f)] private float friendWaitSeconds = 120f;
     [Networked] public int ConnectedPlayers { get; private set; }
     [Networked] public int BotPlayers { get; private set; }
     [Networked] public int TotalContestants { get; private set; }
@@ -45,14 +47,17 @@ public class LobbyCountdownController : NetworkBehaviour
         }
         ConnectedPlayers = humans;
         if (humans == 0) return;
+        // Arkadas odasi: herkesi degil, sadece ikinci kisiyi (arkadasini) bekle.
+        bool friendRoom = NetworkBootstrap.IsFriendRoom;
+        int neededHumans = friendRoom ? Mathf.Min(Capacity, NetworkBootstrap.SquadTeamSize) : Capacity;
         if (!CountdownRunning)
         {
             CountdownRunning = true;
-            CountdownTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(1f, waitSeconds));
+            CountdownTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(1f, friendRoom ? friendWaitSeconds : waitSeconds));
         }
         if (!RosterFinalized)
         {
-            if (humans < Capacity && !CountdownTimer.Expired(Runner)) return;
+            if (humans < neededHumans && !CountdownTimer.Expired(Runner)) return;
             _bootstrap.RosterLocked = true;
             if (Runner.SessionInfo.IsValid)
             {

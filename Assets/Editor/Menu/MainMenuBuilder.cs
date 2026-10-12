@@ -225,6 +225,9 @@ namespace NewBattle.EditorTools
             if (screen != null && EnsureGiftCodeUi(screen))
                 added.Add("Hediye kodu (Ayarlar)");
 
+            if (screen != null && EnsureFriendRoom(screen))
+                added.Add("Arkadaş İkilisi (oda kur / kodla katıl)");
+
             if (EnsureGiftCodeCatalog(out _))
                 added.Add("Hediye kodları (Assets/Resources/HediyeKodlari)");
 
