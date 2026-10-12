@@ -130,6 +130,11 @@ namespace NewBattle.EditorTools
                 changed = true;
             }
 
+            // Sahnede (ve Play'e basmadan) gorunmez dursun: sadece mac oynanirken
+            // WeaponDisplayHUD acar. Yoksa menude resimsiz beyaz kare + "30" gorunuyordu.
+            if (HideWeaponDisplayByDefault(display, sprites))
+                changed = true;
+
             // Eski sag ust silah kutulari: yerini yeni gosterge aldi.
             CombatLoadoutHUD oldHud = Object.FindFirstObjectByType<CombatLoadoutHUD>(FindObjectsInactive.Include);
             if (oldHud != null)
@@ -148,6 +153,40 @@ namespace NewBattle.EditorTools
                     oldHud.enabled = false;
                     changed = true;
                 }
+            }
+
+            return changed;
+        }
+
+        private static bool HideWeaponDisplayByDefault(WeaponDisplayHUD display, Sprite[] sprites)
+        {
+            bool changed = false;
+
+            CanvasGroup group = display.GetComponent<CanvasGroup>();
+            if (group == null)
+            {
+                group = Undo.AddComponent<CanvasGroup>(display.gameObject);
+                changed = true;
+            }
+
+            if (group.alpha > 0f || group.blocksRaycasts || group.interactable)
+            {
+                Undo.RecordObject(group, "Silah gostergesi gizli");
+                group.alpha = 0f;
+                group.blocksRaycasts = false;
+                group.interactable = false;
+                changed = true;
+            }
+
+            // Ornek resim: beyaz kare yerine yumruk.
+            var serialized = new SerializedObject(display);
+            var icon = serialized.FindProperty("icon").objectReferenceValue as Image;
+            Sprite fist = sprites.Length > 0 ? sprites[0] : null;
+            if (icon != null && icon.sprite == null && fist != null)
+            {
+                Undo.RecordObject(icon, "Silah gostergesi resmi");
+                icon.sprite = fist;
+                changed = true;
             }
 
             return changed;
