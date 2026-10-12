@@ -503,8 +503,11 @@ namespace NewBattle.UI
             StartMatch(option.mode);
         }
 
-        /// <summary>Arkadas Ikilisi: kodla oda kurar ya da var olan odaya katilir.</summary>
-        public void StartFriendRoom(bool createRoom, string code)
+        /// <summary>
+        /// Arkadas Ikilisi: kodla oda kurar ya da var olan odaya katilir.
+        /// openToMatchmaking: arkadas gelince gercek oyuncularla eslestir (parti).
+        /// </summary>
+        public void StartFriendRoom(bool createRoom, string code, bool openToMatchmaking = false)
         {
             if (_bootstrap == null || _bootstrap.IsRunning)
                 return;
@@ -514,7 +517,7 @@ namespace NewBattle.UI
 
             Music.Stop();
             LoadingScreen.Show(loadingScreenPrefab, _bootstrap);
-            _bootstrap.StartFriendRoom(createRoom, code);
+            _bootstrap.StartFriendRoom(createRoom, code, openToMatchmaking);
         }
 
         private void OnModeSelectionChanged(ModeSelectPanel.ModeOption option)

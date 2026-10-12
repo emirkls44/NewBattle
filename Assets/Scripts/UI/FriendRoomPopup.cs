@@ -9,6 +9,9 @@ namespace NewBattle.UI
     /// ARKADAŞ İKİLİSİ penceresi:
     ///   - ODA KUR: 4 haneli kod uretir, gizli oda acar. Kodu arkadasina soyle.
     ///   - KODLA KATIL: arkadasinin kodunu yaz, onun odasina gir.
+    ///   - GERÇEK OYUNCULAR (parti): aciksa arkadasin gelince oda rastgele
+    ///     eslestirmeye acilir; "Rastgele Ikili" arayanlar da girer. Kapaliysa
+    ///     sadece ikiniz + botlar. Secimi odayi kuran yapar, hatirlanir.
     /// Ikiniz ayni takimda olursunuz; kalan yerler botla dolar.
     /// Mod penceresinde Arkadas Ikilisi secilip CEVRIMICI OYNA'ya basilinca acilir.
     /// </summary>
@@ -21,6 +24,17 @@ namespace NewBattle.UI
         [SerializeField] private Button joinButton;
         [SerializeField] private TextMeshProUGUI hintText;
         [SerializeField] private Button closeButton;
+
+        [Header("Parti: gercek oyuncularla eslesme")]
+        [SerializeField] private Button matchmakingButton;
+        [SerializeField] private TextMeshProUGUI matchmakingLabel;
+        [SerializeField] private Image matchmakingFace;
+        [SerializeField] private string matchmakingOnText = "GERÇEK OYUNCULARLA EŞLEŞ: AÇIK";
+        [SerializeField] private string matchmakingOffText = "SADECE BOTLARLA OYNA";
+        [SerializeField] private Color matchmakingOnColor = new(0.36f, 0.77f, 0.22f, 1f);
+        [SerializeField] private Color matchmakingOffColor = new(0.55f, 0.55f, 0.6f, 1f);
+
+        private const string MatchmakingPrefKey = "nb_party_matchmaking";
         [SerializeField] private MainMenuScreen menu;
         [SerializeField] private Color errorColor = new(1f, 0.45f, 0.4f, 1f);
 
@@ -60,6 +74,37 @@ namespace NewBattle.UI
                 joinButton.onClick.AddListener(Join);
             if (closeButton != null)
                 closeButton.onClick.AddListener(Close);
+            if (matchmakingButton != null)
+                matchmakingButton.onClick.AddListener(ToggleMatchmaking);
+        }
+
+        /// <summary>Odayi kuran gercek oyuncularla eslesmek istiyor mu (varsayilan: evet).</summary>
+        private static bool OpenToMatchmaking
+        {
+            get => PlayerPrefs.GetInt(MatchmakingPrefKey, 1) == 1;
+            set
+            {
+                PlayerPrefs.SetInt(MatchmakingPrefKey, value ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+        }
+
+        private void ToggleMatchmaking()
+        {
+            OpenToMatchmaking = !OpenToMatchmaking;
+            RefreshMatchmaking();
+            SetHint(OpenToMatchmaking
+                ? "Arkadaşın gelince gerçek oyuncular da katılabilir"
+                : "Sadece ikiniz ve botlar oynayacak", false);
+        }
+
+        private void RefreshMatchmaking()
+        {
+            bool on = OpenToMatchmaking;
+            if (matchmakingLabel != null)
+                matchmakingLabel.text = on ? matchmakingOnText : matchmakingOffText;
+            if (matchmakingFace != null)
+                matchmakingFace.color = on ? matchmakingOnColor : matchmakingOffColor;
         }
 
         public void Open()
@@ -75,6 +120,7 @@ namespace NewBattle.UI
                 codeInput.text = string.Empty;
 
             SetHint("Arkadaşınla aynı takımda oyna!", false);
+            RefreshMatchmaking();
         }
 
         public void Close() => gameObject.SetActive(false);
@@ -84,7 +130,7 @@ namespace NewBattle.UI
             string code = Random.Range(1000, 10000).ToString();
             Close();
             if (menu != null)
-                menu.StartFriendRoom(true, code);
+                menu.StartFriendRoom(true, code, OpenToMatchmaking);
         }
 
         private void Join()

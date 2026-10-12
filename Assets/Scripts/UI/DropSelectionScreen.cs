@@ -259,7 +259,7 @@ namespace NewBattle.UI
                     string seconds = _lobby.CountdownRunning
                         ? Mathf.CeilToInt(_lobby.RemainingSeconds).ToString()
                         : string.Empty;
-                    waitingText.text = NetworkBootstrap.IsFriendRoom
+                    waitingText.text = NetworkBootstrap.IsFriendRoom && !_lobby.PartyOpened
                         ? string.Format(friendWaitingFormat, seconds, NetworkBootstrap.FriendRoomCode)
                         : string.Format(waitingFormat, seconds);
                 }

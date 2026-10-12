@@ -15,6 +15,12 @@ public class LobbyCountdownController : NetworkBehaviour
     [Networked] public NetworkBool CountdownRunning { get; private set; }
     [Networked] public NetworkBool RosterFinalized { get; private set; }
     [Networked] public NetworkBool MatchStarted { get; private set; }
+
+    /// <summary>
+    /// Parti odasi arkadas gelince rastgele eslestirmeye acildi mi. Acildiktan sonra
+    /// bekleme ekrani "Arkadasin bekleniyor" yerine "Oyuncular bekleniyor" yazar.
+    /// </summary>
+    [Networked] public NetworkBool PartyOpened { get; private set; }
     [Networked] private TickTimer CountdownTimer { get; set; }
     private NetworkBootstrap _bootstrap;
     private TrainingBotSpawner _spawner;
@@ -31,6 +37,7 @@ public class LobbyCountdownController : NetworkBehaviour
         CountdownRunning = false;
         RosterFinalized = false;
         MatchStarted = false;
+        PartyOpened = false;
         CountdownTimer = default;
         ConnectedPlayers = BotPlayers = TotalContestants = 0;
     }
@@ -47,13 +54,32 @@ public class LobbyCountdownController : NetworkBehaviour
         }
         ConnectedPlayers = humans;
         if (humans == 0) return;
-        // Arkadas odasi: herkesi degil, sadece ikinci kisiyi (arkadasini) bekle.
         bool friendRoom = NetworkBootstrap.IsFriendRoom;
-        int neededHumans = friendRoom ? Mathf.Min(Capacity, NetworkBootstrap.SquadTeamSize) : Capacity;
+
+        // Parti: arkadas geldi, odayi rastgele eslestirmeye ac. Bundan sonra normal
+        // eslestirme gibi davranir: dolana ya da sure bitene kadar bekler, sonra bot.
+        // Takimlar giris sirasiyla dolar; ilk iki kisi (siz) zaten ayni takimda.
+        if (friendRoom && NetworkBootstrap.FriendRoomPublic && !PartyOpened && !RosterFinalized &&
+            humans >= Mathf.Min(Capacity, NetworkBootstrap.SquadTeamSize))
+        {
+            PartyOpened = true;
+            if (Runner.SessionInfo.IsValid)
+            {
+                Runner.SessionInfo.IsOpen = true;
+                Runner.SessionInfo.IsVisible = true;
+            }
+
+            CountdownRunning = true;
+            CountdownTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(1f, waitSeconds));
+        }
+
+        // Arkadas odasi (parti acilmadan once): herkesi degil, sadece arkadasini bekle.
+        bool waitingForFriend = friendRoom && !PartyOpened;
+        int neededHumans = waitingForFriend ? Mathf.Min(Capacity, NetworkBootstrap.SquadTeamSize) : Capacity;
         if (!CountdownRunning)
         {
             CountdownRunning = true;
-            CountdownTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(1f, friendRoom ? friendWaitSeconds : waitSeconds));
+            CountdownTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(1f, waitingForFriend ? friendWaitSeconds : waitSeconds));
         }
         if (!RosterFinalized)
         {

@@ -76,6 +76,14 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
 
     public static bool IsFriendRoom => !string.IsNullOrEmpty(FriendRoomCode);
 
+    /// <summary>
+    /// Parti: arkadas odasini kuran "gercek oyuncularla eslesi" sectiyse true.
+    /// Arkadasin girince host odayi rastgele eslestirmeye acar (LobbyCountdownController);
+    /// "Rastgele Ikili" arayan oyuncular odaya duser, siz ikiniz ayni takimda kalirsiniz.
+    /// Sadece odayi kuranda (host) anlamlidir.
+    /// </summary>
+    public static bool FriendRoomPublic { get; private set; }
+
     /// <summary>Baglanti basarisiz olup menuye donulunce gosterilecek mesaj (bir kez).</summary>
     public static string PendingMenuMessage { get; set; }
 
@@ -162,14 +170,16 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// (rastgele oyuncular giremez); false ise SADECE var olan odaya katilir.
     /// Ikisi ayni takima duser, kalan yerler botla dolar.
     /// </summary>
-    public void StartFriendRoom(bool createRoom, string code) => StartSession(BattleGameMode.Squad, code, createRoom);
+    public void StartFriendRoom(bool createRoom, string code, bool openToMatchmaking = false) =>
+        StartSession(BattleGameMode.Squad, code, createRoom, createRoom && openToMatchmaking);
 
-    private async void StartSession(BattleGameMode mode, string friendCode, bool createFriendRoom)
+    private async void StartSession(BattleGameMode mode, string friendCode, bool createFriendRoom, bool openToMatchmaking = false)
     {
         if (_startRequested)
             return;
 
         FriendRoomCode = string.IsNullOrEmpty(friendCode) ? null : friendCode;
+        FriendRoomPublic = IsFriendRoom && openToMatchmaking;
 
         SelectedMode = mode;
         ActiveMode = mode;
@@ -204,7 +214,10 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         // odasini acar; Harita 2 secen oyuncu hicbir zaman Harita 1 odasina
         // dusmez. Oyuncu sayisini elle bolmeye gerek yok, dagitim kendiliginden
         // olusur.
-        Dictionary<string, SessionProperty> sessionProperties = isBotMode || IsFriendRoom
+        // Parti odasi (gercek oyuncularla eslesen arkadas odasi) da ayni ozellikleri
+        // tasir: arkadas gelip oda gorunur yapilinca rastgele eslestirme onu bulabilsin.
+        bool matchmakingProperties = !isBotMode && (!IsFriendRoom || FriendRoomPublic);
+        Dictionary<string, SessionProperty> sessionProperties = !matchmakingProperties
             ? null
             : new Dictionary<string, SessionProperty>
             {
@@ -250,6 +263,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 StatusChanged?.Invoke(message);
                 ConnectionCompleted?.Invoke(false);
                 FriendRoomCode = null;
+                FriendRoomPublic = false;
                 Invoke(nameof(ReloadMenu), 1.8f);
                 return;
             }

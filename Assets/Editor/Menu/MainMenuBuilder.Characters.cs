@@ -337,7 +337,40 @@ namespace NewBattle.EditorTools
                 changed = true;
             }
 
+            if (popupProperty.objectReferenceValue is FriendRoomPopup friendPopup && EnsurePartyMatchmakingButton(friendPopup))
+                changed = true;
+
             return changed;
+        }
+
+        /// <summary>
+        /// Arkadas Ikilisi penceresinin altina "GERÇEK OYUNCULARLA EŞLEŞ" acma/kapama dugmesi
+        /// (parti: arkadasin gelince oda rastgele eslestirmeye acilir). Yoksa ekler.
+        /// </summary>
+        private static bool EnsurePartyMatchmakingButton(FriendRoomPopup popup)
+        {
+            var serialized = new SerializedObject(popup);
+            SerializedProperty buttonProperty = serialized.FindProperty("matchmakingButton");
+            if (buttonProperty == null || buttonProperty.objectReferenceValue != null)
+                return false;
+
+            var window = popup.transform.Find("Pencere") as RectTransform;
+            if (window == null)
+                return false;
+
+            Vector2 bottom = new(0.5f, 0f);
+            Button toggle = AddButton(window, "GercekOyuncularButonu", bottom, new Vector2(0.5f, 0f),
+                new Vector2(0f, 34f), new Vector2(720f, 76f), Green, GreenLip, lipHeight: 6f);
+            Undo.RegisterCreatedObjectUndo(toggle.gameObject, "Parti eslesme dugmesi");
+            TextMeshProUGUI label = AddText(Face(toggle), "Yazi", "GERÇEK OYUNCULARLA EŞLEŞ: AÇIK", 34f, Color.white,
+                TextAlignmentOptions.Center, shadow: true);
+            Stretch(label.rectTransform, 16f, 16f, 0f, 4f);
+
+            buttonProperty.objectReferenceValue = toggle;
+            serialized.FindProperty("matchmakingLabel").objectReferenceValue = label;
+            serialized.FindProperty("matchmakingFace").objectReferenceValue = Face(toggle).GetComponent<Image>();
+            serialized.ApplyModifiedProperties();
+            return true;
         }
 
         private static FriendRoomPopup BuildFriendRoomPopup(RectTransform menuRoot, MainMenuScreen menu)
