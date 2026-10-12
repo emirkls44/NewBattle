@@ -561,6 +561,58 @@ MonoBehaviour:
     heldMesh: {fileID: 4300000, guid: 8ad339b610682814283d2bfadb52cc41, type: 2}
     shakeStrength: 0.18
     fireSound: 
+  - label: Tabanca
+    isMelee: 0
+    damage: 18
+    fireInterval: 0.32
+    range: 28
+    pellets: 1
+    spreadAngle: 2
+    maxAmmo: 60
+    infiniteAmmo: 0
+    tracerColor: {r: 1, g: 0.93, b: 0.55, a: 1}
+    heldMesh: {fileID: 4300000, guid: f8eed5d294e5e974f95134b9d8fd8fe2, type: 2}
+    shakeStrength: 0.12
+    fireSound: ates_tabanca
+  - label: Hafif Makineli
+    isMelee: 0
+    damage: 10
+    fireInterval: 0.09
+    range: 24
+    pellets: 1
+    spreadAngle: 4
+    maxAmmo: 150
+    infiniteAmmo: 0
+    tracerColor: {r: 1, g: 0.93, b: 0.55, a: 1}
+    heldMesh: {fileID: 4300000, guid: 396d0accb30964347b1adcba4d946b61, type: 2}
+    shakeStrength: 0.08
+    fireSound: ates_tufek
+  - label: Pompali
+    isMelee: 0
+    damage: 11
+    fireInterval: 0.85
+    range: 14
+    pellets: 6
+    spreadAngle: 14
+    maxAmmo: 36
+    infiniteAmmo: 0
+    tracerColor: {r: 1, g: 0.93, b: 0.55, a: 1}
+    heldMesh: {fileID: 4300000, guid: dd360a7fa30f6df4f83c91ed12912073, type: 2}
+    shakeStrength: 0.35
+    fireSound: ates_pompali
+  - label: Keskin Nisanci
+    isMelee: 0
+    damage: 70
+    fireInterval: 1.4
+    range: 55
+    pellets: 1
+    spreadAngle: 0.2
+    maxAmmo: 20
+    infiniteAmmo: 0
+    tracerColor: {r: 0.75, g: 0.92, b: 1, a: 1}
+    heldMesh: {fileID: 4300000, guid: 62287921ff2ab074989500537d5744b5, type: 2}
+    shakeStrength: 0.45
+    fireSound: ates_agir
   meleeHitLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -688,9 +740,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLoadout
   rifleVisual: {fileID: 2132539817856472277}
   _WeaponId: 0
-  _Ammo: 0
-  _HasRangedWeapon:
-    _value: 0
+  _ActiveSlot: 0
 --- !u!114 &6351197541509066542
 MonoBehaviour:
   m_ObjectHideFlags: 0
