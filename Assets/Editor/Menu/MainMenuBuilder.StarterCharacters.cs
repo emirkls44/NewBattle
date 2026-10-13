@@ -42,10 +42,16 @@ namespace NewBattle.EditorTools
 
             foreach (StarterSpec spec in StarterSpecs)
             {
-                if (library.Find(spec.Id) != null)
-                    continue;
-
                 string modelPath = $"{spec.Folder}/{spec.File}.fbx";
+
+                // Var olan karakterde de: kemik eslestirmesi elle yapilmamissa yap.
+                if (library.Find(spec.Id) != null)
+                {
+                    if (AssetDatabase.LoadAssetAtPath<GameObject>(modelPath) != null && PrepareStarterModel(modelPath))
+                        added.Add($"{spec.Name}: kemik eşleştirmesi düzeltildi");
+                    continue;
+                }
+
                 if (AssetDatabase.LoadAssetAtPath<GameObject>(modelPath) == null)
                 {
                     Debug.LogError($"Karakter modeli yok: {modelPath}");
@@ -86,21 +92,134 @@ namespace NewBattle.EditorTools
             return string.Join(", ", added);
         }
 
-        /// <summary>Humanoid, animasyonsuz; FBX'e gomulu 8K doku/materyal ice aktarilmaz (kendi materyalimiz var).</summary>
-        private static void PrepareStarterModel(string path)
+        /// <summary>
+        /// Humanoid, animasyonsuz; FBX'e gomulu 8K doku/materyal ice aktarilmaz (kendi materyalimiz var).
+        ///
+        /// Kemik eslestirmesi ELLE yapilir: Unity'nin otomatik eslestirmesi Meshy SmartRig
+        /// iskeletinde (headfront, Bone_0xx gibi fazladan kemikler, SmartRigArmature koku)
+        /// karakteri yana donuk ve one egik gosteriyordu. Model dosyasi kusursuz T-pozda;
+        /// referans poz dogrudan ondan alinir. Degisiklik yaptiysa true.
+        /// </summary>
+        private static bool PrepareStarterModel(string path)
         {
             if (AssetImporter.GetAtPath(path) is not ModelImporter importer)
-                return;
+                return false;
 
+            bool mapped = importer.humanDescription.human != null && importer.humanDescription.human.Length > 0;
             if (importer.animationType == ModelImporterAnimationType.Human && !importer.importAnimation &&
-                importer.materialImportMode == ModelImporterMaterialImportMode.None)
-                return;
+                importer.materialImportMode == ModelImporterMaterialImportMode.None && mapped)
+                return false;
 
             importer.animationType = ModelImporterAnimationType.Human;
             importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
             importer.importAnimation = false;
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
+
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            HumanDescription description = importer.humanDescription;
+            if (model != null && BuildSmartRigHuman(model, ref description, out int boneCount))
+            {
+                importer.humanDescription = description;
+                Debug.Log($"{model.name}: Humanoid kemik eslestirmesi elle yapildi ({boneCount} kemik).");
+            }
+
             importer.SaveAndReimport();
+
+            Avatar avatar = LoadAvatar(path);
+            Debug.Log($"{System.IO.Path.GetFileNameWithoutExtension(path)} avatari: " +
+                      (avatar == null ? "YOK" : $"Humanoid={avatar.isHuman}, Gecerli={avatar.isValid}"));
+            return true;
+        }
+
+        /// <summary>Unity Humanoid adi -> SmartRig/Mixamo kemik adi (onek haric).</summary>
+        private static readonly (string human, string bone)[] SmartRigMap =
+        {
+            ("Hips", "Hips"), ("Spine", "Spine"), ("Chest", "Spine1"), ("UpperChest", "Spine2"),
+            ("Neck", "Neck"), ("Head", "Head"),
+            ("LeftShoulder", "LeftShoulder"), ("LeftUpperArm", "LeftArm"), ("LeftLowerArm", "LeftForeArm"), ("LeftHand", "LeftHand"),
+            ("RightShoulder", "RightShoulder"), ("RightUpperArm", "RightArm"), ("RightLowerArm", "RightForeArm"), ("RightHand", "RightHand"),
+            ("LeftUpperLeg", "LeftUpLeg"), ("LeftLowerLeg", "LeftLeg"), ("LeftFoot", "LeftFoot"), ("LeftToes", "LeftToeBase"),
+            ("RightUpperLeg", "RightUpLeg"), ("RightLowerLeg", "RightLeg"), ("RightFoot", "RightFoot"), ("RightToes", "RightToeBase"),
+            ("Left Thumb Proximal", "LeftHandThumb1"), ("Left Thumb Intermediate", "LeftHandThumb2"), ("Left Thumb Distal", "LeftHandThumb3"),
+            ("Left Index Proximal", "LeftHandIndex1"), ("Left Index Intermediate", "LeftHandIndex2"), ("Left Index Distal", "LeftHandIndex3"),
+            ("Left Middle Proximal", "LeftHandMiddle1"), ("Left Middle Intermediate", "LeftHandMiddle2"), ("Left Middle Distal", "LeftHandMiddle3"),
+            ("Left Ring Proximal", "LeftHandRing1"), ("Left Ring Intermediate", "LeftHandRing2"), ("Left Ring Distal", "LeftHandRing3"),
+            ("Left Little Proximal", "LeftHandPinky1"), ("Left Little Intermediate", "LeftHandPinky2"), ("Left Little Distal", "LeftHandPinky3"),
+            ("Right Thumb Proximal", "RightHandThumb1"), ("Right Thumb Intermediate", "RightHandThumb2"), ("Right Thumb Distal", "RightHandThumb3"),
+            ("Right Index Proximal", "RightHandIndex1"), ("Right Index Intermediate", "RightHandIndex2"), ("Right Index Distal", "RightHandIndex3"),
+            ("Right Middle Proximal", "RightHandMiddle1"), ("Right Middle Intermediate", "RightHandMiddle2"), ("Right Middle Distal", "RightHandMiddle3"),
+            ("Right Ring Proximal", "RightHandRing1"), ("Right Ring Intermediate", "RightHandRing2"), ("Right Ring Distal", "RightHandRing3"),
+            ("Right Little Proximal", "RightHandPinky1"), ("Right Little Intermediate", "RightHandPinky2"), ("Right Little Distal", "RightHandPinky3"),
+        };
+
+        /// <summary>
+        /// Model hiyerarsisinden HumanDescription kurar: eslestirme = SmartRigMap (bulunanlar),
+        /// iskelet = modelin dinlenme (T) pozu. Zorunlu kemiklerden biri yoksa false.
+        /// </summary>
+        private static bool BuildSmartRigHuman(GameObject model, ref HumanDescription description, out int boneCount)
+        {
+            boneCount = 0;
+            Transform[] transforms = model.GetComponentsInChildren<Transform>(true);
+
+            Transform FindBone(string name)
+            {
+                foreach (Transform t in transforms)
+                {
+                    string plain = t.name;
+                    int colon = plain.LastIndexOf(':');
+                    if (colon >= 0)
+                        plain = plain.Substring(colon + 1);
+                    if (plain == name)
+                        return t;
+                }
+
+                return null;
+            }
+
+            var human = new System.Collections.Generic.List<HumanBone>();
+            foreach ((string humanName, string boneName) in SmartRigMap)
+            {
+                Transform bone = FindBone(boneName);
+                if (bone == null)
+                    continue;
+
+                var entry = new HumanBone { humanName = humanName, boneName = bone.name };
+                entry.limit.useDefaultValues = true;
+                human.Add(entry);
+            }
+
+            string[] required =
+            {
+                "Hips", "Spine", "Head", "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm",
+                "RightHand", "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot"
+            };
+            foreach (string name in required)
+            {
+                if (!human.Exists(h => h.humanName == name))
+                {
+                    Debug.LogError($"{model.name}: zorunlu kemik bulunamadi ({name}); otomatik eslestirme kullanilacak.");
+                    return false;
+                }
+            }
+
+            var skeleton = new SkeletonBone[transforms.Length];
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform t = transforms[i];
+                skeleton[i] = new SkeletonBone
+                {
+                    name = t.name,
+                    position = t.localPosition,
+                    rotation = t.localRotation,
+                    scale = t.localScale
+                };
+            }
+
+            description.human = human.ToArray();
+            description.skeleton = skeleton;
+            description.hasTranslationDoF = false;
+            boneCount = human.Count;
+            return true;
         }
 
         /// <summary>Karakter materyalinin kopyasi + karakterin dokusu (melekle ayni tarz).</summary>
