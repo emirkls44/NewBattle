@@ -68,6 +68,8 @@ namespace NewBattle.UI
         private Tab _tab = Tab.Characters;
         private bool _initialized;
         private bool _opening;
+        private Vector2 _viewBasePosition;
+        private Vector3 _viewBaseScale = Vector3.one;
 
         public bool IsOpen => gameObject.activeSelf;
 
@@ -94,6 +96,19 @@ namespace NewBattle.UI
                 animationsTab.onClick.AddListener(() => SwitchTab(Tab.Animations));
             if (cardTemplate != null)
                 cardTemplate.gameObject.SetActive(false);
+
+            if (characterView != null)
+            {
+                RectTransform view = characterView.rectTransform;
+                _viewBasePosition = view.anchoredPosition;
+                _viewBaseScale = view.localScale;
+
+                // Karakter burada da surukleyerek donsun (menudeki sahneyi dondurur).
+                characterView.raycastTarget = true;
+                if (!characterView.TryGetComponent(out CharacterDragForwarder forwarder))
+                    forwarder = characterView.gameObject.AddComponent<CharacterDragForwarder>();
+                forwarder.Stage = characterStage;
+            }
         }
 
         private void Awake()
@@ -161,6 +176,19 @@ namespace NewBattle.UI
 
             if (characterAspect != null && texture != null && texture.height > 0)
                 characterAspect.aspectRatio = texture.width / (float)texture.height;
+
+            // Konum / boyut: KarakterKutuphanesi > Karakter Ekrani Gorunumu (Play'de canli).
+            CharacterLibrary characters = Characters;
+            if (characters != null)
+            {
+                RectTransform view = characterView.rectTransform;
+                Vector2 position = _viewBasePosition + characters.characterScreenOffset;
+                Vector3 scale = _viewBaseScale * characters.characterScreenScale;
+                if (view.anchoredPosition != position)
+                    view.anchoredPosition = position;
+                if (view.localScale != scale)
+                    view.localScale = scale;
+            }
         }
 
         private void SwitchTab(Tab tab)

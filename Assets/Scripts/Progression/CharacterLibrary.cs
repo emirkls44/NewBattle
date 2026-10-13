@@ -83,6 +83,13 @@ namespace NewBattle.Progression
         [SerializeField] private string defaultCharacterId = "ahmet";
         [SerializeField] private List<CharacterDefinition> characters = new();
 
+        [Header("Karakter Ekrani Gorunumu")]
+        [Tooltip("Karakter ekranindaki (Karakterler / Animasyonlar) karakter resmini kaydirir " +
+                 "(piksel, 1920x1080 olcusunde): x saga +, y yukari +. Play'de degistirince aninda gorunur, kalici.")]
+        public Vector2 characterScreenOffset;
+        [Tooltip("Karakter ekranindaki karakter resminin boyutu.")]
+        [Range(0.5f, 2f)] public float characterScreenScale = 1f;
+
         private static CharacterLibrary _instance;
 
         public static CharacterLibrary Instance
