@@ -8,7 +8,7 @@ namespace NewBattle.EditorTools
 {
     /// <summary>
     /// Ana menu: karakterin bastigi zemin. Hepsi elle ayarlanabilir:
-    ///   - Hierarchy > MenuKarakterSahnesi > Zemin: tasi / olcekle / dondur
+    ///   - Hierarchy > MenuKarakterSahnesi > KarakterZemini: tasi / olcekle / dondur
     ///     (modeli istersen MeshFilter'dan baska bir sekille degistir)
     ///   - Assets/GameArt/Materials/MenuZemin: rengi (Tint), golgesi, parlakligi
     ///   - MenuCharacterStage > Zemin / Ayak Golgesi: ayaklari oturtma, gomulme,
@@ -19,6 +19,8 @@ namespace NewBattle.EditorTools
     {
         private const string GroundMeshPath = "Assets/GameArt/Meshes/MenuZeminPanel.asset";
         private const int GroundVersion = 2;          // 2 = duz dikdortgen panel
+        // "Zemin" adli baska UI parcalari da var; Hierarchy aramasinda karismasin.
+        private const string GroundObjectName = "KarakterZemini";
         private const float PanelWidth = 1.5f;        // karakter boyuna oran
         private const float PanelDepth = 0.85f;
         private const float DefaultPitch = 18f;
@@ -55,6 +57,15 @@ namespace NewBattle.EditorTools
                 }
             }
 
+            // Eski ad "Zemin" idi (UI'daki ayni adli parcalarla karisiyordu).
+            if (stage != null && new SerializedObject(stage).FindProperty("ground").objectReferenceValue is Renderer named &&
+                named.name == "Zemin")
+            {
+                Undo.RecordObject(named.gameObject, "Zemin adi");
+                named.gameObject.name = GroundObjectName;
+                changed = true;
+            }
+
             // Eski duz golge resmi: golgeyi artik zemin veriyor.
             Transform oldShadow = screen.transform.Find("OrtaAlan/KarakterGolgesi");
             if (oldShadow != null && oldShadow.gameObject.activeSelf)
@@ -83,7 +94,7 @@ namespace NewBattle.EditorTools
                     height = bounds.size.y;
             }
 
-            var groundObject = new GameObject("Zemin") { layer = turntable.gameObject.layer };
+            var groundObject = new GameObject(GroundObjectName) { layer = turntable.gameObject.layer };
             Undo.RegisterCreatedObjectUndo(groundObject, "Menu zemini");
             groundObject.transform.SetParent(stageRoot, false);
             groundObject.transform.position = turntable.position;

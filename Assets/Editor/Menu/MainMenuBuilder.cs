@@ -183,7 +183,7 @@ namespace NewBattle.EditorTools
                 added.Add("Maç içi his: " + feel);
 
             if (screen != null && EnsureMenuGround(screen))
-                added.Add("Ana menü: karakterin altına zemin (Hierarchy > MenuKarakterSahnesi > Zemin)");
+                added.Add("Ana menü: karakterin altına zemin (Hierarchy > MenuKarakterSahnesi > KarakterZemini)");
 
             if (EnsureWeaponSettings())
                 added.Add("Silah Ayarları (Resources/SilahAyarlari: nadirlik + olasılıklar)");

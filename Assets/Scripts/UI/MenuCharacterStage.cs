@@ -49,7 +49,7 @@ namespace NewBattle.UI
         [SerializeField, Min(0f)] private float returnDelay = 1.5f;
 
         [Header("Zemin (karakterin bastigi yer)")]
-        [Tooltip("Sahnedeki zemin objesi (MenuKarakterSahnesi/Zemin). Hierarchy'den tasi, olcekle, " +
+        [Tooltip("Sahnedeki zemin objesi (MenuKarakterSahnesi/KarakterZemini). Hierarchy'den tasi, olcekle, " +
                  "dondur; rengini materyalinden (Assets/GameArt/Materials/MenuZemin) degistir. Bos = zemin yok.")]
         [SerializeField] private Renderer ground;
         [Tooltip("Acikken karakterin ayaklari zeminin ust yuzeyine oturtulur.")]
