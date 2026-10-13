@@ -2,10 +2,23 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+/// <summary>
+/// Ekran joystick'i. Dokunma alani (touchZone) atanmissa "yuzen" joystick olur:
+/// alanin icinde nereye dokunulursa joystick parmagin altinda belirir, birakinca
+/// dinlenme yerine soluk olarak doner. Kur: sol yarinin alti hareket, sag yarinin
+/// alti saldiri (HareketAlani / SaldiriAlani).
+/// </summary>
 [RequireComponent(typeof(RectTransform), typeof(Image))]
-public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, IPointerDownHandler
+public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, IPointerDownHandler,
+    IInitializePotentialDragHandler
 {
     [SerializeField, Range(0.1f, 1f)] private float handleRange = 0.65f;
+
+    [Header("Yuzen Joystick")]
+    [Tooltip("Bu alanin icinde nereye dokunulursa joystick oraya gelir. Bossa joystick sabit durur.")]
+    [SerializeField] private RectTransform touchZone;
+    [Tooltip("Dokunulmazken joystick'in saydamligi (dinlenme yerinde).")]
+    [SerializeField, Range(0f, 1f)] private float idleAlpha = 0.45f;
 
     [Header("Gorsel Stil")]
     [Tooltip("Acikken arka plan ve top yuvarlak cizilir; asagidaki renkler kullanilir.")]
@@ -19,6 +32,11 @@ public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, I
 
     private RectTransform _backgroundRect;
     private RectTransform _handleRect;
+    private CanvasGroup _group;
+    private Vector2 _restPosition;
+    private bool _touching;
+
+    public bool IsFloating => touchZone != null;
 
     private static Texture2D _circleTexture;
     private static Sprite _circleSprite;
@@ -48,7 +66,79 @@ public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, I
         if (applyBattleRoyaleStyle)
             ApplyVisualStyle();
 
+        _restPosition = _backgroundRect.anchoredPosition;
+
+        if (IsFloating)
+        {
+            // Dokunuslari alan alir; joystick'in kendisi isini engellemesin.
+            if (TryGetComponent(out Image background))
+                background.raycastTarget = false;
+
+            _group = GetComponent<CanvasGroup>();
+            if (_group == null)
+                _group = gameObject.AddComponent<CanvasGroup>();
+            _group.blocksRaycasts = false;
+            _group.alpha = idleAlpha;
+
+            FloatingJoystickZone zone = touchZone.GetComponent<FloatingJoystickZone>();
+            if (zone == null)
+                zone = touchZone.gameObject.AddComponent<FloatingJoystickZone>();
+            zone.Bind(this);
+        }
+
         ResetJoystick();
+    }
+
+    /// <summary>Alana dokunuldu: joystick parmagin altina gelir.</summary>
+    public void BeginTouch(PointerEventData eventData)
+    {
+        if (!isActiveAndEnabled)
+            return;
+
+        _touching = true;
+        MoveCenterTo(eventData);
+        if (_group != null)
+            _group.alpha = 1f;
+        OnDrag(eventData);
+    }
+
+    /// <summary>Parmak kalkti: girdi sifirlanir, joystick dinlenme yerine doner.</summary>
+    public void EndTouch()
+    {
+        _touching = false;
+        ResetJoystick();
+    }
+
+    private void MoveCenterTo(PointerEventData eventData)
+    {
+        var parent = _backgroundRect.parent as RectTransform;
+        if (parent == null)
+            return;
+
+        // Joystick ekrandan tasmasin: merkezi kenarlardan yaricap kadar iceride tut.
+        Vector3 scale = _backgroundRect.lossyScale;
+        float radius = _backgroundRect.rect.width * 0.5f * Mathf.Abs(scale.x);
+        Camera eventCamera = eventData.pressEventCamera;
+        if (eventCamera != null)
+        {
+            // Kamerali canvas'ta yaricap dunya biriminde; ekrana cevir.
+            Vector3 a = eventCamera.WorldToScreenPoint(_backgroundRect.position);
+            Vector3 b = eventCamera.WorldToScreenPoint(_backgroundRect.position + _backgroundRect.right * radius);
+            radius = Vector3.Distance(a, b);
+        }
+
+        Vector2 screen = eventData.position;
+        screen.x = Mathf.Clamp(screen.x, radius, Mathf.Max(radius, Screen.width - radius));
+        screen.y = Mathf.Clamp(screen.y, radius, Mathf.Max(radius, Screen.height - radius));
+
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle(parent, screen, eventCamera, out Vector3 world))
+            _backgroundRect.position = world;
+    }
+
+    public void OnInitializePotentialDrag(PointerEventData eventData)
+    {
+        // Joystick ilk milimetreden tepki versin (surukleme esigi beklemesin).
+        eventData.useDragThreshold = false;
     }
 
     private void ApplyVisualStyle()
@@ -217,6 +307,7 @@ public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, I
 
     private void OnDisable()
     {
+        _touching = false;
         ResetJoystick();
     }
 
@@ -227,6 +318,13 @@ public class VirtualJoystick : MonoBehaviour, IDragHandler, IPointerUpHandler, I
         if (_handleRect != null)
         {
             _handleRect.anchoredPosition = Vector2.zero;
+        }
+
+        if (IsFloating && _backgroundRect != null && !_touching)
+        {
+            _backgroundRect.anchoredPosition = _restPosition;
+            if (_group != null)
+                _group.alpha = idleAlpha;
         }
     }
 }

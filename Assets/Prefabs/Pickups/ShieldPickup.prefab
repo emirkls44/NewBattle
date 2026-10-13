@@ -142,8 +142,8 @@ MonoBehaviour:
   progressColor: {r: 0.2, g: 1, b: 0.08, a: 1}
   ringColor: {r: 1, g: 1, b: 1, a: 0.8}
   ringVisibleDistance: 4.5
-  glowColor: {r: 0.3, g: 0.72, b: 1, a: 0.38}
-  glowRadius: 1.21
+  glowColor: {r: 0.3, g: 0.72, b: 1, a: 0.22}
+  glowRadius: 0.8
   recoveryType: 1
   amount: 25
   fullTolerance: 1

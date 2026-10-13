@@ -33,7 +33,14 @@ namespace NewBattle.UI
         [SerializeField, Range(-10f, 30f)] private float cameraPitch = 6f;
 
         [Header("Dondurme")]
+        [Tooltip("1080 piksel yukseklikte bir piksel suruklemenin dondurdugu derece " +
+                 "(baska cozunurluklerde orantili; telefonda da ayni his).")]
         [SerializeField] private float dragDegreesPerPixel = 0.45f;
+        [Tooltip("Donus parmagi ne kadar siki takip etsin (buyuk = daha dogrudan).")]
+        [SerializeField, Min(1f)] private float followSharpness = 16f;
+        [Tooltip("Birakinca savrulma ne kadar cabuk dursun (kucuk = daha kaygan, uzun doner).")]
+        [SerializeField, Min(0.1f)] private float spinDamping = 2.2f;
+        [SerializeField, Min(0f)] private float maxSpinSpeed = 900f;
         [Tooltip("Birakinca karakter bu hizla ilk yonune doner (0 = donmez).")]
         [SerializeField, Min(0f)] private float returnSpeed = 2.5f;
         [SerializeField, Min(0f)] private float returnDelay = 1.5f;
@@ -43,6 +50,8 @@ namespace NewBattle.UI
         private Quaternion _restRotation;
         private bool _dragging;
         private float _releasedAt;
+        private float _pendingYaw;
+        private float _spinVelocity;
 
         private void Awake()
         {
@@ -179,22 +188,57 @@ namespace NewBattle.UI
 
         private void Update()
         {
-            if (turntable == null || _dragging || returnSpeed <= 0f)
+            if (turntable == null)
                 return;
 
-            if (Time.unscaledTime - _releasedAt < returnDelay)
+            float dt = Time.unscaledDeltaTime;
+
+            // Parmagi yumusakca takip et (titreme yerine akici donus).
+            float step = _pendingYaw * (1f - Mathf.Exp(-followSharpness * dt));
+            _pendingYaw -= step;
+
+            if (_dragging)
+            {
+                // Parmak duruyorsa birakinca savrulmasin.
+                _spinVelocity *= Mathf.Exp(-12f * dt);
+            }
+            else
+            {
+                // Birakildi: firlatildigi hizla donup yavasca dursun.
+                step += _spinVelocity * dt;
+                _spinVelocity *= Mathf.Exp(-spinDamping * dt);
+                if (Mathf.Abs(_spinVelocity) < 4f)
+                    _spinVelocity = 0f;
+                else
+                    _releasedAt = Time.unscaledTime; // donerken bekleme suresi baslamasin
+            }
+
+            if (Mathf.Abs(step) > 0.0001f)
+                turntable.Rotate(0f, step, 0f, Space.Self);
+
+            bool settled = !_dragging && _spinVelocity == 0f && Mathf.Abs(_pendingYaw) < 0.05f;
+            if (!settled || returnSpeed <= 0f || Time.unscaledTime - _releasedAt < returnDelay)
                 return;
 
             turntable.localRotation = Quaternion.Slerp(
-                turntable.localRotation, _restRotation, 1f - Mathf.Exp(-returnSpeed * Time.unscaledDeltaTime));
+                turntable.localRotation, _restRotation, 1f - Mathf.Exp(-returnSpeed * dt));
         }
 
-        public void OnBeginDrag(PointerEventData eventData) => _dragging = true;
+        public void OnBeginDrag(PointerEventData eventData)
+        {
+            _dragging = true;
+            _spinVelocity = 0f;
+        }
 
         public void OnDrag(PointerEventData eventData)
         {
-            if (turntable != null)
-                turntable.Rotate(0f, -eventData.delta.x * dragDegreesPerPixel, 0f, Space.Self);
+            float pixelScale = 1080f / Mathf.Max(1f, Screen.height);
+            float degrees = -eventData.delta.x * dragDegreesPerPixel * pixelScale;
+            _pendingYaw += degrees;
+
+            float dt = Mathf.Max(0.001f, Time.unscaledDeltaTime);
+            float sample = Mathf.Clamp(degrees / dt, -maxSpinSpeed, maxSpinSpeed);
+            _spinVelocity = Mathf.Lerp(_spinVelocity, sample, 0.5f);
         }
 
         public void OnEndDrag(PointerEventData eventData)

@@ -233,5 +233,5 @@ MonoBehaviour:
   ringColor: {r: 1, g: 1, b: 1, a: 0.8}
   ringVisibleDistance: 4.5
   glowColor: {r: 0.92, g: 0.94, b: 1, a: 0.3}
-  glowRadius: 0.82500005
+  glowRadius: 0.8
   ammoAmount: 30

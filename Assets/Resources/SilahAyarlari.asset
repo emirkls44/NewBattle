@@ -63,4 +63,4 @@ MonoBehaviour:
   ammoPackFraction: 0.3
   airdropWeaponId: 2
   airdropRarity: 4
-  glowAlpha: 0.5
+  glowAlpha: 0.3

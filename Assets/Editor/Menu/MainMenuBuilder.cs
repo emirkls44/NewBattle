@@ -197,6 +197,9 @@ namespace NewBattle.EditorTools
             if (EnsureMobileJoysticks())
                 added.Add("Joystickler büyük, yuvarlak, saydam ve içeride");
 
+            if (EnsureFloatingJoysticks())
+                added.Add("Yüzen joystick: sol alt yarı hareket, sağ alt yarı saldırı");
+
             if (EnsureCloserCamera())
                 added.Add("Kamera yaklaştırıldı (8.5 → 6)");
 

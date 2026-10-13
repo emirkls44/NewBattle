@@ -52,6 +52,58 @@ namespace NewBattle.EditorTools
             return true;
         }
 
+        private const int FloatingJoystickVersion = 2;
+        /// <summary>Dokunma alanlarinin ekran yuksekligindeki ust siniri (alt %60).</summary>
+        private const float JoystickZoneTop = 0.6f;
+
+        /// <summary>
+        /// Yuzen joystick: ekran ortadan ikiye bolunur. Sol yarinin altina nereye
+        /// dokunulursa hareket joystick'i, sag yarinin altina dokunulursa saldiri
+        /// joystick'i parmagin altinda belirir. Alanlar gorunmez ve diger tum
+        /// arayuzun ARKASINDA durur (butonlarin dokunusunu kapmaz). Tek seferlik.
+        /// </summary>
+        private static bool EnsureFloatingJoysticks()
+        {
+            bool changed = false;
+
+            foreach (VirtualJoystick joystick in Object.FindObjectsByType<VirtualJoystick>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var serialized = new SerializedObject(joystick);
+                SerializedProperty version = serialized.FindProperty("layoutVersion");
+                SerializedProperty zoneProperty = serialized.FindProperty("touchZone");
+                if (version == null || zoneProperty == null || version.intValue >= FloatingJoystickVersion)
+                    continue;
+
+                var rect = (RectTransform)joystick.transform;
+                var parent = rect.parent as RectTransform;
+                if (parent == null)
+                    continue;
+
+                bool right = rect.anchorMin.x > 0.5f;
+                string zoneName = right ? "SaldiriAlani" : "HareketAlani";
+
+                var zone = parent.Find(zoneName) as RectTransform;
+                if (zone == null)
+                {
+                    zone = NewRect(zoneName, parent);
+                    Undo.RegisterCreatedObjectUndo(zone.gameObject, "Joystick alani");
+                    zone.anchorMin = new Vector2(right ? 0.5f : 0f, 0f);
+                    zone.anchorMax = new Vector2(right ? 1f : 0.5f, JoystickZoneTop);
+                    zone.offsetMin = Vector2.zero;
+                    zone.offsetMax = Vector2.zero;
+                    AddImage(zone, null, new Color(0f, 0f, 0f, 0f), raycast: true);
+                    zone.SetAsFirstSibling(); // diger her seyin arkasinda
+                }
+
+                zoneProperty.objectReferenceValue = zone;
+                version.intValue = FloatingJoystickVersion;
+                serialized.ApplyModifiedProperties();
+                changed = true;
+            }
+
+            return changed;
+        }
+
         private static bool EnsureMobileJoysticks()
         {
             bool changed = false;

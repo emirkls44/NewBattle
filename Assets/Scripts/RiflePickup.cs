@@ -20,8 +20,9 @@ public class RiflePickup : TimedLootPickup
     [SerializeField] private int ammoAmount = 30;
 
     [Header("Yerdeki Duruş")]
-    [Tooltip("Namlunun yataydan acisi. 90 = tam dik (namlu yukari).")]
-    [SerializeField, Range(0f, 90f)] private float standAngle = 90f;
+    [Tooltip("0 = silah dik durur (kabzasi asagida, yandan gorunur) ve kendi etrafinda doner. " +
+             "Arttikca namlu yukari kalkar; 90 = namlu tam yukari (ustten bakan kamerada ince gorunur).")]
+    [SerializeField, Range(0f, 90f)] private float standAngle = 0f;
     [Tooltip("Silahin en alt noktasi zeminden bu kadar yukarida durur.")]
     [SerializeField, Min(0f)] private float groundClearance = 0.12f;
 

@@ -14,6 +14,13 @@ public class PlayerController : NetworkBehaviour
     [Tooltip("Inis noktasi ararken zemin sayilan katmanlar.")]
     [SerializeField] private LayerMask dropGroundMask = ~0;
 
+    [Header("Harita Siniri")]
+    [Tooltip("Oyuncu harita karesinin kenarina bu kadar yaklasabilir (metre).")]
+    [SerializeField, Min(0f)] private float mapEdgeMargin = 1f;
+    [Tooltip("Bu yuksekligin altina dusen oyuncu guvenli alandaki en yakin zemine geri konur " +
+             "(haritadan dusup sonsuza gitmesin).")]
+    [SerializeField] private float fallRescueHeight = -15f;
+
     [Header("Silah Ayarlari")]
     public GameObject weaponInHand;
     public Animator anim;
@@ -110,10 +117,14 @@ public class PlayerController : NetworkBehaviour
         if (HasStateAuthority)
             ApplyGravity();
 
+        if (HasStateAuthority)
+            RescueIfFallen();
+
         if (!GetInput<NetworkInputData>(out var input))
             return;
 
         _stateMachine.ProcessInput(input);
+        KeepOnMap();
 
         // Saldiri state'e bagli degildir: oyuncu dururken de kosarken de saldirabilir.
         if (input.RightJoystickVector.sqrMagnitude > 0.01f)
@@ -137,6 +148,50 @@ public class PlayerController : NetworkBehaviour
         }
 
         _characterController.Move(Vector3.up * (_verticalVelocity * Runner.DeltaTime));
+    }
+
+    /// <summary>
+    /// Harita karesinin disina yurunmesin: kenarin otesinde zemin yok, oyuncu
+    /// bosluga dusuyordu. Host da tahmin eden istemci de ayni kirpmayi yapar.
+    /// </summary>
+    private void KeepOnMap()
+    {
+        if (_dropPhase == null || _characterController == null || !_characterController.enabled)
+            return;
+
+        Vector3 position = transform.position;
+        Vector2 flat = new(position.x, position.z);
+        Vector2 clamped = _dropPhase.ClampInside(flat, mapEdgeMargin);
+        if ((clamped - flat).sqrMagnitude < 0.0001f)
+            return;
+
+        _characterController.Move(new Vector3(clamped.x - flat.x, 0f, clamped.y - flat.y));
+    }
+
+    /// <summary>Asagi dusen oyuncuyu guvenli alandaki en yakin zemine geri koyar (host).</summary>
+    private void RescueIfFallen()
+    {
+        if (transform.position.y > fallRescueHeight)
+            return;
+
+        Vector3 ground = ClampToSafeArea(transform.position);
+        Vector3 target = ground + Vector3.up * 0.1f;
+
+        bool controllerWasEnabled = _characterController != null && _characterController.enabled;
+        if (controllerWasEnabled)
+            _characterController.enabled = false;
+
+        transform.position = target;
+        _verticalVelocity = 0f;
+
+        if (controllerWasEnabled)
+            _characterController.enabled = true;
+
+        // Interpolasyon dusus yolundan gecmesin: diger cihazlarda da aninda yerinde.
+        if (TryGetComponent(out NetworkTransform networkTransform))
+            networkTransform.Teleport(target);
+
+        Debug.Log($"[Dusus] {name} haritadan dustu, zemine geri kondu: {target}");
     }
 
     public void RequestDropPosition(Vector3 worldPosition)

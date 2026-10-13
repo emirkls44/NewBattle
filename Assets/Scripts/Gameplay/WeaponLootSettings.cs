@@ -81,7 +81,7 @@ namespace NewBattle.Gameplay
 
         [Header("Gorsel")]
         [Tooltip("Yerdeki silahin altindaki nadirlik parlamasinin opakligi.")]
-        [Range(0f, 1f)] public float glowAlpha = 0.5f;
+        [Range(0f, 1f)] public float glowAlpha = 0.3f;
 
         private static WeaponLootSettings _instance;
 

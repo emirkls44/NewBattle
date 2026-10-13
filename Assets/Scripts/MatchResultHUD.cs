@@ -214,8 +214,20 @@ public class MatchResultHUD : MonoBehaviour
             _spectated = target.transform;
         }
 
+        // Alttaki can bari izlenen oyuncunun canini gostersin (yoksa senin
+        // silinmis karakterine bagli kalip bos gorunuyordu).
+        if (target != null && target.TryGetComponent(out HealthController targetHealth))
+        {
+            if (_localHud == null)
+                _localHud = UnityEngine.Object.FindFirstObjectByType<LocalPlayerHUD>(FindObjectsInactive.Include);
+            if (_localHud != null)
+                _localHud.BindLocalPlayer(targetHealth);
+        }
+
         RefreshSpectatorPanel();
     }
+
+    private LocalPlayerHUD _localHud;
 
     private void RefreshSpectatorPanel()
     {
@@ -520,8 +532,19 @@ public class MatchResultHUD : MonoBehaviour
                 Destroy(script);
         }
 
+        // Kopya olum aninda alinmis olabilir (yerde yatiyor). Kadraj o poza gore
+        // hesaplanirsa kamera yere yapisiyor, animasyon karakteri ayaga kaldirinca
+        // karakter kadrajdan cikiyordu. Once ayakta duran poza getir.
+        if (_previewCharacter.TryGetComponent(out Animator previewAnimator))
+        {
+            previewAnimator.Rebind();
+            previewAnimator.Update(0f);
+            if (resultClip != null)
+                resultClip.SampleAnimation(_previewCharacter, 0f);
+        }
+
         // Kazanma / elenme animasyonu.
-        if (resultClip != null && _previewCharacter.TryGetComponent(out Animator previewAnimator))
+        if (resultClip != null && previewAnimator != null)
             _previewCharacter.AddComponent<NewBattle.UI.LoopingClipPlayer>().Play(previewAnimator, resultClip);
 
         Renderer[] renderers = _previewCharacter.GetComponentsInChildren<Renderer>(true);
