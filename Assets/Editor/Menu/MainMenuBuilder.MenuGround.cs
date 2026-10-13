@@ -18,7 +18,7 @@ namespace NewBattle.EditorTools
     public static partial class MainMenuBuilder
     {
         private const string GroundMeshPath = "Assets/GameArt/Meshes/MenuZeminPanel.asset";
-        private const int GroundVersion = 2;          // 2 = duz dikdortgen panel
+        private const int GroundVersion = 3;          // 2 = duz panel, 3 = elle yerlestirme (otomatik kadraj kapali)
         // "Zemin" adli baska UI parcalari da var; Hierarchy aramasinda karismasin.
         private const string GroundObjectName = "KarakterZemini";
         private const float PanelWidth = 1.5f;        // karakter boyuna oran
@@ -42,15 +42,36 @@ namespace NewBattle.EditorTools
                 if (groundProperty != null && version != null && turntable != null && version.intValue < GroundVersion)
                 {
                     var existing = groundProperty.objectReferenceValue as Renderer;
-                    if (existing == null)
-                        groundProperty.objectReferenceValue = BuildMenuGround(turntable);
-                    else
-                        ConvertToPanel(existing, turntable); // eski yuvarlak zemin: materyal (renk) korunur
+                    if (version.intValue < 2)
+                    {
+                        if (existing == null)
+                            groundProperty.objectReferenceValue = BuildMenuGround(turntable);
+                        else
+                            ConvertToPanel(existing, turntable); // eski yuvarlak zemin: materyal (renk) korunur
 
-                    // Perspektif: hafif yukaridan, dogal derinlik (Inspector'dan degisir).
-                    serialized.FindProperty("cameraPitch").floatValue = DefaultPitch;
-                    serialized.FindProperty("cameraFov").floatValue = DefaultFov;
-                    serialized.FindProperty("frameWholeGround").boolValue = true;
+                        // Perspektif: hafif yukaridan, dogal derinlik.
+                        serialized.FindProperty("cameraPitch").floatValue = DefaultPitch;
+                        serialized.FindProperty("cameraFov").floatValue = DefaultFov;
+                        serialized.FindProperty("frameWholeGround").boolValue = true;
+                    }
+
+                    serialized.ApplyModifiedProperties();
+
+                    // Su an Play'de gorulen otomatik gorunumu bir kez sahneye yaz (baslangic
+                    // noktasi), sonra otomatikleri kapat: bundan sonra kamera, zemin ve karakter
+                    // nereye konursa orada kalir.
+                    Animator model = turntable.GetComponentInChildren<Animator>(true);
+                    if (stage.StageCamera != null)
+                        Undo.RecordObject(stage.StageCamera.transform, "Menu kadraji");
+                    if (stage.StageCamera != null)
+                        Undo.RecordObject(stage.StageCamera, "Menu kadraji");
+                    if (model != null)
+                        Undo.RecordObject(model.transform, "Menu kadraji");
+                    stage.AutoFrameOnce();
+
+                    serialized.Update();
+                    serialized.FindProperty("autoFrame").boolValue = false;
+                    serialized.FindProperty("plantFeet").boolValue = false;
                     version.intValue = GroundVersion;
                     serialized.ApplyModifiedProperties();
                     changed = true;

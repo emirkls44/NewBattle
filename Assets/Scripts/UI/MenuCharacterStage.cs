@@ -29,7 +29,11 @@ namespace NewBattle.UI
         [SerializeField, Range(256, 2048)] private int resolution = 1024;
         [Tooltip("Karakterin alt ve ust kenarinda birakilacak bosluk (yukseklik orani).")]
         [SerializeField, Range(0f, 0.3f)] private float framePadding = 0.06f;
-        [Tooltip("Kamera karaktere hafif yukaridan baksin (derece).")]
+        [Tooltip("KAPALI (onerilen): kamera, zemin ve karakter sahnede nereye koyduysan Play'de de " +
+                 "orada durur (ne goruyorsan o). ACIK: kamera her acilista karakter+zemine gore " +
+                 "kendini yeniden konumlar (asagidaki Pitch/Fov/Offset/Zoom ile).")]
+        [SerializeField] private bool autoFrame;
+        [Tooltip("Kamera karaktere hafif yukaridan baksin (derece). Sadece Auto Frame acikken.")]
         [SerializeField, Range(-10f, 60f)] private float cameraPitch = 18f;
         [Tooltip("Kameranin gorus acisi (derece). Buyuk = perspektif daha belirgin (zemin derin gorunur), " +
                  "kucuk = daha duz/telefoto. Kamera, kadraj sigacak kadar otomatik uzaklasir.")]
@@ -56,8 +60,9 @@ namespace NewBattle.UI
         [Tooltip("Sahnedeki zemin objesi (MenuKarakterSahnesi/KarakterZemini). Hierarchy'den tasi, olcekle, " +
                  "dondur; rengini materyalinden (Assets/GameArt/Materials/MenuZemin) degistir. Bos = zemin yok.")]
         [SerializeField] private Renderer ground;
-        [Tooltip("Acikken karakterin ayaklari zeminin ust yuzeyine oturtulur.")]
-        [SerializeField] private bool plantFeet = true;
+        [Tooltip("Acikken Play'de karakterin ayaklari zeminin ust yuzeyine otomatik oturtulur " +
+                 "(karakter zeminle birlikte hareket eder). Kapaliyken karakteri sen yerlestirirsin.")]
+        [SerializeField] private bool plantFeet;
         [Tooltip("Ayaklarin zemine ne kadar gomulecegi (metre). Eksi = biraz havada.")]
         [SerializeField, Range(-0.2f, 0.2f)] private float footSink = 0.01f;
         [Tooltip("Acikken zeminin tamami kadraja sigar; kapaliyken sadece ayaklarin altinda " +
@@ -365,7 +370,31 @@ namespace NewBattle.UI
         /// Kamerayi karakterin boyuna gore yerlestirir. Model degisse ya da
         /// olcegi farkli olsa bile karakter cerceveye tam oturur.
         /// </summary>
-        [ContextMenu("Karakteri Cercevele")]
+        /// <summary>
+        /// Sag tik > "Kadraji otomatik ayarla": Auto Frame kapaliyken de bir kez otomatik
+        /// kadraj + ayak oturtma yapar (sonra elle ince ayar). Edit modunda sahneye yazilir.
+        /// </summary>
+        [ContextMenu("Kadraji otomatik ayarla (bir kez)")]
+        public void AutoFrameOnce()
+        {
+            bool frame = autoFrame;
+            bool plant = plantFeet;
+            autoFrame = true;
+            plantFeet = true;
+            try
+            {
+                FrameCharacter();
+            }
+            finally
+            {
+                autoFrame = frame;
+                plantFeet = plant;
+            }
+        }
+
+        public Camera StageCamera => stageCamera;
+        public Transform Turntable => turntable;
+
         public void FrameCharacter()
         {
             if (stageCamera == null || turntable == null)
@@ -406,6 +435,10 @@ namespace NewBattle.UI
                     bounds.Encapsulate(new Vector3(bounds.center.x, bounds.min.y - below, bounds.center.z));
                 }
             }
+
+            // Elle yerlestirme: kameraya dokunma (sahnede nasilsa oyle kalsin).
+            if (!autoFrame)
+                return;
 
             stageCamera.fieldOfView = cameraFov;
 

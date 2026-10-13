@@ -61,11 +61,21 @@ namespace NewBattle.EditorTools
             }
 
             if (serialized.FindProperty("ground").objectReferenceValue is Renderer ground)
+                AddTransform(lines, "g", ground.transform, withScale: true);
+
+            // Elle yerlestirme: kamera ve karakter (Doner'in pozisyonu + model) da korunur.
+            if (stage.StageCamera != null)
             {
-                Transform t = ground.transform;
-                lines.Add("g|pos|" + V3(t.localPosition));
-                lines.Add("g|rot|" + V3(t.localEulerAngles));
-                lines.Add("g|scale|" + V3(t.localScale));
+                AddTransform(lines, "cam", stage.StageCamera.transform, withScale: false);
+                lines.Add("camfov|fov|" + stage.StageCamera.fieldOfView.ToString("R", CultureInfo.InvariantCulture));
+            }
+
+            if (stage.Turntable != null)
+            {
+                lines.Add("tt|pos|" + V3(stage.Turntable.localPosition));
+                Animator model = stage.Turntable.GetComponentInChildren<Animator>(true);
+                if (model != null)
+                    lines.Add("model|pos|" + V3(model.transform.localPosition));
             }
 
             SessionState.SetString(Key, string.Join("\n", lines));
@@ -98,9 +108,18 @@ namespace NewBattle.EditorTools
                     if (property != null)
                         Decode(property, parts[2]);
                 }
-                else if (parts[0] == "g" && ground != null)
+                else if (parts[0] == "camfov" && stage.StageCamera != null)
                 {
-                    Transform t = ground.transform;
+                    float fov = float.Parse(parts[2], CultureInfo.InvariantCulture);
+                    if (Mathf.Abs(stage.StageCamera.fieldOfView - fov) > 0.001f)
+                    {
+                        Undo.RecordObject(stage.StageCamera, "Menu sahnesi (Play ayarlari)");
+                        stage.StageCamera.fieldOfView = fov;
+                        groundChanged = true;
+                    }
+                }
+                else if (TargetFor(parts[0], stage, ground) is Transform t)
+                {
                     Vector3 value = ParseV3(parts[2]);
                     Vector3 current = parts[1] switch
                     {
@@ -112,8 +131,7 @@ namespace NewBattle.EditorTools
                     if ((current - value).sqrMagnitude < 1e-10f)
                         continue;
 
-                    if (!groundChanged)
-                        Undo.RecordObject(t, "Menu sahnesi (Play ayarlari)");
+                    Undo.RecordObject(t, "Menu sahnesi (Play ayarlari)");
                     groundChanged = true;
 
                     switch (parts[1])
@@ -132,6 +150,28 @@ namespace NewBattle.EditorTools
             EditorSceneManager.MarkSceneDirty(stage.gameObject.scene);
             Debug.Log("Menü karakter sahnesi: Play'de yaptığın ayarlar korundu (zemin + MenuCharacterStage). " +
                       "Sahneyi kaydetmeyi unutma (Ctrl+S).");
+        }
+
+        private static void AddTransform(List<string> lines, string key, Transform t, bool withScale)
+        {
+            lines.Add($"{key}|pos|" + V3(t.localPosition));
+            lines.Add($"{key}|rot|" + V3(t.localEulerAngles));
+            if (withScale)
+                lines.Add($"{key}|scale|" + V3(t.localScale));
+        }
+
+        private static Transform TargetFor(string key, MenuCharacterStage stage, Renderer ground)
+        {
+            switch (key)
+            {
+                case "g": return ground != null ? ground.transform : null;
+                case "cam": return stage.StageCamera != null ? stage.StageCamera.transform : null;
+                case "tt": return stage.Turntable;
+                case "model":
+                    Animator model = stage.Turntable != null ? stage.Turntable.GetComponentInChildren<Animator>(true) : null;
+                    return model != null ? model.transform : null;
+                default: return null;
+            }
         }
 
         private static string Encode(SerializedProperty property)
