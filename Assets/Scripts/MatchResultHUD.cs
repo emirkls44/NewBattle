@@ -10,10 +10,13 @@ public class MatchResultHUD : MonoBehaviour
 {
     private const int PreviewLayer = 30;
     public static bool LocalGameplayStopped { get; private set; }
+
+    /// <summary>Mac sonu ekrani acik (kare hizi 30'a iner).</summary>
+    public static bool ResultVisible { get; private set; }
     private CameraFollow _spectatorCamera;
     private Transform _spectated;
     private Camera _backgroundCamera;
-    private void Awake() { LocalGameplayStopped = false; }
+    private void Awake() { LocalGameplayStopped = false; ResultVisible = false; }
 
     [Header("Hierarchy Referanslari")]
     [SerializeField] private GameObject resultRoot;
@@ -358,6 +361,7 @@ public class MatchResultHUD : MonoBehaviour
             return;
 
         _resultShown = true;
+        ResultVisible = true;
         NewBattle.Audio.Sfx.MuteWorld(true);
         bool victory = IsNetworkObjectReady(_match) && _match.MatchEnded &&
             (_match.Winner == _localPlayer ||
@@ -396,6 +400,7 @@ public class MatchResultHUD : MonoBehaviour
     private void ShowEndScreen()
     {
         _resultShown = true;
+        ResultVisible = true;
         // Istatistik ekraninda arkadaki catisma, botlar ve harita sesleri duyulmasin.
         NewBattle.Audio.Sfx.MuteWorld(true);
         bool victory = IsVictory();
@@ -660,6 +665,7 @@ public class MatchResultHUD : MonoBehaviour
     private void OnDestroy()
     {
         LocalGameplayStopped = false;
+        ResultVisible = false;
         if (_backgroundCamera != null) Destroy(_backgroundCamera.gameObject);
         if (_previewCharacter != null) Destroy(_previewCharacter);
         if (_characterHolder != null) Destroy(_characterHolder);

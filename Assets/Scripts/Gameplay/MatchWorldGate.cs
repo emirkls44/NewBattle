@@ -44,13 +44,20 @@ namespace NewBattle.Gameplay
             SetActive(menuOnlyRoots, true);
         }
 
+        private float _nextRunnerSearch;
+
         private void Update()
         {
             if (_worldOpened)
                 return;
 
             if (_runner == null)
+            {
+                if (Time.unscaledTime < _nextRunnerSearch)
+                    return;
+                _nextRunnerSearch = Time.unscaledTime + 0.25f;
                 _runner = FindFirstObjectByType<NetworkRunner>();
+            }
 
             // Runner calisiyorsa oyuncu modu secmis ve odaya baglanmistir.
             // Inis haritasi onizlemesi de araziyi gormek zorunda oldugu icin

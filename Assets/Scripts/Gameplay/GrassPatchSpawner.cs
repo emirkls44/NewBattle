@@ -60,11 +60,15 @@ namespace NewBattle.Gameplay
         /// zemine isin atarak yerlesiyor - harita henuz aktif degilse hepsi
         /// yanlis yukseklige dusuyordu.
         /// </summary>
+        private float _nextRunnerSearch;
+
         private void Update()
         {
-            if (_spawned || !waitForMatch)
+            if (_spawned || !waitForMatch || Time.unscaledTime < _nextRunnerSearch)
                 return;
 
+            // Menude her karede sahne taramasin (telefonu bosuna yorar).
+            _nextRunnerSearch = Time.unscaledTime + 0.25f;
             Fusion.NetworkRunner runner = FindFirstObjectByType<Fusion.NetworkRunner>();
 
             if (runner == null || !runner.IsRunning)

@@ -1,11 +1,16 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(500)] // kamera takibinden (MinimapCameraFollow) sonra
 public class MinimapSystem : MonoBehaviour
 {
     [Header("Minimap Kamera")]
     [SerializeField] private int textureResolution = 512;
     [SerializeField] private float mapHeight = 50f;
+
+    [Tooltip("Harita resmi saniyede kac kez yeniden cizilsin. Aradaki karelerde resim oyuncuyla " +
+             "birlikte kaydirilir, fark edilmez. Her kare cizmek telefonu bosuna isitiyordu.")]
+    [SerializeField, Range(2, 60)] private int mapRefreshPerSecond = 8;
 
     /// <summary>
     /// Haritanin bos kalan yerlerinin rengi (deniz / bosluk).
@@ -82,6 +87,12 @@ public class MinimapSystem : MonoBehaviour
     private DropPhaseController _dropPhase;
     private SafeZoneController _safeZone;
     private Transform _localPlayer;
+    private Camera _minimapCamera;
+    private RawImage _mapImage;
+    private Vector3 _capturePosition;
+    private float _captureRadius = 1f;
+    private float _nextCapture;
+    private bool _captured;
     private RectTransform _nextZoneRect;
     private CircleOutlineGraphic _nextZoneGraphic;
     private RectTransform _currentZoneRect;
@@ -135,6 +146,9 @@ public class MinimapSystem : MonoBehaviour
         if (_uiRoot != null)
             _uiRoot.SetActive(gameplayStarted);
 
+        if (!gameplayStarted && _minimapCamera != null && _minimapCamera.enabled)
+            _minimapCamera.enabled = false; // menude / harita seciminde cizmesin
+
         if (gameplayStarted)
         {
             UpdateZoom();
@@ -172,6 +186,40 @@ public class MinimapSystem : MonoBehaviour
 
         if (_cameraObject != null && _cameraObject.TryGetComponent(out Camera minimapCamera))
             minimapCamera.orthographicSize = _visibleRadius;
+    }
+
+    /// <summary>
+    /// Harita kamerasi saniyede birkac kez cizer; aradaki karelerde resim (uvRect)
+    /// oyuncunun hareketi ve yakinlasma kadar kaydirilir.
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (_minimapCamera == null || _uiRoot == null || !_uiRoot.activeInHierarchy)
+            return;
+
+        Transform cameraTransform = _minimapCamera.transform;
+        bool capture = !_captured || Time.unscaledTime >= _nextCapture;
+        _minimapCamera.enabled = capture;
+
+        if (capture)
+        {
+            _captured = true;
+            _nextCapture = Time.unscaledTime + 1f / Mathf.Max(1, mapRefreshPerSecond);
+            _capturePosition = cameraTransform.position;
+            _captureRadius = Mathf.Max(0.01f, _minimapCamera.orthographicSize);
+        }
+
+        if (_mapImage == null)
+            return;
+
+        Vector3 current = _localPlayer != null ? _localPlayer.position : cameraTransform.position;
+        Vector3 delta = capture ? Vector3.zero : current - _capturePosition;
+        float size = capture ? 1f : Mathf.Max(0.01f, _visibleRadius) / _captureRadius;
+        float span = 2f * _captureRadius;
+        _mapImage.uvRect = new Rect(
+            0.5f - size * 0.5f + delta.x / span,
+            0.5f - size * 0.5f + delta.z / span,
+            size, size);
     }
 
     /// <summary>
@@ -381,10 +429,14 @@ public class MinimapSystem : MonoBehaviour
 
     private void CreateMinimapCamera()
     {
-        _renderTexture = PreviewTexture.Create(textureResolution, textureResolution, "RuntimeMinimapTexture", msaa: 2, depth: 16);
+        _renderTexture = PreviewTexture.Create(textureResolution, textureResolution, "RuntimeMinimapTexture", msaa: 1, depth: 16);
+        _renderTexture.wrapMode = TextureWrapMode.Clamp; // kaydirilan resmin kenari tekrar etmesin
 
         _cameraObject = new GameObject("MinimapCamera");
         Camera minimapCamera = _cameraObject.AddComponent<Camera>();
+        _minimapCamera = minimapCamera;
+        minimapCamera.allowHDR = false;
+        minimapCamera.allowMSAA = false;
         minimapCamera.orthographic = true;
         _visibleRadius = visibleWorldRadius;
         minimapCamera.orthographicSize = _visibleRadius;
@@ -446,6 +498,7 @@ public class MinimapSystem : MonoBehaviour
         mapImageRect.SetParent(minimapRect, false);
         Stretch(mapImageRect);
         RawImage mapImage = mapImageObject.GetComponent<RawImage>();
+        _mapImage = mapImage;
         mapImage.texture = _renderTexture;
         mapImage.color = Color.white;
         mapImage.raycastTarget = false;
@@ -559,6 +612,7 @@ public class MinimapSystem : MonoBehaviour
 
         if (mapImage != null)
         {
+            _mapImage = mapImage;
             mapImage.texture = _renderTexture;
 
             // Sahnedeki rengi, doku yokken minimapin bos gorunmemesi icin
