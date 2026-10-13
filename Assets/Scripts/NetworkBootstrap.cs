@@ -100,6 +100,28 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>Baglanti basarisiz olup menuye donulunce gosterilecek mesaj (bir kez).</summary>
     public static string PendingMenuMessage { get; set; }
 
+    /// <summary>
+    /// Takim odasinda kurucu ayrilinca: 2. oyuncu ayni ayarlarla yeni oda kurar, digerleri
+    /// ona katilir. Menu yeniden yuklenince MainMenuScreen bunu baslatir.
+    /// </summary>
+    public struct RoomRejoin
+    {
+        public bool Create;
+        public string Code;
+        public int SizeChoice;
+        public int TeamSize;
+        public int Attempts;
+        public float Delay;
+    }
+
+    public static RoomRejoin? PendingRejoin { get; set; }
+
+    /// <summary>Katilma basarisiz olursa (yeni kurucu henuz odayi acmadiysa) kac kez daha denenecek.</summary>
+    public static int RejoinAttemptsLeft { get; set; }
+
+    /// <summary>Takim odasindan cikildi: sonraki menu normal baslasin.</summary>
+    public static void ClearFriendRoom() => FriendRoomCode = null;
+
     public int MatchCapacity
     {
         get
@@ -278,6 +300,23 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         {
             _startRequested = false;
 
+            // Yeni kurucunun odasi henuz acilmamis olabilir: biraz bekleyip tekrar dene.
+            if (IsFriendRoom && !createFriendRoom && RejoinAttemptsLeft > 0)
+            {
+                PendingRejoin = new RoomRejoin
+                {
+                    Create = false,
+                    Code = FriendRoomCode,
+                    Attempts = RejoinAttemptsLeft - 1,
+                    Delay = 1.5f
+                };
+                RejoinAttemptsLeft = 0;
+                FriendRoomCode = null;
+                PendingMenuMessage = "YENİ ODA BEKLENİYOR...";
+                Invoke(nameof(ReloadMenu), 0.3f);
+                return;
+            }
+
             if (IsFriendRoom)
             {
                 // Yanlis kod / oda dolu / kod cakismasi. Basarisiz runner tekrar
@@ -301,6 +340,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         }
         else
         {
+            RejoinAttemptsLeft = 0;
             StatusChanged?.Invoke("OYUNA BAGLANDI");
             ConnectionCompleted?.Invoke(true);
             Debug.Log($"Photon started successfully. Mode: {_runner.GameMode}");

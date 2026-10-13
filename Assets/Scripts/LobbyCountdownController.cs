@@ -33,6 +33,9 @@ public class LobbyCountdownController : NetworkBehaviour
     /// <summary>Odayi kuran oyuncu.</summary>
     [Networked] public PlayerRef RoomHost { get; private set; }
 
+    /// <summary>Kurucu ayrilirsa 2. oyuncunun kuracagi yeni odanin kodu (herkes onceden bilir).</summary>
+    [Networked] public int NextRoomCode { get; private set; }
+
     [Networked] private TickTimer CountdownTimer { get; set; }
     private NetworkBootstrap _bootstrap;
     private TrainingBotSpawner _spawner;
@@ -61,6 +64,10 @@ public class LobbyCountdownController : NetworkBehaviour
         RoomSizeChoice = NetworkBootstrap.TeamRoomSizeChoice;
         RoomTeamSize = Mathf.Max(1, NetworkBootstrap.TeamRoomTeamSize);
         RoomHost = Runner.LocalPlayer;
+        int code;
+        do code = Random.Range(1000, 10000);
+        while (code.ToString() == NetworkBootstrap.FriendRoomCode);
+        NextRoomCode = code;
         CountdownTimer = default;
         ConnectedPlayers = BotPlayers = TotalContestants = 0;
     }

@@ -71,6 +71,15 @@ namespace NewBattle.UI
         private bool _inRoom;
         private bool _leaving;
 
+        // Kurucu ayrilirsa ne olacagi; oda acikken her karede guncellenir (herkeste ayni).
+        private bool _wasHost;
+        private bool _hasSuccessor;
+        private bool _successorIsMe;
+        private string _successorName;
+        private int _nextCode;
+        private int _sizeChoice;
+        private int _teamSize;
+
         private void Awake()
         {
             if (screenCanvas == null)
@@ -107,12 +116,11 @@ namespace NewBattle.UI
             bool lobbyValid = _lobby != null && _lobby.Object != null && _lobby.Object.IsValid;
             bool show = NetworkBootstrap.IsFriendRoom && running && lobbyValid && !_lobby.RoomStarted;
 
-            // Oda kapandi (kurucu cikti / oda dolu / baglanti koptu): ana menuye don.
+            // Oda kapandi (kurucu cikti / oda dolu / baglanti koptu).
             if (_inRoom && !running && !_leaving)
             {
                 _inRoom = false;
-                NetworkBootstrap.PendingMenuMessage = "ODA KAPANDI";
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                RoomLost();
                 return;
             }
 
@@ -127,6 +135,7 @@ namespace NewBattle.UI
 
             bool host = _lobby.HasStateAuthority;
             List<PlayerCombatStats> players = _lobby.RoomPlayers();
+            RememberSuccessor(host, players);
 
             RefreshHeader(players.Count);
             RefreshSettings(host, players.Count);
@@ -338,14 +347,83 @@ namespace NewBattle.UI
                 return;
 
             _leaving = true;
+            _inRoom = false;
             if (leaveButton != null)
                 leaveButton.interactable = false;
 
             int sceneIndex = SceneManager.GetActiveScene().buildIndex;
-            if (_runner != null && _runner.IsRunning)
-                await _runner.Shutdown(true);
+            NetworkBootstrap.ClearFriendRoom();
+            NetworkBootstrap.PendingRejoin = null;
+
+            NetworkRunner runner = _runner;
+            if (runner != null && runner.IsRunning)
+            {
+                try
+                {
+                    await runner.Shutdown(true);
+                }
+                catch (System.Exception exception)
+                {
+                    Debug.LogWarning($"Takim odasi: kapatirken hata: {exception.Message}");
+                }
+            }
 
             SceneManager.LoadScene(sceneIndex);
+        }
+
+        /// <summary>Kurucu ayrilirsa yeni kurucu = odaya kurucudan sonra ilk giren oyuncu.</summary>
+        private void RememberSuccessor(bool host, List<PlayerCombatStats> players)
+        {
+            _wasHost = host;
+            _nextCode = _lobby.NextRoomCode;
+            _sizeChoice = _lobby.RoomSizeChoice;
+            _teamSize = _lobby.RoomTeamSize;
+            _hasSuccessor = false;
+            _successorIsMe = false;
+            _successorName = string.Empty;
+
+            foreach (PlayerCombatStats player in players)
+            {
+                if (player.Object.InputAuthority == _lobby.RoomHost)
+                    continue;
+
+                _hasSuccessor = true;
+                _successorIsMe = player.HasInputAuthority;
+                _successorName = player.NameOrDefault;
+                break;
+            }
+        }
+
+        /// <summary>
+        /// Oturum bitti ama biz cikmadik: kurucu ayrildi. 2. oyuncu ayni ayarlarla yeni
+        /// oda kurar, digerleri ona katilir; 2. oyuncu yoksa oda kapanir.
+        /// </summary>
+        private void RoomLost()
+        {
+            NetworkBootstrap.ClearFriendRoom();
+
+            if (!_wasHost && _hasSuccessor && _nextCode > 0)
+            {
+                string code = _nextCode.ToString();
+                NetworkBootstrap.PendingRejoin = new NetworkBootstrap.RoomRejoin
+                {
+                    Create = _successorIsMe,
+                    Code = code,
+                    SizeChoice = _sizeChoice,
+                    TeamSize = _teamSize,
+                    Attempts = _successorIsMe ? 0 : 5,
+                    Delay = _successorIsMe ? 0.5f : 3f
+                };
+                NetworkBootstrap.PendingMenuMessage = _successorIsMe
+                    ? "KURUCU AYRILDI, YENİ KURUCU SENSİN"
+                    : $"KURUCU AYRILDI, YENİ KURUCU: {_successorName}";
+            }
+            else
+            {
+                NetworkBootstrap.PendingMenuMessage = "ODA KAPANDI";
+            }
+
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
         // ------------------------------------------------------------------

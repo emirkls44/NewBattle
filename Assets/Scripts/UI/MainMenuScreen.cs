@@ -206,6 +206,13 @@ namespace NewBattle.UI
 
             Music.Play("menu_muzigi");
 
+            // Takim odasinda kurucu ayrildi: yeni odayi kur ya da ona katil.
+            if (NetworkBootstrap.PendingRejoin is NetworkBootstrap.RoomRejoin rejoin)
+            {
+                NetworkBootstrap.PendingRejoin = null;
+                StartCoroutine(RejoinRoom(rejoin));
+            }
+
             // Onceki baglanti basarisiz olduysa (ornek: yanlis oda kodu) nedeni.
             if (!string.IsNullOrEmpty(NetworkBootstrap.PendingMenuMessage))
             {
@@ -513,6 +520,13 @@ namespace NewBattle.UI
             }
 
             StartMatch(option.mode);
+        }
+
+        private IEnumerator RejoinRoom(NetworkBootstrap.RoomRejoin rejoin)
+        {
+            yield return new WaitForSecondsRealtime(rejoin.Delay);
+            NetworkBootstrap.RejoinAttemptsLeft = rejoin.Attempts;
+            StartFriendRoom(rejoin.Create, rejoin.Code, rejoin.SizeChoice, rejoin.TeamSize);
         }
 
         /// <summary>Takimla Oyna penceresi kapaninca oyun modu ekranina geri donulur.</summary>
