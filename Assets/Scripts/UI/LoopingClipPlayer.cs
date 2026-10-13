@@ -30,7 +30,7 @@ namespace NewBattle.UI
             _graph = PlayableGraph.Create("MacSonuAnimasyonu");
             _graph.SetTimeUpdateMode(DirectorUpdateMode.UnscaledGameTime);
             _playable = AnimationClipPlayable.Create(_graph, clip);
-            _playable.SetApplyFootIK(true);
+            _playable.SetApplyFootIK(false); // ayak IK kapali: iri kafali/kisa bacakli karakterlerde (Ahmet) govdeyi one bukuyordu
             AnimationPlayableOutput.Create(_graph, "MacSonu", animator).SetSourcePlayable(_playable);
             _graph.Play();
         }

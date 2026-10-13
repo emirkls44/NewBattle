@@ -5,6 +5,8 @@ using NewBattle.Gameplay;
 using NewBattle.Progression;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 
 namespace NewBattle.EditorTools
 {
@@ -86,7 +88,33 @@ namespace NewBattle.EditorTools
                 return "dinlenme: " + rest;
 
             clip.SampleAnimation(animator.gameObject, 0.5f);
-            return $"dinlenme: {rest} | klip sonrasi: {Pose(animator)}";
+            string sampled = Pose(animator);
+
+            // Oyundaki gibi: PlayableGraph ile (menu LobbyCharacterAnimator boyle oynatir).
+            string withIk = PlayLikeGame(animator, clip, footIk: true);
+            string noIk = PlayLikeGame(animator, clip, footIk: false);
+            return $"dinlenme: {rest} | klip: {sampled} | oyundaki gibi+ayak IK: {withIk} | oyundaki gibi IK yok: {noIk}";
+        }
+
+        private static string PlayLikeGame(Animator animator, AnimationClip clip, bool footIk)
+        {
+            animator.runtimeAnimatorController = null;
+            animator.enabled = true;
+            animator.Rebind();
+            PlayableGraph graph = PlayableGraph.Create("Teshis");
+            try
+            {
+                var playable = AnimationClipPlayable.Create(graph, clip);
+                playable.SetApplyFootIK(footIk);
+                AnimationPlayableOutput.Create(graph, "Teshis", animator).SetSourcePlayable(playable);
+                graph.Evaluate(0f);
+                graph.Evaluate(0.5f);
+                return Pose(animator);
+            }
+            finally
+            {
+                graph.Destroy();
+            }
         }
 
         private static string Pose(Animator animator)

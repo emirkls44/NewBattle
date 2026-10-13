@@ -114,7 +114,7 @@ namespace NewBattle.UI
 
             AnimationClipPlayable playable = AnimationClipPlayable.Create(_graph, animation.clip);
             playable.SetSpeed(animation.speed);
-            playable.SetApplyFootIK(true);
+            playable.SetApplyFootIK(false); // ayak IK kapali: iri kafali/kisa bacakli karakterlerde (Ahmet) govdeyi one bukuyordu
             _graph.Connect(playable, 0, _mixer, slot);
             _slots[slot] = playable;
 
