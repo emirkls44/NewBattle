@@ -4,7 +4,10 @@ using UnityEngine;
 namespace NewBattle.Gameplay
 {
     /// <summary>
-    /// Karaktere ozel durus duzeltmesi: animasyondan SONRA boyun ve basi geriye
+    /// Karaktere ozel canli ayarlar: boy (Scale) ve durus duzeltmesi. Play'de
+    /// KarakterKutuphanesi'nden degistirince aninda uygulanir.
+    ///
+    /// Durus: animasyondan SONRA boyun ve basi geriye
     /// (ya da eksi degerle one) eger. Iri kafali modellerde (Ahmet) bas boyunla
     /// birlikte one cikik duruyordu.
     ///
@@ -15,6 +18,8 @@ namespace NewBattle.Gameplay
     public class PostureCorrection : MonoBehaviour
     {
         [SerializeField] private string characterId;
+        [Tooltip("Modelin karaktere donusturulmeden onceki olcegi; boy = bu x karakterin Scale'i.")]
+        [SerializeField] private Vector3 baseScale = Vector3.one;
 
         private Animator _animator;
         private Transform _neck;
@@ -24,9 +29,10 @@ namespace NewBattle.Gameplay
         private bool _applied;
         private CharacterDefinition _definition;
 
-        public void Configure(Animator animator, CharacterDefinition character)
+        public void Configure(Animator animator, CharacterDefinition character, Vector3 originalScale)
         {
             characterId = character != null ? character.id : string.Empty;
+            baseScale = originalScale;
             _animator = animator;
             _definition = character;
             _neck = null;
@@ -45,6 +51,11 @@ namespace NewBattle.Gameplay
                 _definition = CharacterLibrary.Instance != null ? CharacterLibrary.Instance.Find(characterId) : null;
             if (_definition == null)
                 return;
+
+            // Boy: Inspector'dan degisirse aninda.
+            Vector3 targetScale = baseScale * _definition.scale;
+            if (transform.localScale != targetScale)
+                transform.localScale = targetScale;
 
             float neckTilt = _definition.neckBackTilt;
             float headTilt = _definition.headBackTilt;

@@ -46,6 +46,7 @@ namespace NewBattle.UI
         [SerializeField, Min(0f)] private float returnDelay = 1.5f;
 
         private float _menuZoom = 1f;
+        private CharacterDefinition _shownCharacter;
         private RawImage _image;
         private RenderTexture _texture;
         private Quaternion _restRotation;
@@ -125,6 +126,7 @@ namespace NewBattle.UI
             bool changed = CharacterModelSwap.Apply(animator, character, library.Default);
 
             // Karaktere ozel menu yakinligi (CharacterLibrary > Menu Zoom).
+            _shownCharacter = character;
             if (!Mathf.Approximately(_menuZoom, character.menuZoom))
             {
                 _menuZoom = character.menuZoom;
@@ -200,6 +202,13 @@ namespace NewBattle.UI
         {
             if (turntable == null)
                 return;
+
+            // Menu Zoom Play'de Inspector'dan degisirse kadraj aninda yenilensin.
+            if (_shownCharacter != null && !Mathf.Approximately(_menuZoom, _shownCharacter.menuZoom))
+            {
+                _menuZoom = _shownCharacter.menuZoom;
+                FrameCharacter();
+            }
 
             float dt = Time.unscaledDeltaTime;
 
