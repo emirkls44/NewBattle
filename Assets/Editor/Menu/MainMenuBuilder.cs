@@ -182,6 +182,9 @@ namespace NewBattle.EditorTools
             if (EnsureMatchFeel(canvas, out string feel))
                 added.Add("Maç içi his: " + feel);
 
+            if (screen != null && EnsureMenuCrate(screen))
+                added.Add("Ana menü: karakter ahşap sandığın üstünde");
+
             if (EnsureWeaponSettings())
                 added.Add("Silah Ayarları (Resources/SilahAyarlari: nadirlik + olasılıklar)");
 

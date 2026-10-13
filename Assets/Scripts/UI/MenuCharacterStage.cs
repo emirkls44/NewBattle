@@ -45,6 +45,29 @@ namespace NewBattle.UI
         [SerializeField, Min(0f)] private float returnSpeed = 2.5f;
         [SerializeField, Min(0f)] private float returnDelay = 1.5f;
 
+        [Header("Sandik (karakterin altindaki zemin)")]
+        [Tooltip("Karakter ahsap bir sandigin ustunde durur (havada durmasin).")]
+        [SerializeField] private bool showCrate = true;
+        [Tooltip("Bos birakilirsa SoftToon ile olusturulur. Kur, ToonLoot materyalini baglar.")]
+        [SerializeField] private Material crateMaterial;
+        [Tooltip("Sandigin genisligi (karakter boyuna oran).")]
+        [SerializeField, Range(0.3f, 1.4f)] private float crateWidth = 0.62f;
+        [Tooltip("Sandigin yuksekligi (karakter boyuna oran).")]
+        [SerializeField, Range(0.1f, 0.9f)] private float crateHeight = 0.3f;
+        [Tooltip("Sandik hafif capraz dursun ki iki yuzu de gorunsun (derece).")]
+        [SerializeField, Range(-45f, 45f)] private float crateYaw = 28f;
+        [SerializeField] private Color plankLight = new(0.83f, 0.58f, 0.32f, 1f);
+        [SerializeField] private Color plankDark = new(0.74f, 0.49f, 0.26f, 1f);
+        [SerializeField] private Color frameColor = new(0.55f, 0.33f, 0.16f, 1f);
+        [SerializeField] private Color gapColor = new(0.29f, 0.17f, 0.08f, 1f);
+        [Tooltip("Ayaklarin altindaki yumusak golgenin koyulugu.")]
+        [SerializeField, Range(0f, 1f)] private float footShadowAlpha = 0.38f;
+
+        private Transform _crate;
+        private MeshRenderer _crateRenderer;
+        private MeshRenderer _footShadow;
+        private Mesh _crateMesh;
+
         private RawImage _image;
         private RenderTexture _texture;
         private Quaternion _restRotation;
@@ -248,6 +271,86 @@ namespace NewBattle.UI
         }
 
         /// <summary>
+        /// Karakterin altina ahsap sandik koyar: ust yuzu ayak hizasinda, boyu
+        /// karakterle orantili. Sandik donmez; karakter ustunde doner.
+        /// </summary>
+        private bool PlaceCrate(float characterHeight, float feetY)
+        {
+            // Editorde (sag tik > Karakteri Cercevele) sahneye kalici sandik kaydedilmesin.
+            if (!Application.isPlaying)
+                return false;
+
+            if (!showCrate || turntable == null || characterHeight <= 0.01f)
+            {
+                if (_crate != null)
+                    _crate.gameObject.SetActive(false);
+                return false;
+            }
+
+            Transform stage = turntable.parent != null ? turntable.parent : turntable;
+            int layer = turntable.gameObject.layer;
+
+            if (_crate == null)
+            {
+                _crateMesh = NewBattle.Visual.WoodenCrateMesh.Build(new NewBattle.Visual.WoodenCrateMesh.Palette
+                {
+                    PlankLight = plankLight,
+                    PlankDark = plankDark,
+                    Frame = frameColor,
+                    Gap = gapColor
+                });
+
+                var crateObject = new GameObject("AhsapSandik") { layer = layer };
+                crateObject.transform.SetParent(stage, false);
+                crateObject.AddComponent<MeshFilter>().sharedMesh = _crateMesh;
+                _crateRenderer = crateObject.AddComponent<MeshRenderer>();
+                _crateRenderer.sharedMaterial = crateMaterial != null ? crateMaterial : CreateFallbackMaterial();
+                _crateRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                _crate = crateObject.transform;
+
+                _footShadow = NewBattle.Gameplay.OverlayMeshLibrary.CreateOverlayObject(
+                    "SandikGolgesi", NewBattle.Gameplay.OverlayMeshLibrary.SoftDisc, stage, Vector3.zero, 1f);
+                _footShadow.gameObject.layer = layer;
+                var block = new MaterialPropertyBlock();
+                block.SetColor(NewBattle.Gameplay.OverlayMeshLibrary.BaseColorId, new Color(0.12f, 0.06f, 0.02f, footShadowAlpha));
+                block.SetFloat(NewBattle.Gameplay.OverlayMeshLibrary.FillId, 1f);
+                _footShadow.SetPropertyBlock(block);
+            }
+
+            _crate.gameObject.SetActive(true);
+
+            // Sandigin ust yuzu = karakterin en alt noktasi (ayakkabilar).
+            Vector3 feet = new(turntable.position.x, feetY, turntable.position.z);
+            float width = crateWidth * characterHeight;
+            float height = crateHeight * characterHeight;
+            _crate.SetPositionAndRotation(feet, stage.rotation * Quaternion.Euler(0f, crateYaw, 0f));
+            _crate.localScale = new Vector3(width, height, width);
+
+            if (_footShadow != null)
+            {
+                _footShadow.transform.SetPositionAndRotation(feet + Vector3.up * 0.004f, stage.rotation);
+                _footShadow.transform.localScale = Vector3.one * (width * 0.42f);
+            }
+
+            return true;
+        }
+
+        private void OnDestroy()
+        {
+            if (_crateMesh != null)
+                Destroy(_crateMesh);
+        }
+
+        private static Material CreateFallbackMaterial()
+        {
+            Shader shader = Shader.Find("NewBattle/SoftToon");
+            var material = new Material(shader != null ? shader : Shader.Find("Universal Render Pipeline/Lit"));
+            if (material.HasProperty("_VertexColorSRGB"))
+                material.SetFloat("_VertexColorSRGB", 1f);
+            return material;
+        }
+
+        /// <summary>
         /// Kamerayi karakterin boyuna gore yerlestirir. Model degisse ya da
         /// olcegi farkli olsa bile karakter cerceveye tam oturur.
         /// </summary>
@@ -264,6 +367,14 @@ namespace NewBattle.UI
             Bounds bounds = renderers[0].bounds;
             for (int i = 1; i < renderers.Length; i++)
                 bounds.Encapsulate(renderers[i].bounds);
+
+            // Sandik karakterin boyuna gore kurulur; kadraj sandigi da kapsar.
+            if (PlaceCrate(bounds.size.y, bounds.min.y))
+            {
+                bounds.Encapsulate(_crateRenderer.bounds);
+                if (_footShadow != null)
+                    bounds.Encapsulate(_footShadow.bounds);
+            }
 
             float height = bounds.size.y * (1f + framePadding * 2f);
             float halfFov = stageCamera.fieldOfView * 0.5f * Mathf.Deg2Rad;
