@@ -182,8 +182,8 @@ namespace NewBattle.EditorTools
             if (EnsureMatchFeel(canvas, out string feel))
                 added.Add("Maç içi his: " + feel);
 
-            if (screen != null && EnsureMenuGround(screen))
-                added.Add("Ana menü: karakterin altına zemin (Hierarchy > MenuKarakterSahnesi > KarakterZemini)");
+            if (screen != null && RemoveMenuGround(screen))
+                added.Add("Ana menü: zemin kaldırıldı, ayak altındaki gölge geri geldi");
 
             if (EnsureWeaponSettings())
                 added.Add("Silah Ayarları (Resources/SilahAyarlari: nadirlik + olasılıklar)");
