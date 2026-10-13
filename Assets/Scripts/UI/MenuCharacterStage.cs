@@ -34,6 +34,10 @@ namespace NewBattle.UI
         [Tooltip("Kameranin gorus acisi (derece). Buyuk = perspektif daha belirgin (zemin derin gorunur), " +
                  "kucuk = daha duz/telefoto. Kamera, kadraj sigacak kadar otomatik uzaklasir.")]
         [SerializeField, Range(10f, 70f)] private float cameraFov = 30f;
+        [Tooltip("Karakteri ve zemini ekranda yukari (+) / asagi (-) kaydirir (kadraj yuksekliginin orani).")]
+        [SerializeField, Range(-0.5f, 0.5f)] private float frameOffsetY = 0f;
+        [Tooltip("1 = her sey tam sigar. Buyuk = yaklas, kucuk = uzaklas.")]
+        [SerializeField, Range(0.5f, 2.5f)] private float frameZoom = 1f;
 
         [Header("Dondurme")]
         [Tooltip("1080 piksel yukseklikte bir piksel suruklemenin dondurdugu derece " +
@@ -276,6 +280,38 @@ namespace NewBattle.UI
             _releasedAt = Time.unscaledTime;
         }
 
+        private Mesh _bakedMesh;
+
+        /// <summary>
+        /// Modelin su anki pozundaki gercek en alt nokta (ayakkabi tabani). Iskeletli
+        /// modelde koseler o anki poza gore hesaplanir (BakeMesh); digerlerinde sinir kutusu.
+        /// </summary>
+        private float LowestPoint(Renderer[] renderers, float fallback)
+        {
+            float lowest = float.MaxValue;
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                    continue;
+
+                if (renderer is SkinnedMeshRenderer skinned && skinned.sharedMesh != null)
+                {
+                    _bakedMesh ??= new Mesh { name = "AyakOlcumu" };
+                    skinned.BakeMesh(_bakedMesh, true);
+                    Transform t = skinned.transform;
+                    Matrix4x4 toWorld = Matrix4x4.TRS(t.position, t.rotation, Vector3.one);
+                    foreach (Vector3 vertex in _bakedMesh.vertices)
+                        lowest = Mathf.Min(lowest, toWorld.MultiplyPoint3x4(vertex).y);
+                }
+                else if (renderer is MeshRenderer)
+                {
+                    lowest = Mathf.Min(lowest, renderer.bounds.min.y);
+                }
+            }
+
+            return lowest < float.MaxValue ? lowest : fallback;
+        }
+
         /// <summary>
         /// Ayaklarin altina, zeminin ustune yumusak golge (sadece oyun calisirken;
         /// editorde sahneye kalici nesne kaydedilmesin).
@@ -312,6 +348,12 @@ namespace NewBattle.UI
             _footShadow.SetPropertyBlock(_shadowBlock);
         }
 
+        private void OnDestroy()
+        {
+            if (_bakedMesh != null)
+                DestroyImmediate(_bakedMesh);
+        }
+
         private void OnValidate()
         {
             // Inspector'da golge/zemin ayari degisince oyun calisirken hemen gor.
@@ -342,7 +384,10 @@ namespace NewBattle.UI
             {
                 if (plantFeet)
                 {
-                    float delta = ground.bounds.max.y - footSink - bounds.min.y;
+                    // Sinir kutusu (bounds) animasyonlu modelde ayaklardan asagi tasar;
+                    // ona gore oturtunca ayaklar zemine gomuluyordu. Gercek en alt nokta.
+                    float feetY = LowestPoint(renderers, bounds.min.y);
+                    float delta = ground.bounds.max.y - footSink - feetY;
                     Animator animator = turntable.GetComponentInChildren<Animator>(true);
                     Transform model = animator != null ? animator.transform : turntable;
                     model.position += Vector3.up * delta;
@@ -400,6 +445,11 @@ namespace NewBattle.UI
             }
 
             Vector3 shift = viewUp * ((minY + maxY) * 0.5f * distance) + viewRight * ((minX + maxX) * 0.5f * distance);
+
+            // Elle ince ayar: yakinlastirma ve dikey kaydirma.
+            distance /= Mathf.Max(0.1f, frameZoom);
+            float visibleHeight = 2f * distance * Mathf.Tan(stageCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            shift -= viewUp * (frameOffsetY * visibleHeight);
             stageCamera.transform.SetPositionAndRotation(center + shift - viewForward * distance, look);
             stageCamera.nearClipPlane = Mathf.Max(0.01f, distance * 0.05f);
             stageCamera.farClipPlane = distance * 4f + ext.magnitude * 2f;
