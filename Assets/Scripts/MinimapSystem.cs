@@ -1,16 +1,11 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-[DefaultExecutionOrder(500)] // kamera takibinden (MinimapCameraFollow) sonra
 public class MinimapSystem : MonoBehaviour
 {
     [Header("Minimap Kamera")]
     [SerializeField] private int textureResolution = 512;
     [SerializeField] private float mapHeight = 50f;
-
-    [Tooltip("Harita resmi saniyede kac kez yeniden cizilsin. Aradaki karelerde resim oyuncuyla " +
-             "birlikte kaydirilir, fark edilmez. Her kare cizmek telefonu bosuna isitiyordu.")]
-    [SerializeField, Range(2, 60)] private int mapRefreshPerSecond = 8;
 
     /// <summary>
     /// Haritanin bos kalan yerlerinin rengi (deniz / bosluk).
@@ -89,10 +84,6 @@ public class MinimapSystem : MonoBehaviour
     private Transform _localPlayer;
     private Camera _minimapCamera;
     private RawImage _mapImage;
-    private Vector3 _capturePosition;
-    private float _captureRadius = 1f;
-    private float _nextCapture;
-    private bool _captured;
     private RectTransform _nextZoneRect;
     private CircleOutlineGraphic _nextZoneGraphic;
     private RectTransform _currentZoneRect;
@@ -188,38 +179,14 @@ public class MinimapSystem : MonoBehaviour
             minimapCamera.orthographicSize = _visibleRadius;
     }
 
-    /// <summary>
-    /// Harita kamerasi saniyede birkac kez cizer; aradaki karelerde resim (uvRect)
-    /// oyuncunun hareketi ve yakinlasma kadar kaydirilir.
-    /// </summary>
+    /// <summary>Oyun basladiysa harita kamerasi her karede cizer (menude kapali).</summary>
     private void LateUpdate()
     {
         if (_minimapCamera == null || _uiRoot == null || !_uiRoot.activeInHierarchy)
             return;
 
-        Transform cameraTransform = _minimapCamera.transform;
-        bool capture = !_captured || Time.unscaledTime >= _nextCapture;
-        _minimapCamera.enabled = capture;
-
-        if (capture)
-        {
-            _captured = true;
-            _nextCapture = Time.unscaledTime + 1f / Mathf.Max(1, mapRefreshPerSecond);
-            _capturePosition = cameraTransform.position;
-            _captureRadius = Mathf.Max(0.01f, _minimapCamera.orthographicSize);
-        }
-
-        if (_mapImage == null)
-            return;
-
-        Vector3 current = _localPlayer != null ? _localPlayer.position : cameraTransform.position;
-        Vector3 delta = capture ? Vector3.zero : current - _capturePosition;
-        float size = capture ? 1f : Mathf.Max(0.01f, _visibleRadius) / _captureRadius;
-        float span = 2f * _captureRadius;
-        _mapImage.uvRect = new Rect(
-            0.5f - size * 0.5f + delta.x / span,
-            0.5f - size * 0.5f + delta.z / span,
-            size, size);
+        if (!_minimapCamera.enabled)
+            _minimapCamera.enabled = true;
     }
 
     /// <summary>
