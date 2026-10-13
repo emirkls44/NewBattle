@@ -20,6 +20,16 @@ namespace NewBattle.Audio
         public static void PlayUI(string id) => AudioDirector.Instance?.Play(id, null, 1f, ui: true);
 
         /// <summary>
+        /// Oyun olayinin sesi ama mesafesiz (alan sireni, isabet, toplama). Arayuz sesi
+        /// gibi calar fakat mac sonu ekraninda (MuteWorld) susar.
+        /// </summary>
+        public static void PlayHud(string id)
+        {
+            if (!AudioDirector.WorldMuted)
+                PlayUI(id);
+        }
+
+        /// <summary>
         /// Mac sonu ekraninda: arkadaki catisma, adim, ruzgar gibi oyun sesleri susar;
         /// arayuz sesleri ve muzik calmaya devam eder. Sahne yeniden yuklenince kalkar.
         /// </summary>

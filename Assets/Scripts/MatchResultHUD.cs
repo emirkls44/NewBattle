@@ -212,6 +212,10 @@ public class MatchResultHUD : MonoBehaviour
         {
             _spectatorCamera.SetTarget(target.transform);
             _spectated = target.transform;
+
+            MinimapSystem minimap = UnityEngine.Object.FindFirstObjectByType<MinimapSystem>();
+            if (minimap != null)
+                minimap.SetFocus(target.transform);
         }
 
         // Alttaki can bari izlenen oyuncunun canini gostersin (yoksa senin
@@ -563,12 +567,7 @@ public class MatchResultHUD : MonoBehaviour
         for (int i = 1; i < renderers.Length; i++)
             bounds.Encapsulate(renderers[i].bounds);
 
-        _previewTexture = new RenderTexture(512, 512, 24, RenderTextureFormat.ARGB32)
-        {
-            name = "MatchResultCharacterTexture",
-            antiAliasing = 2
-        };
-        _previewTexture.Create();
+        _previewTexture = PreviewTexture.Create(512, 512, "MatchResultCharacterTexture");
         target.texture = _previewTexture;
         target.color = Color.white;
 
@@ -578,6 +577,7 @@ public class MatchResultHUD : MonoBehaviour
         previewCamera.clearFlags = CameraClearFlags.SolidColor;
         previewCamera.backgroundColor = new Color(0f, 0f, 0f, 0f);
         previewCamera.fieldOfView = 28f;
+        previewCamera.allowHDR = false; // menudeki (calisan) onizleme kamerasiyla ayni
         previewCamera.nearClipPlane = 0.05f;
         previewCamera.targetTexture = _previewTexture;
         _previewCameraObject.AddComponent<ToonPreviewLight>(); // yuz hep aydinlik

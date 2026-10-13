@@ -200,8 +200,7 @@ namespace NewBattle.UI
             float aspect = area.rect.height > 1f ? Mathf.Max(0.2f, area.rect.width / area.rect.height) : 0.75f;
             int height = previewResolution;
             int width = Mathf.Max(64, Mathf.RoundToInt(height * aspect));
-            preview.Texture = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32) { name = "Secim_" + character.id, antiAliasing = 2 };
-            preview.Texture.Create();
+            preview.Texture = PreviewTexture.Create(width, height, "Secim_" + character.id);
             slot.preview.texture = preview.Texture;
             slot.preview.color = Color.white;
 

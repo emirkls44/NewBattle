@@ -245,7 +245,7 @@ public class SafeZoneController : NetworkBehaviour
         // Daralma basladiginda siren (bir kez).
         bool shrinking = IsShrinking;
         if (shrinking && !_wasShrinking)
-            NewBattle.Audio.Sfx.PlayUI("alan_daraliyor");
+            NewBattle.Audio.Sfx.PlayHud("alan_daraliyor");
         _wasShrinking = shrinking;
 
         // Kendi oyuncumuz havadayken (dusus + parasut) alan cizgisi, kirmizi
@@ -890,7 +890,7 @@ public class SafeZoneController : NetworkBehaviour
             if (beat != _lastHeartbeat)
             {
                 _lastHeartbeat = beat;
-                NewBattle.Audio.Sfx.PlayUI("alan_kalp");
+                NewBattle.Audio.Sfx.PlayHud("alan_kalp");
             }
 
             float phase = Mathf.Repeat(Time.unscaledTime * heartbeatRate, 1f);

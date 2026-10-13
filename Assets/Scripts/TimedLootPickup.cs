@@ -28,6 +28,11 @@ public abstract class TimedLootPickup : NetworkBehaviour
     [SerializeField, Min(0.1f)] private float glowRadius = 0.85f;
 
     [Networked, Capacity(32)] private NetworkDictionary<NetworkId, float> Progress => default;
+
+    // NetworkTransform'u olmayan pickup'larin yeri: Fusion 2 Spawn konumunu sadece
+    // kuran tarafta uygular. Katilanlar bunu Spawned'da okuyup kendini oraya koyar.
+    [Networked] private Vector3 SpawnPosition { get; set; }
+    [Networked] private Quaternion SpawnRotation { get; set; }
     private static readonly HashSet<TimedLootPickup> Active = new();
     private readonly List<NetworkId> _remove = new();
     private readonly HashSet<NetworkId> _eligible = new();
@@ -60,6 +65,7 @@ public abstract class TimedLootPickup : NetworkBehaviour
     public override void Spawned()
     {
         _consumed = false;
+        SyncSpawnPose();
         Active.Add(this);
         // Spawn'da bir kez: burada sahne taramasi kabul edilebilir.
         foreach (var lobby in FindObjectsByType<LobbyCountdownController>(FindObjectsSortMode.None))
@@ -77,6 +83,25 @@ public abstract class TimedLootPickup : NetworkBehaviour
         _glow = CreateOverlay("LootGlow", NewBattle.Gameplay.OverlayMeshLibrary.SoftDisc, 0f, glowRadius);
         _track = CreateOverlay("LootRing", NewBattle.Gameplay.OverlayMeshLibrary.SoftRing, 0.004f, collectionRadius);
         _fill = CreateOverlay("LootProgress", NewBattle.Gameplay.OverlayMeshLibrary.SoftRing, 0.008f, collectionRadius);
+    }
+
+    private void SyncSpawnPose()
+    {
+        if (TryGetComponent(out NetworkTransform _))
+            return; // airdrop sandigi gibi kendi konumunu zaten esitleyenler
+
+        if (HasStateAuthority)
+        {
+            SpawnPosition = transform.position;
+            SpawnRotation = transform.rotation;
+        }
+        else
+        {
+            Quaternion rotation = SpawnRotation;
+            if (rotation.x == 0f && rotation.y == 0f && rotation.z == 0f && rotation.w == 0f)
+                rotation = Quaternion.identity;
+            transform.SetPositionAndRotation(SpawnPosition, rotation);
+        }
     }
 
     private MeshRenderer CreateOverlay(string label, Mesh mesh, float lift, float radius)
@@ -240,7 +265,7 @@ public abstract class TimedLootPickup : NetworkBehaviour
             Vector3 offset = CameraFollow.Active.target.position - transform.position;
             offset.y = 0f;
             if (offset.magnitude <= collectionRadius + 1f)
-                NewBattle.Audio.Sfx.PlayUI("toplama");
+                NewBattle.Audio.Sfx.PlayHud("toplama");
         }
 
         Cleanup();

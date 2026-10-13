@@ -169,12 +169,7 @@ namespace NewBattle.UI
             int height = aspect <= 1f ? resolution : Mathf.RoundToInt(resolution / aspect);
             int width = Mathf.RoundToInt(height * aspect);
 
-            _texture = new RenderTexture(Mathf.Max(64, width), Mathf.Max(64, height), 24, RenderTextureFormat.ARGB32)
-            {
-                name = "MenuCharacterStage",
-                antiAliasing = 4
-            };
-            _texture.Create();
+            _texture = PreviewTexture.Create(Mathf.Max(64, width), Mathf.Max(64, height), "MenuCharacterStage");
 
             stageCamera.clearFlags = CameraClearFlags.SolidColor;
             stageCamera.backgroundColor = new Color(0f, 0f, 0f, 0f);

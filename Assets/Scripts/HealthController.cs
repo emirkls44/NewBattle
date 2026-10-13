@@ -269,12 +269,12 @@ public class HealthController : NetworkBehaviour
 
         if (HasInputAuthority)
         {
-            NewBattle.Audio.Sfx.PlayUI(killed ? "olum" : "hasar_al");
+            NewBattle.Audio.Sfx.PlayHud(killed ? "olum" : "hasar_al");
             return;
         }
 
         if (attacker != PlayerRef.None && attacker == Runner.LocalPlayer)
-            NewBattle.Audio.Sfx.PlayUI(killed ? "oldurme" : "isabet");
+            NewBattle.Audio.Sfx.PlayHud(killed ? "oldurme" : "isabet");
     }
 
     private void Die()

@@ -304,6 +304,20 @@ public class MinimapSystem : MonoBehaviour
         _nextZoneRect.sizeDelta = new Vector2(nextDiameter, nextDiameter);
     }
 
+    /// <summary>
+    /// Yerel oyuncu oldu ve takim arkadasini izliyor: mini harita (kamera ve
+    /// isaretler) izlenen oyuncunun etrafini gostersin.
+    /// </summary>
+    public void SetFocus(Transform target)
+    {
+        if (target == null)
+            return;
+
+        _localPlayer = target;
+        if (_cameraObject != null && _cameraObject.TryGetComponent(out MinimapCameraFollow follow))
+            follow.SetTarget(target);
+    }
+
     private void FindLocalPlayer()
     {
         HealthController[] players = UnityEngine.Object.FindObjectsByType<HealthController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
@@ -367,12 +381,7 @@ public class MinimapSystem : MonoBehaviour
 
     private void CreateMinimapCamera()
     {
-        _renderTexture = new RenderTexture(textureResolution, textureResolution, 16)
-        {
-            name = "RuntimeMinimapTexture",
-            antiAliasing = 2
-        };
-        _renderTexture.Create();
+        _renderTexture = PreviewTexture.Create(textureResolution, textureResolution, "RuntimeMinimapTexture", msaa: 2, depth: 16);
 
         _cameraObject = new GameObject("MinimapCamera");
         Camera minimapCamera = _cameraObject.AddComponent<Camera>();

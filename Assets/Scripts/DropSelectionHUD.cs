@@ -271,12 +271,7 @@ public class DropSelectionHUD : MonoBehaviour
 
     private void CreateMapCamera()
     {
-        _mapTexture = new RenderTexture(textureResolution, textureResolution, 16)
-        {
-            name = "RuntimeDropMapTexture",
-            antiAliasing = 2
-        };
-        _mapTexture.Create();
+        _mapTexture = PreviewTexture.Create(textureResolution, textureResolution, "RuntimeDropMapTexture", msaa: 2, depth: 16);
 
         _mapCameraObject = new GameObject("DropSelectionCamera");
         Camera mapCamera = _mapCameraObject.AddComponent<Camera>();
