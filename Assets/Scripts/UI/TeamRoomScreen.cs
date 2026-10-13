@@ -354,6 +354,7 @@ namespace NewBattle.UI
             int sceneIndex = SceneManager.GetActiveScene().buildIndex;
             NetworkBootstrap.ClearFriendRoom();
             NetworkBootstrap.PendingRejoin = null;
+            LoadingScreen.ShowLeaving(FindLoadingPrefab(), "ANA MENÜYE DÖNÜLÜYOR...");
 
             NetworkRunner runner = _runner;
             if (runner != null && runner.IsRunning)
@@ -423,6 +424,9 @@ namespace NewBattle.UI
                 NetworkBootstrap.PendingMenuMessage = "ODA KAPANDI";
             }
 
+            bool rejoin = NetworkBootstrap.PendingRejoin != null;
+            LoadingScreen.ShowLeaving(FindLoadingPrefab(),
+                rejoin ? NetworkBootstrap.PendingMenuMessage : "ODA KAPANDI", holdForRejoin: rejoin);
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
@@ -454,6 +458,13 @@ namespace NewBattle.UI
                     break;
                 }
             }
+        }
+
+        /// <summary>Mor yukleme ekrani prefabi (ana menude kayitli).</summary>
+        private static LoadingScreen FindLoadingPrefab()
+        {
+            MainMenuScreen menu = FindFirstObjectByType<MainMenuScreen>(FindObjectsInactive.Include);
+            return menu != null ? menu.LoadingScreenPrefab : null;
         }
 
         private void SetVisible(bool visible)

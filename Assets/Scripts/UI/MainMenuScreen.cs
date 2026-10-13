@@ -95,6 +95,9 @@ namespace NewBattle.UI
         [Tooltip("Mac aranirken gosterilen ekran (Assets/Prefabs/UI/YuklemeEkrani).")]
         [SerializeField] private LoadingScreen loadingScreenPrefab;
 
+        /// <summary>Yukleme ekrani (odadan ayrilirken de kullanilir).</summary>
+        public LoadingScreen LoadingScreenPrefab => loadingScreenPrefab;
+
         [Header("Mod")]
         [Tooltip("OYNA'ya basinca acilan oyun modu penceresi.")]
         [SerializeField] private ModeSelectPanel modePanel;

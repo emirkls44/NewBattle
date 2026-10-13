@@ -35,13 +35,23 @@ namespace NewBattle.UI
         private bool _closing;
         private bool _failed;
 
+        // Maci/odayi terk ederken: ana menu gelene kadar acik kalir.
+        private bool _leaving;
+        private bool _holdForRejoin;
+
         public static bool IsShowing => _current != null;
 
         /// <summary>Yukleme ekranini acar. Zaten aciksa onu dondurur.</summary>
         public static LoadingScreen Show(LoadingScreen prefab, NetworkBootstrap bootstrap)
         {
             if (_current != null)
+            {
+                // Ayrilma ekrani hala aciksa (kurucu ayrildi, yeni odaya baglaniliyor)
+                // onu yeni baglanti icin devral; arada menu gorunmesin.
+                if (_current._leaving && !_current._closing)
+                    _current.Adopt(bootstrap);
                 return _current;
+            }
 
             if (prefab == null)
                 return null;
@@ -51,6 +61,44 @@ namespace NewBattle.UI
             DontDestroyOnLoad(_current.gameObject);
             _current.Begin(bootstrap);
             return _current;
+        }
+
+        /// <summary>
+        /// Odadan/mactan ayrilirken: mor yukleme ekrani acilir, sahne yeniden yuklenip
+        /// ana menu gelince kapanir. holdForRejoin: menu hemen yeni odaya baglanacak,
+        /// ekran onu bekler.
+        /// </summary>
+        public static void ShowLeaving(LoadingScreen prefab, string message, bool holdForRejoin = false)
+        {
+            if (_current == null)
+            {
+                if (prefab == null)
+                    return;
+
+                _current = Instantiate(prefab);
+                _current.name = prefab.name;
+                DontDestroyOnLoad(_current.gameObject);
+                _current.Begin(null);
+            }
+
+            _current._leaving = true;
+            _current._holdForRejoin = holdForRejoin;
+            _current._shownAt = Time.unscaledTime;
+            if (_current.statusText != null)
+                _current.statusText.text = message;
+        }
+
+        private void Adopt(NetworkBootstrap bootstrap)
+        {
+            _leaving = false;
+            _holdForRejoin = false;
+            _shownAt = Time.unscaledTime;
+            if (_bootstrap == null && bootstrap != null)
+            {
+                _bootstrap = bootstrap;
+                _bootstrap.StatusChanged += OnStatusChanged;
+                _bootstrap.ConnectionCompleted += OnConnectionCompleted;
+            }
         }
 
         /// <summary>Acik yukleme ekranini kapatir.</summary>
@@ -98,6 +146,13 @@ namespace NewBattle.UI
             if (elapsed < minimumSeconds)
                 return;
 
+            if (_leaving)
+            {
+                if ((!_holdForRejoin && IsMenuReady()) || elapsed >= timeoutSeconds)
+                    Close();
+                return;
+            }
+
             if (IsGameReady() || elapsed >= timeoutSeconds)
                 Close();
         }
@@ -132,6 +187,13 @@ namespace NewBattle.UI
             yield return new WaitForSecondsRealtime(seconds);
             _failed = false;
             Close();
+        }
+
+        /// <summary>Sahne yeniden yuklendi ve ana menu ekranda.</summary>
+        private static bool IsMenuReady()
+        {
+            MainMenuScreen menu = FindFirstObjectByType<MainMenuScreen>();
+            return menu != null && menu.isActiveAndEnabled;
         }
 
         /// <summary>
