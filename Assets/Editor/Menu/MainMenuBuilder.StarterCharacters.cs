@@ -131,6 +131,9 @@ namespace NewBattle.EditorTools
             return true;
         }
 
+        /// <summary>Otomatik onarim icin (StarterCharacterRigFixer): eslestirmeyi uygular.</summary>
+        internal static void RepairStarterRig(string path) => PrepareStarterModel(path);
+
         /// <summary>Unity Humanoid adi -> SmartRig/Mixamo kemik adi (onek haric).</summary>
         private static readonly (string human, string bone)[] SmartRigMap =
         {
