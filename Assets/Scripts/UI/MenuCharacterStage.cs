@@ -285,7 +285,7 @@ namespace NewBattle.UI
             _releasedAt = Time.unscaledTime;
         }
 
-        private Mesh _bakedMesh;
+        [System.NonSerialized] private Mesh _bakedMesh;
 
         /// <summary>
         /// Modelin su anki pozundaki gercek en alt nokta (ayakkabi tabani). Iskeletli
@@ -301,7 +301,9 @@ namespace NewBattle.UI
 
                 if (renderer is SkinnedMeshRenderer skinned && skinned.sharedMesh != null)
                 {
-                    _bakedMesh ??= new Mesh { name = "AyakOlcumu" };
+                    // ??= degil: Unity objesinde "sahte null" ??= ile yakalanmaz.
+                    if (_bakedMesh == null)
+                        _bakedMesh = new Mesh { name = "AyakOlcumu", hideFlags = HideFlags.HideAndDontSave };
                     skinned.BakeMesh(_bakedMesh, true);
                     Transform t = skinned.transform;
                     Matrix4x4 toWorld = Matrix4x4.TRS(t.position, t.rotation, Vector3.one);
