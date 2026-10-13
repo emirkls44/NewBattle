@@ -67,6 +67,8 @@ namespace NewBattle.UI
         }
 
         public LobbyCharacterAnimator LobbyAnimator => lobbyAnimator;
+        public Camera StageCamera => stageCamera;
+        public Transform Turntable => turntable;
 
         private void OnEnable()
         {

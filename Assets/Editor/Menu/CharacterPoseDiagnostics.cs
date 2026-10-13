@@ -22,6 +22,13 @@ namespace NewBattle.EditorTools
         [MenuItem("Tools/NewBattle/Karakter Pozu Teshis")]
         private static void Run()
         {
+            // Play modunda: menudeki CANLI karakteri olc (gercek durum).
+            if (EditorApplication.isPlaying)
+            {
+                RunLive();
+                return;
+            }
+
             CharacterLibrary library = CharacterLibrary.Instance;
             var lobby = AssetDatabase.FindAssets("t:LobbyAnimationLibrary")
                 .Select(g => AssetDatabase.LoadAssetAtPath<LobbyAnimationLibrary>(AssetDatabase.GUIDToAssetPath(g)))
@@ -75,6 +82,60 @@ namespace NewBattle.EditorTools
             }
 
             Debug.Log(log.ToString());
+        }
+
+        private static void RunLive()
+        {
+            var log = new StringBuilder("[Teshis CANLI] ");
+            NewBattle.UI.MenuCharacterStage stage = Object.FindFirstObjectByType<NewBattle.UI.MenuCharacterStage>(FindObjectsInactive.Include);
+            if (stage == null)
+            {
+                Debug.Log(log + "MenuCharacterStage yok.");
+                return;
+            }
+
+            Transform turntable = stage.Turntable;
+            Animator animator = turntable != null ? turntable.GetComponentInChildren<Animator>(true) : null;
+            log.AppendLine($"stage aktif={stage.isActiveAndEnabled}, doner rot={turntable?.eulerAngles}, " +
+                           $"sahne kok rot={turntable?.parent?.eulerAngles}");
+            if (animator == null)
+            {
+                Debug.Log(log + "Animator yok.");
+                return;
+            }
+
+            log.AppendLine($"animator: enabled={animator.enabled}, avatar={(animator.avatar != null ? animator.avatar.name : "YOK")}, " +
+                           $"controller={(animator.runtimeAnimatorController != null ? animator.runtimeAnimatorController.name : "yok")}, " +
+                           $"model rot={animator.transform.eulerAngles} scale={animator.transform.lossyScale}");
+            var lobby = stage.LobbyAnimator;
+            log.AppendLine($"lobi: enabled={(lobby != null && lobby.enabled)}, oynayan={(lobby != null && lobby.Playing != null ? lobby.Playing.id : "yok")}");
+            log.AppendLine("iskelet (dunyaya gore): " + WorldPose(animator));
+            if (stage.StageCamera != null)
+                log.AppendLine($"kamera: pos={stage.StageCamera.transform.position}, rot={stage.StageCamera.transform.eulerAngles}, fov={stage.StageCamera.fieldOfView}");
+
+            var renderers = animator.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            foreach (var r in renderers)
+                log.AppendLine($"mesh {r.name}: kemik={r.bones.Length}, kok kemik={(r.rootBone != null ? r.rootBone.name : "yok")}, " +
+                               $"bos kemik={r.bones.Count(b => b == null)}, mesh={(r.sharedMesh != null ? r.sharedMesh.name : "YOK")}");
+            Debug.Log(log.ToString());
+        }
+
+        /// <summary>Dunya eksenine gore govde egimi (kalca->bas dikeyle acisi) ve yuzun yatay yonu.</summary>
+        private static string WorldPose(Animator animator)
+        {
+            Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+            Transform chest = animator.GetBoneTransform(HumanBodyBones.Chest);
+            Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
+            Transform left = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
+            Transform right = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
+            if (hips == null || head == null || left == null || right == null)
+                return "kemik eksik (avatar Humanoid degil mi?)";
+
+            Vector3 up = (head.position - hips.position).normalized;
+            Vector3 facing = Vector3.Cross(left.position - right.position, Vector3.up).normalized;
+            string chestTilt = chest != null ? $"{Vector3.Angle(chest.position - hips.position, Vector3.up):0}°" : "?";
+            return $"kalca->bas egim {Vector3.Angle(up, Vector3.up):0}°, kalca->gogus egim {chestTilt}, " +
+                   $"yuz yonu (dunya) {Mathf.Atan2(facing.x, facing.z) * Mathf.Rad2Deg:0}°";
         }
 
         /// <summary>Dinlenme pozunda ve klip uygulandiktan sonra govde egimi / yuzun baktigi yon.</summary>
