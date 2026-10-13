@@ -45,6 +45,7 @@ namespace NewBattle.UI
         [SerializeField, Min(0f)] private float returnSpeed = 2.5f;
         [SerializeField, Min(0f)] private float returnDelay = 1.5f;
 
+        private float _menuZoom = 1f;
         private RawImage _image;
         private RenderTexture _texture;
         private Quaternion _restRotation;
@@ -120,6 +121,13 @@ namespace NewBattle.UI
                 lobbyAnimator.enabled = false;
 
             bool changed = CharacterModelSwap.Apply(animator, character, library.Default);
+
+            // Karaktere ozel menu yakinligi (CharacterLibrary > Menu Zoom).
+            if (!Mathf.Approximately(_menuZoom, character.menuZoom))
+            {
+                _menuZoom = character.menuZoom;
+                changed = true;
+            }
 
             if (restart)
                 lobbyAnimator.enabled = true;
@@ -264,6 +272,16 @@ namespace NewBattle.UI
             Bounds bounds = renderers[0].bounds;
             for (int i = 1; i < renderers.Length; i++)
                 bounds.Encapsulate(renderers[i].bounds);
+
+            // Karaktere ozel yakinlik: ayaklar yerinde kalir, kadraj tepeden daralir.
+            float zoom = Mathf.Max(0.1f, _menuZoom);
+            if (!Mathf.Approximately(zoom, 1f))
+            {
+                float zoomedHeight = bounds.size.y / zoom;
+                bounds = new Bounds(
+                    new Vector3(bounds.center.x, bounds.min.y + zoomedHeight * 0.5f, bounds.center.z),
+                    new Vector3(bounds.size.x, zoomedHeight, bounds.size.z));
+            }
 
             float height = bounds.size.y * (1f + framePadding * 2f);
             float halfFov = stageCamera.fieldOfView * 0.5f * Mathf.Deg2Rad;

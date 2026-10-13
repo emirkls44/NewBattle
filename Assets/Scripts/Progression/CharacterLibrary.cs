@@ -29,6 +29,10 @@ namespace NewBattle.Progression
         public Material material;
         [Tooltip("Boy carpani: karakter digerlerinden buyuk/kucuk gorunuyorsa ayarla.")]
         [Range(0.5f, 2f)] public float scale = 1f;
+        [Tooltip("Menude (ve magaza onizlemesinde) karakter ne kadar yakindan gosterilsin. " +
+                 "Kanat, hale gibi parcalar kadraji buyutup karakteri kucuk gosteriyorsa artir. " +
+                 "Ayaklar sabit kalir, fazlasi tepeden kirpilir.")]
+        [Range(0.6f, 1.8f)] public float menuZoom = 1f;
         [Tooltip("Model dosyasinda karaktere ait olmayan, kaldirilacak parcalarin adlari " +
                  "(ornek: Meshy'nin biraktigi 'Icosphere').")]
         public string[] removeObjects = { };

@@ -20,6 +20,7 @@ MonoBehaviour:
     avatar: {fileID: 9000000, guid: 5bcb9bdb51cd8484dbe9eddab0bd614d, type: 3}
     material: {fileID: 2100000, guid: 0417f126eb026ef45b310f33080eb0b8, type: 2}
     scale: 1
+    menuZoom: 1
     removeObjects: []
     unlock: 0
     requirement: 0
@@ -30,6 +31,7 @@ MonoBehaviour:
     avatar: {fileID: 9000000, guid: 4a43ed866dd2a5a42bcffe729d1e71ea, type: 3}
     material: {fileID: 2100000, guid: d0551b8403140d74c901746e2b6da28d, type: 2}
     scale: 1
+    menuZoom: 1.15
     removeObjects:
     - Icosphere
     unlock: 3
