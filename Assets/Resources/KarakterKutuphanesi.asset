@@ -12,28 +12,63 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a94dadf133977a54abca13fb00574a42, type: 3}
   m_Name: KarakterKutuphanesi
   m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Progression.CharacterLibrary
-  defaultCharacterId: takim_elbiseli
+  defaultCharacterId: ahmet
   characters:
-  - id: takim_elbiseli
-    displayName: "Tak\u0131m Elbiseli"
-    model: {fileID: 919132149155446097, guid: 5bcb9bdb51cd8484dbe9eddab0bd614d, type: 3}
-    avatar: {fileID: 9000000, guid: 5bcb9bdb51cd8484dbe9eddab0bd614d, type: 3}
-    material: {fileID: 2100000, guid: 0417f126eb026ef45b310f33080eb0b8, type: 2}
-    scale: 1
-    menuZoom: 1
-    removeObjects: []
-    unlock: 0
-    requirement: 0
-    icon: {fileID: 0}
   - id: melek
     displayName: "K\xFC\xE7\xFCk Hale Mele\u011Fi"
     model: {fileID: 919132149155446097, guid: 4a43ed866dd2a5a42bcffe729d1e71ea, type: 3}
     avatar: {fileID: 9000000, guid: 4a43ed866dd2a5a42bcffe729d1e71ea, type: 3}
     material: {fileID: 2100000, guid: d0551b8403140d74c901746e2b6da28d, type: 2}
     scale: 1
-    menuZoom: 1.15
+    menuZoom: 1.091
+    menuOffsetX: 0
+    menuOffsetY: 0
+    neckBackTilt: 0
+    headBackTilt: 0
+    footFlatten: 1
+    toeLock: 1
     removeObjects:
     - Icosphere
+    starter: 0
     unlock: 3
     requirement: 0
+    price: 0
+    icon: {fileID: 0}
+  - id: ahmet
+    displayName: Ahmet
+    model: {fileID: 919132149155446097, guid: b5b00445bc224e34dacb89ef24ebc255, type: 3}
+    avatar: {fileID: 9000000, guid: b5b00445bc224e34dacb89ef24ebc255, type: 3}
+    material: {fileID: 2100000, guid: 269781670ae67c440a5f59ce09e76876, type: 2}
+    scale: 1.31
+    menuZoom: 1.77
+    menuOffsetX: -0.011
+    menuOffsetY: -0.246
+    neckBackTilt: 32.4
+    headBackTilt: 7.2
+    footFlatten: 1
+    toeLock: 1
+    removeObjects: []
+    starter: 1
+    unlock: 1
+    requirement: 5
+    price: 0
+    icon: {fileID: 0}
+  - id: ayse
+    displayName: "Ay\u015Fe"
+    model: {fileID: 919132149155446097, guid: c07bd93595e7efb408422fa7ae7b62a8, type: 3}
+    avatar: {fileID: 9000000, guid: c07bd93595e7efb408422fa7ae7b62a8, type: 3}
+    material: {fileID: 2100000, guid: a737052c700c9044f9deb042ee0c4e98, type: 2}
+    scale: 1
+    menuZoom: 1.25
+    menuOffsetX: -0.006
+    menuOffsetY: -0.131
+    neckBackTilt: 29.3
+    headBackTilt: 2.1
+    footFlatten: 1
+    toeLock: 1
+    removeObjects: []
+    starter: 1
+    unlock: 1
+    requirement: 5
+    price: 0
     icon: {fileID: 0}
