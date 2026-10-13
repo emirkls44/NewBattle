@@ -30,6 +30,15 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField, Min(0.1f)] private float obstacleCheckRadius = 0.45f;
     [SerializeField] private LayerMask obstacleLayerMask = ~0;
 
+    [Header("Olum Lootu")]
+    [Tooltip("Olen oyuncu (bot dahil) elindeki silahi (kalan mermisiyle) ve can / kalkan paketi birakir.")]
+    [SerializeField] private bool dropOnDeath = true;
+    [SerializeField] private bool dropWeapon = true;
+    [SerializeField] private bool dropHealth = true;
+    [SerializeField] private bool dropShield = true;
+    [Tooltip("Esyalar oldugu yerin etrafina bu uzaklikta saçilir.")]
+    [SerializeField, Min(0.3f)] private float dropRadius = 1.4f;
+
     private NetworkRunner _runner;
     private bool _lootSpawned;
 
@@ -102,6 +111,64 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
             float angle = UnityEngine.Random.Range(0f, 360f);
             runner.Spawn(prefab, position, Quaternion.Euler(0f, angle, 0f));
         }
+    }
+
+    /// <summary>
+    /// Host: oyuncu oldu. Silahi (yumruk degilse, kalan mermi ve nadirligiyle) ve
+    /// can / kalkan paketi oldugu yerin etrafina saçilir; herkes alabilir.
+    /// </summary>
+    public void DropDeathLoot(Vector3 deathPosition, PlayerLoadout loadout)
+    {
+        if (!dropOnDeath || _runner == null || !_runner.IsServer)
+            return;
+
+        var drops = new List<(NetworkPrefabRef prefab, NetworkRunner.OnBeforeSpawned setup)>();
+
+        if (dropWeapon && loadout != null && loadout.HasRangedWeapon && loadout.Ammo > 0 && riflePickupPrefab.IsValid)
+        {
+            int weaponId = loadout.WeaponId, rarity = loadout.Rarity, ammo = loadout.Ammo;
+            drops.Add((riflePickupPrefab, (runner, obj) =>
+            {
+                if (obj.TryGetComponent(out RiflePickup pickup))
+                    pickup.Configure(weaponId, rarity, ammo);
+            }));
+        }
+
+        if (dropHealth && healthPickupPrefab.IsValid)
+            drops.Add((healthPickupPrefab, null));
+        if (dropShield && shieldPickupPrefab.IsValid)
+            drops.Add((shieldPickupPrefab, null));
+
+        if (drops.Count == 0)
+            return;
+
+        float baseAngle = UnityEngine.Random.Range(0f, 360f);
+        float step = 360f / drops.Count;
+        for (int i = 0; i < drops.Count; i++)
+        {
+            Vector3 position = FindDropPosition(deathPosition, baseAngle + i * step);
+            float yaw = UnityEngine.Random.Range(0f, 360f);
+            _runner.Spawn(drops[i].prefab, position, Quaternion.Euler(0f, yaw, 0f), null, drops[i].setup);
+        }
+    }
+
+    /// <summary>Olum yerinin etrafinda engelsiz bir nokta (yoksa olum yeri).</summary>
+    private Vector3 FindDropPosition(Vector3 center, float angle)
+    {
+        float y = center.y + spawnHeight;
+        float[] radii = { dropRadius, dropRadius * 0.6f, dropRadius * 1.4f };
+        foreach (float radius in radii)
+        {
+            for (int turn = 0; turn < 4; turn++)
+            {
+                float a = (angle + turn * 25f) * Mathf.Deg2Rad;
+                Vector3 candidate = new(center.x + Mathf.Cos(a) * radius, y, center.z + Mathf.Sin(a) * radius);
+                if (!Physics.CheckSphere(candidate, obstacleCheckRadius, obstacleLayerMask, QueryTriggerInteraction.Ignore))
+                    return candidate;
+            }
+        }
+
+        return new Vector3(center.x, y, center.z);
     }
 
     private bool TryFindSpawnPosition(out Vector3 position)

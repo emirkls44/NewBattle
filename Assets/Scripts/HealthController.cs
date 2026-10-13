@@ -105,6 +105,7 @@ public class HealthController : NetworkBehaviour
             RecordDeath(attacker, attackerObject, weaponLabel);
             AwardKill(attacker);
             Rpc_AnnounceDeath(attackerObject != null ? attackerObject.Id : default, weaponLabel ?? string.Empty);
+            DropLoot();
             Die();
         }
     }
@@ -275,6 +276,17 @@ public class HealthController : NetworkBehaviour
 
         if (attacker != PlayerRef.None && attacker == Runner.LocalPlayer)
             NewBattle.Audio.Sfx.PlayHud(killed ? "oldurme" : "isabet");
+    }
+
+    /// <summary>Oyuncu / bot olunce silahi, can ve kalkan paketi yere saçilir (host).</summary>
+    private void DropLoot()
+    {
+        if (Runner == null || !Runner.IsServer || !TryGetComponent(out PlayerLoadout loadout))
+            return;
+
+        LootSpawner spawner = Runner.GetComponent<LootSpawner>();
+        if (spawner != null)
+            spawner.DropDeathLoot(transform.position, loadout);
     }
 
     private void Die()
