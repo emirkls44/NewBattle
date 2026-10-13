@@ -92,6 +92,16 @@ public class CharacterAnimationDriver : MonoBehaviour
     private Vector3 _velocity;
     private Vector3 _velocitySmoothVelocity;
 
+    // Hiz en az bu kadar surelik yer degisiminden olculur. Kare basina olcmek, yuksek
+    // FPS'te (editor) agdan gelen milimetrik oynamayi "kosuyor" sanip govdeyi rastgele
+    // yonlere burduruyordu: karakter dururken kafasi saga sola gidip geliyordu.
+    private const float VelocitySampleSeconds = 1f / 30f;
+    // Bundan yavas yer degisimi durmak sayilir (ag / fizik titremesi).
+    private const float StillSpeed = 0.12f;
+    private float _sampleSeconds;
+    private Vector3 _rawVelocity;
+    private bool _moving;
+
     private float _legYaw;
     private float _legYawVelocity;
     private bool _backpedal;
@@ -234,7 +244,10 @@ public class CharacterAnimationDriver : MonoBehaviour
         bool dead = IsDead();
         bool frozen = dead || IsDescending();
         float speed = frozen ? 0f : _velocity.magnitude;
-        bool moving = speed > moveThreshold;
+
+        // Histerezis: esik civarindaki hizda yurume / durma arasinda gidip gelmesin.
+        _moving = _moving ? speed > moveThreshold * 0.6f : speed > moveThreshold;
+        bool moving = _moving;
 
         float targetLegYaw = 0f;
         float signedForwardSpeed = 0f;
@@ -299,16 +312,25 @@ public class CharacterAnimationDriver : MonoBehaviour
             _hasLastPosition = true;
         }
 
-        Vector3 delta = position - _lastPosition;
-        delta.y = 0f;
-        _lastPosition = position;
+        _sampleSeconds += deltaTime;
+        if (_sampleSeconds >= VelocitySampleSeconds)
+        {
+            Vector3 delta = position - _lastPosition;
+            delta.y = 0f;
 
-        // Inis noktasina yerlestirme gibi isinlanmalar kosu olarak okunmasin.
-        Vector3 rawVelocity = delta.magnitude > teleportDistance
-            ? Vector3.zero
-            : Vector3.ClampMagnitude(delta / deltaTime, maxTrackedSpeed);
+            // Inis noktasina yerlestirme gibi isinlanmalar kosu olarak okunmasin.
+            _rawVelocity = delta.magnitude > teleportDistance
+                ? Vector3.zero
+                : Vector3.ClampMagnitude(delta / _sampleSeconds, maxTrackedSpeed);
 
-        _velocity = Vector3.SmoothDamp(_velocity, rawVelocity, ref _velocitySmoothVelocity,
+            if (_rawVelocity.sqrMagnitude < StillSpeed * StillSpeed)
+                _rawVelocity = Vector3.zero;
+
+            _lastPosition = position;
+            _sampleSeconds = 0f;
+        }
+
+        _velocity = Vector3.SmoothDamp(_velocity, _rawVelocity, ref _velocitySmoothVelocity,
             velocitySmoothing, Mathf.Infinity, deltaTime);
     }
 
