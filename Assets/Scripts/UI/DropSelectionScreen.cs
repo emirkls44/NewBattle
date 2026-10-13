@@ -53,8 +53,8 @@ namespace NewBattle.UI
         [Header("Bekleme ve Geri Sayim")]
         [SerializeField] private TextMeshProUGUI waitingText;
         [SerializeField] private string waitingFormat = "Oyuncular bekleniyor...\n{0}";
-        [Tooltip("Arkadas Ikilisi odasinda: {0} = kalan saniye, {1} = oda kodu.")]
-        [SerializeField] private string friendWaitingFormat = "Arkadaşın bekleniyor... {0}\nODA KODU: {1}";
+        [Tooltip("Takim odasinda (kurucu baslattiktan sonra): {0} = kalan saniye.")]
+        [SerializeField] private string teamRoomFormat = "İniş noktanı seç!\n{0}";
         [SerializeField] private RectTransform countdownGroup;
         [SerializeField] private TextMeshProUGUI countdownText;
 
@@ -120,7 +120,9 @@ namespace NewBattle.UI
             bool ready = _dropPhase != null && _dropPhase.Object != null && _dropPhase.Object.IsValid &&
                          _dropPhase.Runner != null && _dropPhase.Runner.IsRunning;
             bool lobbyReady = _lobby != null && _lobby.Object != null && _lobby.Object.IsValid;
-            bool show = ready && lobbyReady && !_dropPhase.GameplayStarted;
+            // Takim odasinda kurucu BASLAT'a basana kadar takim odasi ekrani gorunur.
+            bool show = ready && lobbyReady && !_dropPhase.GameplayStarted &&
+                        (!NetworkBootstrap.IsFriendRoom || _lobby.RoomStarted);
 
             SetVisible(show);
             if (!show)
@@ -194,7 +196,9 @@ namespace NewBattle.UI
             bool duo = NetworkBootstrap.ActiveMode == BattleGameMode.Squad;
 
             if (modeText != null)
-                modeText.text = duo ? "İkili" : "Solo";
+                modeText.text = NetworkBootstrap.IsFriendRoom
+                    ? $"{NetworkBootstrap.ActiveTeamSize} Kişilik Takım"
+                    : duo ? "İkili" : "Solo";
 
             if (modeIcon != null)
             {
@@ -259,8 +263,8 @@ namespace NewBattle.UI
                     string seconds = _lobby.CountdownRunning
                         ? Mathf.CeilToInt(_lobby.RemainingSeconds).ToString()
                         : string.Empty;
-                    waitingText.text = NetworkBootstrap.IsFriendRoom && !_lobby.PartyOpened
-                        ? string.Format(friendWaitingFormat, seconds, NetworkBootstrap.FriendRoomCode)
+                    waitingText.text = NetworkBootstrap.IsFriendRoom
+                        ? string.Format(teamRoomFormat, seconds)
                         : string.Format(waitingFormat, seconds);
                 }
             }

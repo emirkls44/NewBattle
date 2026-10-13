@@ -250,7 +250,10 @@ namespace NewBattle.EditorTools
                 added.Add("Hediye kodu (Ayarlar)");
 
             if (screen != null && EnsureFriendRoom(screen))
-                added.Add("Arkadaş İkilisi (oda kur / kodla katıl)");
+                added.Add("Takımla Oyna (oyun modu adları + oda kurma penceresi)");
+
+            if (EnsureTeamRoomScreen(canvas, rebuild))
+                added.Add("Takım odası ekranı (takım seçimi, hazır, başlat)");
 
             if (EnsureGiftCodeCatalog(out _))
                 added.Add("Hediye kodları (Assets/Resources/HediyeKodlari)");
@@ -1092,13 +1095,13 @@ namespace NewBattle.EditorTools
             {
                 ModeOptionRow(list, "solo", "SOLO", "SOLO", "icon_person", BattleGameMode.Bots, locked: false),
                 ModeOptionRow(list, "rastgele_ikili", "RASTGELE İKİLİ", "İKİLİ", "icon_friends", BattleGameMode.Squad, locked: false),
-                ModeOptionRow(list, "arkadas_ikilisi", "ARKADAŞ İKİLİSİ", "ARKADAŞ", "icon_friends", BattleGameMode.Squad, locked: true)
+                ModeOptionRow(list, "arkadas_ikilisi", "TAKIMLA OYNA", "TAKIM", "icon_friends", BattleGameMode.Squad, locked: false)
             };
 
             // Orta panelin alt kenarina binen buyuk yesil buton.
             playButton = AddButton(window, "CevrimiciOynaButonu", new Vector2(0.5f, PanelBottom), new Vector2(0.5f, 0.5f),
                 new Vector2(0f, -6f), new Vector2(400f, 118f), Green, GreenLip, lipHeight: 10f);
-            TextMeshProUGUI playLabel = AddText(Face(playButton), "Yazi", "ÇEVRİMİÇİ OYNA", 54f, Color.white, TextAlignmentOptions.Center, shadow: true);
+            TextMeshProUGUI playLabel = AddText(Face(playButton), "Yazi", "OYNA", 54f, Color.white, TextAlignmentOptions.Center, shadow: true);
             Stretch(playLabel.rectTransform, 16f, 16f, 0f, 4f);
 
             return rows;

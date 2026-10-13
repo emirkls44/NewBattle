@@ -12,6 +12,9 @@ public class PlayerCombatStats : NetworkBehaviour
     /// <summary>Oyuncunun sectigi karakter (bos = varsayilan). Herkes bu modeli gorur.</summary>
     [Networked] public NetworkString<_16> CharacterId { get; private set; }
 
+    /// <summary>Takim odasinda "HAZIR"a basti mi (kurucu herkes hazir olunca baslatir).</summary>
+    [Networked] public NetworkBool RoomReady { get; private set; }
+
     private string _appliedCharacter;
 
     private static int _nextTrainingBotTeamId = 1000;
@@ -62,8 +65,9 @@ public class PlayerCombatStats : NetworkBehaviour
 
         if (NetworkBootstrap.ActiveMode == BattleGameMode.Squad)
         {
-            // Ikili: PlayerRef 1-2 = takim 0, 3-4 = takim 1, ...
-            TeamId = Mathf.Max(0, (Object.InputAuthority.RawEncoded - 1) / NetworkBootstrap.SquadTeamSize);
+            // Ikili: PlayerRef 1-2 = takim 0, 3-4 = takim 1, ... (sunucu sonra
+            // NetworkBootstrap.FindAvailableTeam ile kesinlestirir)
+            TeamId = Mathf.Max(0, (Object.InputAuthority.RawEncoded - 1) / NetworkBootstrap.ActiveTeamSize);
             return;
         }
 
@@ -87,6 +91,26 @@ public class PlayerCombatStats : NetworkBehaviour
             return;
 
         CharacterId = characterId;
+    }
+
+    /// <summary>Takim odasi: hazir / hazir degil.</summary>
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void RPC_SetRoomReady(NetworkBool ready)
+    {
+        var lobby = FindFirstObjectByType<LobbyCountdownController>();
+        if (lobby != null && lobby.RoomStarted)
+            return;
+
+        RoomReady = ready;
+    }
+
+    /// <summary>Takim odasi: baska takima gecme istegi (yer varsa sunucu gecirir).</summary>
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void RPC_RequestTeam(int team)
+    {
+        var lobby = FindFirstObjectByType<LobbyCountdownController>();
+        if (lobby != null)
+            lobby.HandleTeamRequest(this, team);
     }
 
     public override void Render() => ApplyCharacter();

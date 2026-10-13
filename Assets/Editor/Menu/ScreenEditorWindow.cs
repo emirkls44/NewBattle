@@ -44,7 +44,7 @@ namespace NewBattle.EditorTools
                 Row("Profil (Liderlik)", () => ShowChild<ProfileScreen>());
                 Row("Mücadeleler", () => ShowChild<ChallengesScreen>());
                 Row("Hediye Kodu Penceresi", () => ShowChild<GiftCodePopup>());
-                Row("Arkadaş İkilisi Penceresi", () => ShowChild<FriendRoomPopup>());
+                Row("Takımla Oyna Penceresi", () => ShowChild<FriendRoomPopup>());
                 Row("Harita Seçimi (Aksiyona Hazırlan)", ShowDropScreen);
                 Row("Maç Sonu", ShowMatchEnd);
                 Row("Yükleme Ekranı (prefab)", OpenLoadingPrefab);

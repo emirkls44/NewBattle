@@ -346,7 +346,8 @@ namespace NewBattle.UI
             while (isActiveAndEnabled)
             {
                 // Oyuncu bu arada OYNA'ya basip mod penceresini actiysa bekle.
-                if (modePanel != null && modePanel.IsOpen)
+                if ((modePanel != null && modePanel.IsOpen) ||
+                    (friendRoomPopup != null && friendRoomPopup.gameObject.activeSelf))
                 {
                     yield return null;
                     continue;
@@ -514,11 +515,18 @@ namespace NewBattle.UI
             StartMatch(option.mode);
         }
 
+        /// <summary>Takimla Oyna penceresi kapaninca oyun modu ekranina geri donulur.</summary>
+        public void ReopenModePanel()
+        {
+            if (modePanel != null)
+                modePanel.Open();
+        }
+
         /// <summary>
-        /// Arkadas Ikilisi: kodla oda kurar ya da var olan odaya katilir.
-        /// openToMatchmaking: arkadas gelince gercek oyuncularla eslestir (parti).
+        /// Takimla Oyna: kodla oda kurar ya da var olan odaya katilir.
+        /// sizeChoice: 0 = katilan oyuncu kadar, 4/8/16; teamSize: 2 ya da 4 (kurucu icin).
         /// </summary>
-        public void StartFriendRoom(bool createRoom, string code, bool openToMatchmaking = false)
+        public void StartFriendRoom(bool createRoom, string code, int sizeChoice = 0, int teamSize = NetworkBootstrap.SquadTeamSize)
         {
             if (_bootstrap == null || _bootstrap.IsRunning)
                 return;
@@ -528,7 +536,7 @@ namespace NewBattle.UI
 
             Music.Stop();
             LoadingScreen.Show(loadingScreenPrefab, _bootstrap);
-            _bootstrap.StartFriendRoom(createRoom, code, openToMatchmaking);
+            _bootstrap.StartFriendRoom(createRoom, code, sizeChoice, teamSize);
         }
 
         private void OnModeSelectionChanged(ModeSelectPanel.ModeOption option)

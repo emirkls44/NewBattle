@@ -7,8 +7,8 @@ using UnityEngine.UI;
 namespace NewBattle.UI
 {
     /// <summary>
-    /// "Oyun modu" penceresi: SOLO / RASTGELE IKILI / ARKADAS IKILISI secimi
-    /// ve CEVRIMICI OYNA. Ana menudeki OYNA butonu acar.
+    /// "Oyun modu" penceresi: SOLO / RASTGELE IKILI / TAKIMLA OYNA secimi
+    /// ve OYNA. Ana menudeki OYNA butonu acar.
     ///
     /// Secim cihazda saklanir; oyuncu bir dahaki acilista ayni modu secili bulur.
     /// Kilitli secenek ("YAKINDA") secilemez.
@@ -57,7 +57,7 @@ namespace NewBattle.UI
         [SerializeField] private TextMeshProUGUI tipText;
         [SerializeField, TextArea(2, 4)] private string[] tips =
         {
-            "Arkadaşlarını Arkadaş İkilisi'ne çağır ve onlarla oyna!",
+            "Arkadaşlarını Takımla Oyna'ya çağır, birlikte oyna!",
             "Çalıların içine saklanınca rakipler seni göremez.",
             "Güvenli alan daralıyor: kırmızı çizginin dışında kalma!",
             "Havadan düşen sandıklarda en iyi silahlar var.",

@@ -68,8 +68,11 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>Squad modunda (menude "Rastgele Ikili") bir takimdaki oyuncu sayisi.</summary>
     public const int SquadTeamSize = 2;
 
+    /// <summary>Takim odasina en fazla kac gercek oyuncu girebilir (Photon oda boyu).</summary>
+    public const int TeamRoomMaxPlayers = 16;
+
     /// <summary>
-    /// Arkadas Ikilisi odasinin 4 haneli kodu; normal macta null. Sahne yeniden
+    /// Takimla Oyna odasinin 4 haneli kodu; normal macta null. Sahne yeniden
     /// yuklense de kalir (lobi ve harita ekrani okur).
     /// </summary>
     public static string FriendRoomCode { get; private set; }
@@ -77,12 +80,22 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public static bool IsFriendRoom => !string.IsNullOrEmpty(FriendRoomCode);
 
     /// <summary>
-    /// Parti: arkadas odasini kuran "gercek oyuncularla eslesi" sectiyse true.
-    /// Arkadasin girince host odayi rastgele eslestirmeye acar (LobbyCountdownController);
-    /// "Rastgele Ikili" arayan oyuncular odaya duser, siz ikiniz ayni takimda kalirsiniz.
-    /// Sadece odayi kuranda (host) anlamlidir.
+    /// Takim odasi ayarlari (odayi kuranda/host'ta gecerli; lobi bunlari aga yazar).
+    /// Oyuncu sayisi: 0 = katilan oyuncu kadar (bot yok), 4 / 8 / 16 = bos yerlere bot.
     /// </summary>
-    public static bool FriendRoomPublic { get; private set; }
+    public static int TeamRoomSizeChoice { get; set; }
+
+    /// <summary>Takim odasinda bir takimdaki oyuncu sayisi (2 ya da 4).</summary>
+    public static int TeamRoomTeamSize { get; set; } = SquadTeamSize;
+
+    /// <summary>Takim odasina kac gercek oyuncu girebilir (secime gore).</summary>
+    public static int TeamRoomHumanLimit => TeamRoomSizeChoice > 0
+        ? Mathf.Min(TeamRoomSizeChoice, TeamRoomMaxPlayers)
+        : TeamRoomMaxPlayers;
+
+    /// <summary>Su anki macta takim boyu: takim odasi secimi, rastgele ikili 2, digerleri 1.</summary>
+    public static int ActiveTeamSize => IsFriendRoom ? Mathf.Max(1, TeamRoomTeamSize)
+        : ActiveMode == BattleGameMode.Squad ? SquadTeamSize : 1;
 
     /// <summary>Baglanti basarisiz olup menuye donulunce gosterilecek mesaj (bir kez).</summary>
     public static string PendingMenuMessage { get; set; }
@@ -96,6 +109,11 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             // odalar icin ayri tutuluyor.
             if (SelectedMode == BattleGameMode.Bots)
                 return Mathf.Clamp(botMatchPlayers, 2, 32);
+
+            // Takim odasi: Photon odasi en fazla 16 gercek oyuncu alir; macin asil
+            // kapasitesini kurucu "BASLAT"a basinca lobi belirler.
+            if (IsFriendRoom)
+                return TeamRoomMaxPlayers;
 
             // Harita kendi kapasitesini soyluyorsa o kazanir: kucuk bir harita
             // 32 kisiyi kaldiramaz, buyuk bir harita 8 kisiyle bos kalir.
@@ -166,20 +184,28 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     public void StartMatchmaking(BattleGameMode mode) => StartSession(mode, null, false);
 
     /// <summary>
-    /// Arkadas Ikilisi: createRoom = true ise bu kodla gizli bir oda kurar
+    /// Takimla Oyna: createRoom = true ise bu kodla gizli bir oda kurar
     /// (rastgele oyuncular giremez); false ise SADECE var olan odaya katilir.
-    /// Ikisi ayni takima duser, kalan yerler botla dolar.
+    /// Odada takimlar secilir, herkes hazir olunca kurucu baslatir; bos yerlere bot.
+    /// sizeChoice: 0 = katilan kadar, 4/8/16. teamSize: 2 ya da 4 (sadece kurucuda gecerli).
     /// </summary>
-    public void StartFriendRoom(bool createRoom, string code, bool openToMatchmaking = false) =>
-        StartSession(BattleGameMode.Squad, code, createRoom, createRoom && openToMatchmaking);
+    public void StartFriendRoom(bool createRoom, string code, int sizeChoice = 0, int teamSize = SquadTeamSize)
+    {
+        if (createRoom)
+        {
+            TeamRoomSizeChoice = sizeChoice;
+            TeamRoomTeamSize = Mathf.Max(1, teamSize);
+        }
 
-    private async void StartSession(BattleGameMode mode, string friendCode, bool createFriendRoom, bool openToMatchmaking = false)
+        StartSession(BattleGameMode.Squad, code, createRoom);
+    }
+
+    private async void StartSession(BattleGameMode mode, string friendCode, bool createFriendRoom)
     {
         if (_startRequested)
             return;
 
         FriendRoomCode = string.IsNullOrEmpty(friendCode) ? null : friendCode;
-        FriendRoomPublic = IsFriendRoom && openToMatchmaking;
 
         SelectedMode = mode;
         ActiveMode = mode;
@@ -214,9 +240,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
         // odasini acar; Harita 2 secen oyuncu hicbir zaman Harita 1 odasina
         // dusmez. Oyuncu sayisini elle bolmeye gerek yok, dagitim kendiliginden
         // olusur.
-        // Parti odasi (gercek oyuncularla eslesen arkadas odasi) da ayni ozellikleri
-        // tasir: arkadas gelip oda gorunur yapilinca rastgele eslestirme onu bulabilsin.
-        bool matchmakingProperties = !isBotMode && (!IsFriendRoom || FriendRoomPublic);
+        bool matchmakingProperties = !isBotMode && !IsFriendRoom;
         Dictionary<string, SessionProperty> sessionProperties = !matchmakingProperties
             ? null
             : new Dictionary<string, SessionProperty>
@@ -263,7 +287,6 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
                 StatusChanged?.Invoke(message);
                 ConnectionCompleted?.Invoke(false);
                 FriendRoomCode = null;
-                FriendRoomPublic = false;
                 Invoke(nameof(ReloadMenu), 1.8f);
                 return;
             }
@@ -298,7 +321,8 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        if (RosterLocked)
+        // Takim odasi: kurucunun sectigi oyuncu sayisi doluysa yeni gelen giremez.
+        if (RosterLocked || (IsFriendRoom && _spawnedPlayers.Count >= TeamRoomHumanLimit))
         {
             runner.Disconnect(player);
             return;
@@ -344,10 +368,11 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             counts.TryGetValue(stats.TeamId, out int count);
             counts[stats.TeamId] = count + 1;
         }
-        int teamSize = SelectedMode == BattleGameMode.Squad ? SquadTeamSize : 1;
-        for (int id = 0; id < MatchCapacity; id++)
+        int teamSize = SelectedMode == BattleGameMode.Squad ? ActiveTeamSize : 1;
+        int limit = Mathf.Max(MatchCapacity, TeamRoomMaxPlayers);
+        for (int id = 0; id < limit; id++)
             if (!counts.TryGetValue(id, out int count) || count < teamSize) return id;
-        return MatchCapacity;
+        return limit;
     }
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
