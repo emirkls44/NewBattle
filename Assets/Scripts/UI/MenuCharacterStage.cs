@@ -30,7 +30,10 @@ namespace NewBattle.UI
         [Tooltip("Karakterin alt ve ust kenarinda birakilacak bosluk (yukseklik orani).")]
         [SerializeField, Range(0f, 0.3f)] private float framePadding = 0.06f;
         [Tooltip("Kamera karaktere hafif yukaridan baksin (derece).")]
-        [SerializeField, Range(-10f, 30f)] private float cameraPitch = 6f;
+        [SerializeField, Range(-10f, 60f)] private float cameraPitch = 18f;
+        [Tooltip("Kameranin gorus acisi (derece). Buyuk = perspektif daha belirgin (zemin derin gorunur), " +
+                 "kucuk = daha duz/telefoto. Kamera, kadraj sigacak kadar otomatik uzaklasir.")]
+        [SerializeField, Range(10f, 70f)] private float cameraFov = 30f;
 
         [Header("Dondurme")]
         [Tooltip("1080 piksel yukseklikte bir piksel suruklemenin dondurdugu derece " +
@@ -53,8 +56,13 @@ namespace NewBattle.UI
         [SerializeField] private bool plantFeet = true;
         [Tooltip("Ayaklarin zemine ne kadar gomulecegi (metre). Eksi = biraz havada.")]
         [SerializeField, Range(-0.2f, 0.2f)] private float footSink = 0.01f;
+        [Tooltip("Acikken zeminin tamami kadraja sigar; kapaliyken sadece ayaklarin altinda " +
+                 "'Ground In Frame' kadar zemin gorunur.")]
+        [SerializeField] private bool frameWholeGround = true;
         [Tooltip("Kadrajda ayaklarin altinda gorunen zemin payi (karakter boyuna oran).")]
         [SerializeField, Range(0f, 0.6f)] private float groundInFrame = 0.1f;
+
+        [SerializeField, HideInInspector] private int groundVersion;
 
         [Header("Ayak Golgesi")]
         [SerializeField] private bool footShadow = true;
@@ -343,20 +351,58 @@ namespace NewBattle.UI
 
                 PlaceFootShadow(bounds.size.y);
 
-                float below = groundInFrame * bounds.size.y;
-                bounds.Encapsulate(new Vector3(bounds.center.x, bounds.min.y - below, bounds.center.z));
+                if (frameWholeGround)
+                {
+                    bounds.Encapsulate(ground.bounds);
+                }
+                else
+                {
+                    float below = groundInFrame * bounds.size.y;
+                    bounds.Encapsulate(new Vector3(bounds.center.x, bounds.min.y - below, bounds.center.z));
+                }
             }
 
-            float height = bounds.size.y * (1f + framePadding * 2f);
-            float halfFov = stageCamera.fieldOfView * 0.5f * Mathf.Deg2Rad;
-            float distance = height * 0.5f / Mathf.Tan(halfFov) + bounds.extents.z;
+            stageCamera.fieldOfView = cameraFov;
 
             Vector3 forward = turntable.parent != null ? turntable.parent.forward : Vector3.forward;
             Quaternion look = Quaternion.LookRotation(-forward) * Quaternion.Euler(cameraPitch, 0f, 0f);
+            Vector3 viewForward = look * Vector3.forward;
+            Vector3 viewUp = look * Vector3.up;
+            Vector3 viewRight = look * Vector3.right;
 
-            stageCamera.transform.SetPositionAndRotation(bounds.center - look * Vector3.forward * distance, look);
-            stageCamera.nearClipPlane = Mathf.Max(0.01f, distance * 0.1f);
-            stageCamera.farClipPlane = distance * 4f;
+            // Kadraj: kutunun 8 kosesi kameranin gozunden sigacak kadar uzaklas, sonra
+            // icerigi dikeyde/yatayda ortala. Egik bakista (zemin one uzaniyor) da kesilmez.
+            float tanV = Mathf.Tan(stageCamera.fieldOfView * 0.5f * Mathf.Deg2Rad) / (1f + framePadding * 2f);
+            float tanH = tanV * Mathf.Max(0.1f, stageCamera.aspect);
+            Vector3 center = bounds.center;
+            Vector3 ext = bounds.extents;
+
+            float distance = 0.1f;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 v = new Vector3((i & 1) == 0 ? -ext.x : ext.x, (i & 2) == 0 ? -ext.y : ext.y, (i & 4) == 0 ? -ext.z : ext.z);
+                float x = Vector3.Dot(v, viewRight);
+                float y = Vector3.Dot(v, viewUp);
+                float z = Vector3.Dot(v, viewForward);
+                distance = Mathf.Max(distance, Mathf.Abs(y) / tanV - z, Mathf.Abs(x) / tanH - z);
+            }
+
+            // Ortalama: koselerin ekrandaki en alt/ust ve sol/sag noktalarinin ortasi.
+            float minY = float.MaxValue, maxY = float.MinValue, minX = float.MaxValue, maxX = float.MinValue;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 v = new Vector3((i & 1) == 0 ? -ext.x : ext.x, (i & 2) == 0 ? -ext.y : ext.y, (i & 4) == 0 ? -ext.z : ext.z);
+                float depth = Mathf.Max(0.01f, distance + Vector3.Dot(v, viewForward));
+                float sy = Vector3.Dot(v, viewUp) / depth;
+                float sx = Vector3.Dot(v, viewRight) / depth;
+                minY = Mathf.Min(minY, sy); maxY = Mathf.Max(maxY, sy);
+                minX = Mathf.Min(minX, sx); maxX = Mathf.Max(maxX, sx);
+            }
+
+            Vector3 shift = viewUp * ((minY + maxY) * 0.5f * distance) + viewRight * ((minX + maxX) * 0.5f * distance);
+            stageCamera.transform.SetPositionAndRotation(center + shift - viewForward * distance, look);
+            stageCamera.nearClipPlane = Mathf.Max(0.01f, distance * 0.05f);
+            stageCamera.farClipPlane = distance * 4f + ext.magnitude * 2f;
         }
     }
 }
