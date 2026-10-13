@@ -23,8 +23,10 @@ namespace NewBattle.EditorTools
         {
             EditorApplication.delayCall += () =>
             {
-                if (!EditorApplication.isPlayingOrWillChangePlaymode)
-                    FixAll(force: false);
+                if (EditorApplication.isPlayingOrWillChangePlaymode)
+                    return;
+
+                FixAll(force: false);
             };
         }
 

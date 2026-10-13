@@ -528,7 +528,8 @@ public class MatchResultHUD : MonoBehaviour
         MonoBehaviour[] scripts = _previewCharacter.GetComponentsInChildren<MonoBehaviour>(true);
         foreach (MonoBehaviour script in scripts)
         {
-            if (script != null)
+            // Durus duzeltmesi kalsin (Ahmet'in basi one cikik durmasin).
+            if (script != null && script is not NewBattle.Gameplay.PostureCorrection)
                 Destroy(script);
         }
 

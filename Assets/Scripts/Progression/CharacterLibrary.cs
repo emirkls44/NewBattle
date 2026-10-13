@@ -35,6 +35,13 @@ namespace NewBattle.Progression
                  "Kanat, hale gibi parcalar kadraji buyutup karakteri kucuk gosteriyorsa artir. " +
                  "Ayaklar sabit kalir, fazlasi tepeden kirpilir.")]
         [Range(0.6f, 1.8f)] public float menuZoom = 1f;
+
+        [Header("Durus")]
+        [Tooltip("Boyun animasyondan sonra bu kadar derece geriye egilir (eksi = one). " +
+                 "Kafasi one cikik duran karakterler icin. Play'de degistirince aninda gorunur.")]
+        [Range(-45f, 45f)] public float neckBackTilt;
+        [Tooltip("Bas, boyundan ayrica bu kadar derece geriye egilir (eksi = one).")]
+        [Range(-45f, 45f)] public float headBackTilt;
         [Tooltip("Model dosyasinda karaktere ait olmayan, kaldirilacak parcalarin adlari " +
                  "(ornek: Meshy'nin biraktigi 'Icosphere').")]
         public string[] removeObjects = { };

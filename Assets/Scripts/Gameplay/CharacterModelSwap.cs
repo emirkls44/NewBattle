@@ -90,6 +90,12 @@ namespace NewBattle.Gameplay
             animator.avatar = character.avatar;
             animator.Rebind();
 
+            // Karaktere ozel durus duzeltmesi (boyun / bas geri egimi).
+            PostureCorrection posture = root.GetComponent<PostureCorrection>();
+            if (posture == null)
+                posture = root.gameObject.AddComponent<PostureCorrection>();
+            posture.Configure(animator, character);
+
             applied.Id = character.id;
             Swapped?.Invoke(animator);
             return true;
