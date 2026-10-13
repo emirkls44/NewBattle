@@ -46,6 +46,12 @@ namespace NewBattle.Progression
         [Range(-45f, 45f)] public float neckBackTilt;
         [Tooltip("Bas, boyundan ayrica bu kadar derece geriye egilir (eksi = one).")]
         [Range(-45f, 45f)] public float headBackTilt;
+        [Tooltip("Ayaklari yere paralel tutar (0 = animasyon nasilsa, 1 = tamamen duz). " +
+                 "Ayak burnu asagi/yukari egik duruyorsa artir.")]
+        [Range(0f, 1f)] public float footFlatten = 1f;
+        [Tooltip("Ayak parmagi kemigini (ayakkabi burnu) dinlenme (T) pozundaki gibi sabit tutar " +
+                 "(0 = animasyon, 1 = sabit). Ayakkabi ezik/bukuk gorunuyorsa artir.")]
+        [Range(0f, 1f)] public float toeLock = 1f;
         [Tooltip("Model dosyasinda karaktere ait olmayan, kaldirilacak parcalarin adlari " +
                  "(ornek: Meshy'nin biraktigi 'Icosphere').")]
         public string[] removeObjects = { };
