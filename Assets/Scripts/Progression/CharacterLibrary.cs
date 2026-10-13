@@ -35,6 +35,10 @@ namespace NewBattle.Progression
                  "Kanat, hale gibi parcalar kadraji buyutup karakteri kucuk gosteriyorsa artir. " +
                  "Ayaklar sabit kalir, fazlasi tepeden kirpilir.")]
         [Range(0.6f, 1.8f)] public float menuZoom = 1f;
+        [Tooltip("Menude (ve onizlemelerde) karakteri saga (+) / sola (-) kaydirir (goruntu genisliginin orani).")]
+        [Range(-0.5f, 0.5f)] public float menuOffsetX;
+        [Tooltip("Menude (ve onizlemelerde) karakteri yukari (+) / asagi (-) kaydirir (goruntu yuksekliginin orani).")]
+        [Range(-0.5f, 0.5f)] public float menuOffsetY;
 
         [Header("Durus")]
         [Tooltip("Boyun animasyondan sonra bu kadar derece geriye egilir (eksi = one). " +

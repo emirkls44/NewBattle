@@ -47,6 +47,7 @@ namespace NewBattle.UI
 
         private float _menuZoom = 1f;
         private CharacterDefinition _shownCharacter;
+        private Vector2 _menuOffset;
         private RawImage _image;
         private RenderTexture _texture;
         private Quaternion _restRotation;
@@ -127,9 +128,11 @@ namespace NewBattle.UI
 
             // Karaktere ozel menu yakinligi (CharacterLibrary > Menu Zoom).
             _shownCharacter = character;
-            if (!Mathf.Approximately(_menuZoom, character.menuZoom))
+            Vector2 offset = new(character.menuOffsetX, character.menuOffsetY);
+            if (!Mathf.Approximately(_menuZoom, character.menuZoom) || _menuOffset != offset)
             {
                 _menuZoom = character.menuZoom;
+                _menuOffset = offset;
                 changed = true;
             }
 
@@ -203,10 +206,14 @@ namespace NewBattle.UI
             if (turntable == null)
                 return;
 
-            // Menu Zoom Play'de Inspector'dan degisirse kadraj aninda yenilensin.
-            if (_shownCharacter != null && !Mathf.Approximately(_menuZoom, _shownCharacter.menuZoom))
+            // Menu Zoom / Offset Play'de Inspector'dan degisirse kadraj aninda yenilensin.
+            if (_shownCharacter != null &&
+                (!Mathf.Approximately(_menuZoom, _shownCharacter.menuZoom) ||
+                 !Mathf.Approximately(_menuOffset.x, _shownCharacter.menuOffsetX) ||
+                 !Mathf.Approximately(_menuOffset.y, _shownCharacter.menuOffsetY)))
             {
                 _menuZoom = _shownCharacter.menuZoom;
+                _menuOffset = new Vector2(_shownCharacter.menuOffsetX, _shownCharacter.menuOffsetY);
                 FrameCharacter();
             }
 
@@ -301,7 +308,12 @@ namespace NewBattle.UI
             Vector3 forward = turntable.parent != null ? turntable.parent.forward : Vector3.forward;
             Quaternion look = Quaternion.LookRotation(-forward) * Quaternion.Euler(cameraPitch, 0f, 0f);
 
-            stageCamera.transform.SetPositionAndRotation(bounds.center - look * Vector3.forward * distance, look);
+            // Karaktere ozel kaydirma: kamera ters yone kayar (karakter goruntude oteye gider).
+            float visibleHeight = 2f * (distance - bounds.extents.z) * Mathf.Tan(halfFov);
+            float visibleWidth = visibleHeight * Mathf.Max(0.1f, stageCamera.aspect);
+            Vector3 shift = look * new Vector3(-_menuOffset.x * visibleWidth, -_menuOffset.y * visibleHeight, 0f);
+
+            stageCamera.transform.SetPositionAndRotation(bounds.center + shift - look * Vector3.forward * distance, look);
             stageCamera.nearClipPlane = Mathf.Max(0.01f, distance * 0.1f);
             stageCamera.farClipPlane = distance * 4f;
         }
