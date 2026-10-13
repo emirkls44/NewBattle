@@ -25,9 +25,11 @@ namespace NewBattle.UI
         [SerializeField] private TextMeshProUGUI cancelLabel;
         [SerializeField] private TextMeshProUGUI hintText;
         [SerializeField] private MainMenuScreen menu;
+        [Tooltip("Ilk acilista acilan tam ekran opak arka plan (arkada oyun/menu gorunmesin).")]
+        [SerializeField] private GameObject firstTimeBackground;
 
         [Header("Yazilar")]
-        [SerializeField] private string firstTimeTitle = "KULLANICI ADIN NE OLSUN?";
+        [SerializeField] private string firstTimeTitle = "İSMİNİ GİR";
         [SerializeField] private string changeTitle = "İSMİNİ DEĞİŞTİR";
 
         private bool _initialized;
@@ -86,6 +88,9 @@ namespace NewBattle.UI
 
             if (titleText != null)
                 titleText.text = firstTime ? firstTimeTitle : changeTitle;
+
+            if (firstTimeBackground != null)
+                firstTimeBackground.SetActive(firstTime);
 
             if (cancelButton != null)
                 cancelButton.gameObject.SetActive(!firstTime);

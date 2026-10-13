@@ -240,6 +240,9 @@ namespace NewBattle.EditorTools
             if (characters.Length > 0)
                 added.Add("Karakterler: " + characters);
 
+            if (screen != null && EnsureFirstLaunchFlow(screen))
+                added.Add("İlk açılış: İSMİNİ GİR (mor arka plan) + KARAKTERİNİ SEÇ (Ahmet / Ayşe)");
+
             if (screen != null && EnsureCharacterTabs(screen))
                 added.Add("Karakter ekranı sekmeleri");
 

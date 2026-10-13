@@ -39,9 +39,10 @@ namespace NewBattle.Gameplay
                 applied.hideFlags = HideFlags.HideInInspector;
                 applied.BaseScale = root.localScale;
 
-                // Prefab'daki model zaten varsayilan karakter: ilk kez varsayilan
-                // istenirse degistirmeye gerek yok.
-                applied.Id = defaultCharacter != null ? defaultCharacter.id : string.Empty;
+                // Prefab'daki model (eski takim elbiseli) artik hicbir karakter degil,
+                // sadece iskelet tasiyicisi: ilk istekte her zaman secili karaktere
+                // (Ahmet / Ayse / ...) donusturulur. Eskiden "zaten varsayilan" sayiliyordu.
+                applied.Id = string.Empty;
             }
 
             if (applied.Id == character.id || character.model == null || character.avatar == null)

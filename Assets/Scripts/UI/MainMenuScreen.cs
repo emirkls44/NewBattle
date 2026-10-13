@@ -72,6 +72,8 @@ namespace NewBattle.UI
         [SerializeField] private SettingsScreen settingsScreen;
         [Tooltip("'isim_duzenle' (kalem) butonunun actigi pencere.")]
         [SerializeField] private NamePopup namePopup;
+        [Tooltip("Ilk acilista isimden sonra: Ahmet / Ayse secimi (Kur kurar).")]
+        [SerializeField] private StarterCharacterScreen starterScreen;
         [Tooltip("'sezon' karti ve 'seviye_yolu' (rutbe ikonu) butonlarinin actigi ekran.")]
         [SerializeField] private LevelRoadScreen levelRoadScreen;
         [Tooltip("'liderlik' butonunun actigi profil / istatistik penceresi.")]
@@ -326,6 +328,15 @@ namespace NewBattle.UI
                 bool named = false;
                 namePopup.OpenFirstTime(() => named = true);
                 while (!named)
+                    yield return null;
+            }
+
+            // Sonra karakter: Ahmet (erkek) ya da Ayse (kiz). Secilen ana menude gorunur.
+            if (starterScreen != null && !CharacterLibrary.HasChosenStarter)
+            {
+                bool chosen = false;
+                starterScreen.Open(() => chosen = true);
+                while (!chosen)
                     yield return null;
             }
 

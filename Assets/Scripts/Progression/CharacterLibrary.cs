@@ -10,7 +10,9 @@ namespace NewBattle.Progression
         Level,
         Coins,
         [Tooltip("Satilmaz, magazada gorunmez. Sadece hediye koduyla acilir; sahibi olmayan listede bile gormez.")]
-        Gift
+        Gift,
+        [Tooltip("Satin alinir: seviye (Requirement) yetmeli VE fiyat (Price) kadar altin odenir.")]
+        LevelAndCoins
     }
 
     [Serializable]
@@ -38,9 +40,14 @@ namespace NewBattle.Progression
         public string[] removeObjects = { };
 
         [Header("Kilit")]
+        [Tooltip("Baslangic karakteri: ilk acilista secilebilir (Ahmet / Ayse). Secilen oyuncunun " +
+                 "olur; digeri 'Level' kilidiyle (Requirement seviyesinde) acilir.")]
+        public bool starter;
         public CharacterUnlockType unlock = CharacterUnlockType.Free;
-        [Tooltip("Level: gereken seviye. Coins: fiyat.")]
+        [Tooltip("Level ve LevelAndCoins: gereken seviye. Coins: fiyat.")]
         [Min(0)] public int requirement;
+        [Tooltip("LevelAndCoins: altin fiyati.")]
+        [Min(0)] public int price;
 
         public Sprite icon;
     }
@@ -54,8 +61,9 @@ namespace NewBattle.Progression
     {
         public const string ResourceName = "KarakterKutuphanesi";
         private const string SelectedKey = "nb_selected_character";
+        public const string StarterChosenKey = "nb_starter_chosen";
 
-        [SerializeField] private string defaultCharacterId = "takim_elbiseli";
+        [SerializeField] private string defaultCharacterId = "ahmet";
         [SerializeField] private List<CharacterDefinition> characters = new();
 
         private static CharacterLibrary _instance;
@@ -74,14 +82,52 @@ namespace NewBattle.Progression
 
         public CharacterDefinition Default => Find(defaultCharacterId) ?? (characters.Count > 0 ? characters[0] : null);
 
-        /// <summary>Oyuncunun secili (ve acik) karakteri; yoksa varsayilan.</summary>
+        /// <summary>Oyuncunun secili (ve acik) karakteri; yoksa acik bir baslangic karakteri; yoksa varsayilan.</summary>
         public CharacterDefinition Current
         {
             get
             {
                 CharacterDefinition selected = Find(PlayerPrefs.GetString(SelectedKey, string.Empty));
-                return selected != null && IsUnlocked(selected) ? selected : Default;
+                if (selected != null && IsUnlocked(selected))
+                    return selected;
+
+                foreach (CharacterDefinition starter in Starters)
+                {
+                    if (IsUnlocked(starter))
+                        return starter;
+                }
+
+                return Default;
             }
+        }
+
+        /// <summary>Ilk acilista secilebilen karakterler (Ahmet, Ayse).</summary>
+        public IEnumerable<CharacterDefinition> Starters
+        {
+            get
+            {
+                foreach (CharacterDefinition character in characters)
+                {
+                    if (character != null && character.starter)
+                        yield return character;
+                }
+            }
+        }
+
+        /// <summary>Oyuncu ilk acilista karakterini secti mi.</summary>
+        public static bool HasChosenStarter => PlayerPrefs.GetInt(StarterChosenKey, 0) == 1;
+
+        /// <summary>Ilk acilis secimi: karakter oyuncunun olur ve secilir.</summary>
+        public void ChooseStarter(CharacterDefinition character)
+        {
+            if (character == null)
+                return;
+
+            PlayerProgress.GrantOwnership(character.id);
+            PlayerPrefs.SetInt(StarterChosenKey, 1);
+            PlayerPrefs.SetString(SelectedKey, character.id);
+            PlayerPrefs.Save();
+            CharacterSelectionChanged?.Invoke();
         }
 
         public CharacterDefinition Find(string id)
@@ -103,7 +149,7 @@ namespace NewBattle.Progression
             if (character == null)
                 return false;
 
-            if (character == Default || PlayerProgress.Owns(character.id))
+            if (PlayerProgress.Owns(character.id))
                 return true;
 
             return character.unlock switch
@@ -121,21 +167,36 @@ namespace NewBattle.Progression
         public string RequirementText(CharacterDefinition character) => character.unlock switch
         {
             CharacterUnlockType.Level => $"Seviye {character.requirement}",
-            CharacterUnlockType.Coins => $"{character.requirement} Para",
+            CharacterUnlockType.Coins => $"{character.requirement} Altın",
+            CharacterUnlockType.LevelAndCoins => $"Seviye {character.requirement} + {character.price} Altın",
             CharacterUnlockType.Gift => "Hediye",
             _ => "Ücretsiz"
         };
 
+        /// <summary>Satin alinabilir mi (Coins ya da LevelAndCoins; seviyesi yetiyor mu).</summary>
+        public bool CanPurchase(CharacterDefinition character) =>
+            character != null && !IsUnlocked(character) &&
+            (character.unlock == CharacterUnlockType.Coins ||
+             (character.unlock == CharacterUnlockType.LevelAndCoins && PlayerProgress.Level >= character.requirement));
+
         public bool TryPurchase(CharacterDefinition character)
         {
-            if (character == null || character.unlock != CharacterUnlockType.Coins || IsUnlocked(character))
+            if (!CanPurchase(character))
                 return false;
 
-            if (!PlayerProgress.TrySpendCoins(character.requirement))
+            int cost = character.unlock == CharacterUnlockType.LevelAndCoins ? character.price : character.requirement;
+            if (!PlayerProgress.TrySpendCoins(cost))
                 return false;
 
             PlayerProgress.GrantOwnership(character.id);
             return true;
+        }
+
+        /// <summary>Botlara ve varsayilana: rastgele bir baslangic karakteri (yoksa varsayilan).</summary>
+        public CharacterDefinition RandomStarter()
+        {
+            var list = new List<CharacterDefinition>(Starters);
+            return list.Count > 0 ? list[UnityEngine.Random.Range(0, list.Count)] : Default;
         }
 
         public bool Select(CharacterDefinition character)
@@ -153,6 +214,9 @@ namespace NewBattle.Progression
         public static event Action CharacterSelectionChanged;
 
 #if UNITY_EDITOR
+        /// <summary>Kurulum araci icin: karakteri kaldirir.</summary>
+        public bool EditorRemove(string id) => characters.RemoveAll(c => c != null && c.id == id) > 0;
+
         /// <summary>Kurulum araci icin: karakter ekler ya da gunceller.</summary>
         public void EditorSet(CharacterDefinition definition, bool makeDefault)
         {

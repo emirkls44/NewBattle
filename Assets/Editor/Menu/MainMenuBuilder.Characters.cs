@@ -10,15 +10,14 @@ using UnityEngine.UI;
 namespace NewBattle.EditorTools
 {
     /// <summary>
-    /// Karakterler: karakter kutuphanesi (takim elbiseli + hediye melek),
+    /// Karakterler: karakter kutuphanesi (Ahmet, Ayse + hediye melek),
     /// modellerin Humanoid ice aktarimi, karakter ekranindaki sekmeler,
     /// hediye kodu penceresi ve profildeki Oyuncu Kodu. Sadece eksikleri ekler.
     /// </summary>
     public static partial class MainMenuBuilder
     {
         private const string CharacterLibraryPath = "Assets/Resources/KarakterKutuphanesi.asset";
-        private const string DefaultCharacterModelPath =
-            "Assets/Arts/Characters/Character_V2/Meshy_AI_Tie_Guy_biped/Meshy_AI_Tie_Guy_biped_Character_output.fbx";
+        // Karakter materyallerinin sablonu (SoftToon ayarlari); her karakter bunun kopyasini kullanir.
         private const string DefaultCharacterMaterialPath = "Assets/Arts/Characters/Character_Mat.mat";
 
         private const string AngelFolder = "Assets/Arts/Characters/Character_Angel/Meshy_AI_Little_Halo_Angel_biped";
@@ -41,19 +40,10 @@ namespace NewBattle.EditorTools
                 AssetDatabase.CreateAsset(library, CharacterLibraryPath);
             }
 
-            if (library.Find("takim_elbiseli") == null)
-            {
-                library.EditorSet(new CharacterDefinition
-                {
-                    id = "takim_elbiseli",
-                    displayName = "Takım Elbiseli",
-                    model = AssetDatabase.LoadAssetAtPath<GameObject>(DefaultCharacterModelPath),
-                    avatar = LoadAvatar(DefaultCharacterModelPath),
-                    material = AssetDatabase.LoadAssetAtPath<Material>(DefaultCharacterMaterialPath),
-                    unlock = CharacterUnlockType.Free
-                }, makeDefault: true);
-                added.Add("Takım Elbiseli");
-            }
+            // Baslangic karakterleri (Ahmet / Ayse); eski takim elbiseli kaldirilir.
+            string starters = EnsureStarterCharacters(library);
+            if (!string.IsNullOrEmpty(starters))
+                added.Add(starters);
 
             if (library.Find("melek") == null && AssetDatabase.LoadAssetAtPath<GameObject>(AngelModelPath) != null)
             {

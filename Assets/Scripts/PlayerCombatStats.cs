@@ -49,6 +49,14 @@ public class PlayerCombatStats : NetworkBehaviour
             // Test botlari birbirinin takim arkadasi sayilmasin.
             TeamId = _nextTrainingBotTeamId++;
             DisplayName = BotNames[_nextBotNameIndex++ % BotNames.Length];
+
+            // Botlar da Ahmet ya da Ayse olarak gelir (hepsi ayni gorunmesin).
+            NewBattle.Progression.CharacterDefinition botCharacter =
+                NewBattle.Progression.CharacterLibrary.Instance != null
+                    ? NewBattle.Progression.CharacterLibrary.Instance.RandomStarter()
+                    : null;
+            if (botCharacter != null)
+                CharacterId = botCharacter.id;
             return;
         }
 

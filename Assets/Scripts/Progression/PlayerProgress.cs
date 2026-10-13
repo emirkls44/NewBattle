@@ -327,6 +327,10 @@ namespace NewBattle.Progression
                      })
                 PlayerPrefs.DeleteKey(key);
 
+            // Ilk acilis karakter secimi de sifirlansin (Ahmet / Ayse ekrani tekrar gelsin).
+            PlayerPrefs.DeleteKey(CharacterLibrary.StarterChosenKey);
+            PlayerPrefs.DeleteKey("nb_selected_character");
+
             DailyLogin.Reset();
             Challenges.Reset();
             RewardInbox.Clear();

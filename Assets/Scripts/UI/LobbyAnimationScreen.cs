@@ -249,7 +249,8 @@ namespace NewBattle.UI
             if (!Characters.IsUnlocked(character) && menu != null)
             {
                 Sfx.PlayUI("hata");
-                menu.ShowToast(character.unlock == CharacterUnlockType.Coins
+                menu.ShowToast(character.unlock == CharacterUnlockType.Coins ||
+                               (character.unlock == CharacterUnlockType.LevelAndCoins && Characters.CanPurchase(character))
                     ? "ÖNCE SATIN ALMAN LAZIM!"
                     : $"{TurkishUpper(Characters.RequirementText(character))} GEREKLİ!");
             }
