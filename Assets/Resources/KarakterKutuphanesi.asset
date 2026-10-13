@@ -39,12 +39,12 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: b5b00445bc224e34dacb89ef24ebc255, type: 3}
     avatar: {fileID: 9000000, guid: b5b00445bc224e34dacb89ef24ebc255, type: 3}
     material: {fileID: 2100000, guid: 269781670ae67c440a5f59ce09e76876, type: 2}
-    scale: 1.31
+    scale: 1.55
     menuZoom: 1.77
-    menuOffsetX: -0.011
-    menuOffsetY: -0.246
-    neckBackTilt: 32.4
-    headBackTilt: 7.2
+    menuOffsetX: -0.037
+    menuOffsetY: -0.264
+    neckBackTilt: 12
+    headBackTilt: 13.6
     footFlatten: 1
     toeLock: 1
     removeObjects: []
@@ -72,3 +72,5 @@ MonoBehaviour:
     requirement: 5
     price: 0
     icon: {fileID: 0}
+  characterScreenOffset: {x: -1.43, y: -11.4}
+  characterScreenScale: 1.25
