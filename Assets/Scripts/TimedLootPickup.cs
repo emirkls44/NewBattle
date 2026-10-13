@@ -15,6 +15,8 @@ public abstract class TimedLootPickup : NetworkBehaviour
     [SerializeField] private Color progressColor = new Color(0.2f, 1f, 0.08f, 1f);
     [Tooltip("Toplama alanini gosteren halkanin rengi.")]
     [SerializeField] private Color ringColor = new Color(1f, 1f, 1f, 0.8f);
+    [Tooltip("Esya su an isine yaramiyorsa (canin / kalkanin dolu) halka bu renkte olur; dolmaz.")]
+    [SerializeField] private Color blockedRingColor = new Color(1f, 0.35f, 0.3f, 0.55f);
 
     [Tooltip("Beyaz halka ancak yerel oyuncu bu mesafedeyken cizilir. " +
              "Haritadaki tum loot'larin halkasi ayni anda gorunurse ekran " +
@@ -185,12 +187,14 @@ public abstract class TimedLootPickup : NetworkBehaviour
     {
         if (_rings == null || _track == null || _fill == null || _glow == null) return;
         float progress = 0;
+        bool blocked = false;
         var registry = NewBattle.Gameplay.PlayerRegistry.All;
         for (int i = 0; i < registry.Count; i++)
         {
             PlayerLoadout player = registry[i] != null ? registry[i].Loadout : null;
             if (player == null || player.Object == null || !player.Object.IsValid || player.Runner != Runner || !player.HasInputAuthority) continue;
             if (Progress.TryGet(player.Object.Id, out float elapsed)) progress = Mathf.Clamp01(elapsed / Mathf.Max(0.05f, collectionSeconds));
+            blocked = !_consumed && !CanCollect(player);
             break;
         }
         // Halkalar sadece yakindayken cizilir.
@@ -222,7 +226,7 @@ public abstract class TimedLootPickup : NetworkBehaviour
 
         Color glow = GlowColor;
         SetOverlay(_glow, glow, glow.a > 0.001f ? 1f : 0f);
-        SetOverlay(_track, ringColor, nearLocalPlayer ? 1f : 0f);
+        SetOverlay(_track, blocked ? blockedRingColor : ringColor, nearLocalPlayer ? 1f : 0f);
         SetOverlay(_fill, progressColor, progress);
     }
 
