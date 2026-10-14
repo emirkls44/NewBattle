@@ -104,7 +104,9 @@ namespace NewBattle.UI
             {
                 titleText.text = outcome.Victory
                     ? "#1 Zafer!"
-                    : $"#{Mathf.Max(1, outcome.Placement)} Maç sona erdi!";
+                    : outcome.InProgress
+                        ? $"#{Mathf.Max(1, outcome.Placement)} Maç devam ediyor"
+                        : $"#{Mathf.Max(1, outcome.Placement)} Maç sona erdi!";
                 titleText.color = outcome.Victory ? victoryTitleColor : defeatTitleColor;
             }
 

@@ -57,6 +57,12 @@ public class MatchResultHUD : MonoBehaviour
     private bool _localDead;
     private int _deathKills;
     private int _localTeamId = int.MinValue;
+
+    // Takim modunda sira takimin sirasidir: takimdan biri hayattayken hayattaki takim
+    // sayisi; takim tamamen elenince o anki deger kalir.
+    private int _teamPlacement;
+    // Takim arkadasi hala oynarken MAÇTAN ÇIK'a basildi.
+    private bool _leftEarly;
     private GameObject _characterHolder;
     private GameObject _characterSnapshot;
     private PlayerCombatStats _spectatedStats;
@@ -107,6 +113,7 @@ public class MatchResultHUD : MonoBehaviour
         {
             FindRuntimeReferences();
             _nextSearchTime = Time.unscaledTime + 0.2f;
+            TrackTeamPlacement();
         }
 
         CapturePlacementWhenEliminated();
@@ -119,6 +126,8 @@ public class MatchResultHUD : MonoBehaviour
             if (!matchOver && !_leftSpectating && UpdateSpectating())
                 return;
 
+            TrackTeamPlacement();
+            _leftEarly = !matchOver && _leftSpectating && IsSquad && _teamPlacement > 0 && LocalTeamAlive();
             HideSpectatorPanel();
             ShowResult();
             return;
@@ -136,6 +145,7 @@ public class MatchResultHUD : MonoBehaviour
         _localDead = true;
         LocalGameplayStopped = true;
         _localHealth.Runner.ProvideInput = false;
+        TrackTeamPlacement();
         if (IsNetworkObjectReady(_localStats))
         {
             _localTeamId = _localStats.TeamId;
@@ -192,6 +202,69 @@ public class MatchResultHUD : MonoBehaviour
     }
 
     private bool IsTeammate(PlayerCombatStats stats) => stats != null && stats.TeamId == _localTeamId;
+
+    private static bool IsSquad => NetworkBootstrap.ActiveMode == BattleGameMode.Squad;
+
+    /// <summary>Takim numarasi; karakter agdan silindiyse olum aninda saklanan.</summary>
+    private int LocalTeamId => IsNetworkObjectReady(_localStats) ? _localStats.TeamId : _localTeamId;
+
+    /// <summary>
+    /// Takim modunda: takimdan biri hayattayken sira = hayattaki takim sayisi. Takim
+    /// elenince guncellenmez, elendigi andaki sira kalir.
+    /// </summary>
+    private void TrackTeamPlacement()
+    {
+        if (!IsSquad || _resultShown)
+            return;
+
+        if (IsNetworkObjectReady(_localStats))
+            _localTeamId = _localStats.TeamId;
+        if (_localTeamId == int.MinValue)
+            return;
+
+        int teams = CountAliveTeams(out bool ownAlive);
+        if (ownAlive)
+            _teamPlacement = teams;
+    }
+
+    private bool LocalTeamAlive()
+    {
+        CountAliveTeams(out bool ownAlive);
+        return ownAlive;
+    }
+
+    private int CountAliveTeams(out bool ownAlive)
+    {
+        var teams = new HashSet<int>();
+        ownAlive = false;
+        foreach (PlayerCombatStats stats in UnityEngine.Object.FindObjectsByType<PlayerCombatStats>(FindObjectsSortMode.None))
+        {
+            if (!IsNetworkObjectReady(stats))
+                continue;
+
+            HealthController health = stats.GetComponent<HealthController>();
+            if (!IsNetworkObjectReady(health) || health.currentHealth <= 0f)
+                continue;
+
+            teams.Add(stats.TeamId);
+            if (stats.TeamId == _localTeamId)
+                ownAlive = true;
+        }
+
+        return teams.Count;
+    }
+
+    /// <summary>Gosterilecek sira: kazanan takim/oyuncu 1; takim modunda takimin sirasi.</summary>
+    private int ResultPlacement(bool victory)
+    {
+        if (victory)
+            return 1;
+        if (_leftEarly)
+            return Mathf.Max(1, _teamPlacement);
+        if (IsSquad && _teamPlacement > 0)
+            return Mathf.Max(2, _teamPlacement);
+        return Mathf.Max(2, _capturedPlacement);
+    }
 
     private void StepSpectated(int direction)
     {
@@ -363,17 +436,14 @@ public class MatchResultHUD : MonoBehaviour
         _resultShown = true;
         ResultVisible = true;
         NewBattle.Audio.Sfx.MuteWorld(true);
-        bool victory = IsNetworkObjectReady(_match) && _match.MatchEnded &&
-            (_match.Winner == _localPlayer ||
-             (NetworkBootstrap.ActiveMode == BattleGameMode.Squad && IsNetworkObjectReady(_localStats) &&
-              _match.WinnerTeamId == _localStats.TeamId));
+        bool victory = IsVictory();
         LocalGameplayStopped = true;
         HideLocalControls();
         if (IsNetworkObjectReady(_localStats)) _localStats.Runner.ProvideInput = false;
         int kills = IsNetworkObjectReady(_localStats) ? _localStats.Kills : _deathKills;
-        int placement = victory ? 1 : Mathf.Max(2, _capturedPlacement);
+        int placement = ResultPlacement(victory);
 
-        titleText.text = victory ? "ZAFER!" : "ELENDIN";
+        titleText.text = victory ? "ZAFER!" : _leftEarly ? "MAÇ DEVAM EDİYOR" : "ELENDIN";
         titleText.color = victory ? victoryColor : defeatColor;
         placementText.text = $"SIRALAMA  #{placement}";
         scoreText.text = $"SKOR  {kills}";
@@ -409,19 +479,24 @@ public class MatchResultHUD : MonoBehaviour
         if (IsNetworkObjectReady(_localStats)) _localStats.Runner.ProvideInput = false;
 
         int kills = IsNetworkObjectReady(_localStats) ? _localStats.Kills : _deathKills;
-        int placement = victory ? 1 : Mathf.Max(2, _capturedPlacement);
+        int placement = ResultPlacement(victory);
 
         LobbyCountdownController lobby = UnityEngine.Object.FindFirstObjectByType<LobbyCountdownController>();
         int total = lobby != null && lobby.Object != null && lobby.Object.IsValid && lobby.TotalContestants > 0
             ? lobby.TotalContestants
             : Mathf.Max(placement, CountAlivePlayers() + 1);
 
+        // Takim modunda sira takimlar arasindadir: toplam da takim sayisi.
+        if (IsSquad)
+            total = Mathf.CeilToInt(total / (float)Mathf.Max(1, NetworkBootstrap.ActiveTeamSize));
+
         var outcome = new NewBattle.Progression.MatchOutcome
         {
             Victory = victory,
             Placement = placement,
             Kills = kills,
-            TotalPlayers = Mathf.Max(total, placement)
+            TotalPlayers = Mathf.Max(total, placement),
+            InProgress = _leftEarly
         };
 
         DisableGameplayCamera();
@@ -438,19 +513,27 @@ public class MatchResultHUD : MonoBehaviour
 
     private bool IsVictory()
     {
+        // Takim modunda takimdan biri kazandiysa olen arkadas da kazanmis sayilir
+        // (olenin karakteri agdan silindigi icin takim numarasi olum aninda saklanir).
         return IsNetworkObjectReady(_match) && _match.MatchEnded &&
                (_match.Winner == _localPlayer ||
-                (NetworkBootstrap.ActiveMode == BattleGameMode.Squad && IsNetworkObjectReady(_localStats) &&
-                 _match.WinnerTeamId == _localStats.TeamId));
+                (IsSquad && LocalTeamId != int.MinValue && _match.WinnerTeamId == LocalTeamId));
     }
 
     /// <summary>"Dorian seni Tufek ile vurdu!" gibi olum mesaji.</summary>
     private string BuildEndMessage(bool victory)
     {
         if (victory)
-            return NetworkBootstrap.ActiveMode == BattleGameMode.Squad
-                ? "Takımınla son hayatta kalanlar sizsiniz!"
-                : "Son hayatta kalan sensin!";
+        {
+            if (!IsSquad)
+                return "Son hayatta kalan sensin!";
+            return _localDead
+                ? "Sen düştün ama takımın kazandı!"
+                : "Takımınla son hayatta kalanlar sizsiniz!";
+        }
+
+        if (_leftEarly)
+            return $"Takım arkadaşın hâlâ savaşıyor!\nŞu an {ResultPlacement(false)}. sıradasınız.";
 
         if (!IsNetworkObjectReady(_localHealth) || _localHealth.currentHealth > 0f)
             return "Maç sona erdi.";

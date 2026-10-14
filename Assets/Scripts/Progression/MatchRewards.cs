@@ -9,6 +9,9 @@ namespace NewBattle.Progression
         public int Placement;
         public int Kills;
         public int TotalPlayers;
+
+        /// <summary>Takim arkadasi hala oynarken maçtan cikildi (sira o anki sira).</summary>
+        public bool InProgress;
     }
 
     /// <summary>Bir mactan kazanilanlar ve oyuncunun once/sonra durumu.</summary>
