@@ -13,3 +13,8 @@
 Thumbs.db
 # Android Gradle gecici klasoru
 /.utmp/
+
+# Imzalama anahtarlari asla git e girmesin
+*.keystore
+*.jks
+AndroidKeystore.json

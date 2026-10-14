@@ -167,6 +167,9 @@ namespace NewBattle.EditorTools
                 return;
 
             EditorUserBuildSettings.buildAppBundle = false; // .aab degil, dogrudan yuklenebilir .apk
+            // Test APK'si Unity'nin hata ayiklama anahtariyla imzalanir (telefondaki eski kurulumun
+            // ustune kurulabilsin). Play Store anahtari sadece AAB'de kullanilir.
+            PlayerSettings.Android.useCustomKeystore = false;
 
             BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
@@ -202,7 +205,7 @@ namespace NewBattle.EditorTools
                 "Tamam");
         }
 
-        private static void PrepareSettingsQuiet()
+        internal static void PrepareSettingsQuiet()
         {
             if (PlayerSettings.GetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android) != PackageName)
                 PrepareSettings();
