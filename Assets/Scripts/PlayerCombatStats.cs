@@ -81,6 +81,11 @@ public class PlayerCombatStats : NetworkBehaviour
         if (string.IsNullOrWhiteSpace(displayName))
             return;
 
+        displayName = displayName.Trim();
+        // Uygunsuz isim (eski surumde secilmis ya da hileyle gonderilmis): herkese "Oyuncu#1234" gorunur.
+        if (NewBattle.Progression.NameFilter.IsBlocked(displayName))
+            displayName = NewBattle.Progression.NameFilter.Replacement(Object.InputAuthority.RawEncoded * 7919 + displayName.Length);
+
         DisplayName = displayName.Length > 16 ? displayName.Substring(0, 16) : displayName;
     }
 

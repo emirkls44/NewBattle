@@ -125,7 +125,10 @@ namespace NewBattle.UI
 
         private string Cleaned => input != null ? input.text.Trim() : string.Empty;
 
-        private bool IsValid => Cleaned.Length >= MinLength && Cleaned.Length <= MaxLength;
+        private bool IsValid => Cleaned.Length >= MinLength && Cleaned.Length <= MaxLength && !Blocked;
+
+        // Kufur / uygunsuz kelime (isimler diger oyunculara gorunur).
+        private bool Blocked => NameFilter.IsBlocked(Cleaned);
 
         private void RefreshHint()
         {
@@ -133,6 +136,8 @@ namespace NewBattle.UI
             {
                 if (_locked)
                     hintText.text = $"İsmini Seviye {Locative(PlayerProgress.NextNameChangeLevel)} değiştirebilirsin";
+                else if (Blocked)
+                    hintText.text = "Bu isim kullanılamaz, başka bir isim dene";
                 else if (!IsValid)
                     hintText.text = $"En az {MinLength}, en fazla {MaxLength} harf";
                 else if (_firstTime)
