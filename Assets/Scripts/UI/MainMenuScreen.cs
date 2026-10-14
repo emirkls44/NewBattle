@@ -216,6 +216,13 @@ namespace NewBattle.UI
                 StartCoroutine(RejoinRoom(rejoin));
             }
 
+            // Mac baslamadan oyun kurucusu ayrildi: ayni modda yeniden eslesme ara.
+            if (NetworkBootstrap.PendingRequeue is BattleGameMode requeueMode)
+            {
+                NetworkBootstrap.PendingRequeue = null;
+                StartCoroutine(Requeue(requeueMode));
+            }
+
             // Onceki baglanti basarisiz olduysa (ornek: yanlis oda kodu) nedeni.
             if (!string.IsNullOrEmpty(NetworkBootstrap.PendingMenuMessage))
             {
@@ -523,6 +530,12 @@ namespace NewBattle.UI
             }
 
             StartMatch(option.mode);
+        }
+
+        private IEnumerator Requeue(BattleGameMode mode)
+        {
+            yield return new WaitForSecondsRealtime(1f);
+            StartMatch(mode);
         }
 
         private IEnumerator RejoinRoom(NetworkBootstrap.RoomRejoin rejoin)

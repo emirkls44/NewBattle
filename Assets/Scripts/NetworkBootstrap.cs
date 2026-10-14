@@ -122,6 +122,15 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>Takim odasindan cikildi: sonraki menu normal baslasin.</summary>
     public static void ClearFriendRoom() => FriendRoomCode = null;
 
+    /// <summary>
+    /// Oturumu biz kapatiyoruz (AYRIL, mac sonu DEVAM). ConnectionWatcher bunu
+    /// "baglanti koptu" sanmasin diye. Yeni oturum baslarken sifirlanir.
+    /// </summary>
+    public static bool ExpectedShutdown { get; set; }
+
+    /// <summary>Mac baslamadan kurucu ayrildi: menu yuklenince bu modda yeniden eslesme aranir.</summary>
+    public static BattleGameMode? PendingRequeue { get; set; }
+
     public int MatchCapacity
     {
         get
@@ -228,6 +237,7 @@ public class NetworkBootstrap : MonoBehaviour, INetworkRunnerCallbacks
             return;
 
         FriendRoomCode = string.IsNullOrEmpty(friendCode) ? null : friendCode;
+        ExpectedShutdown = false;
 
         SelectedMode = mode;
         ActiveMode = mode;

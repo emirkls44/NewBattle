@@ -699,6 +699,7 @@ public class MatchResultHUD : MonoBehaviour
             returnButtonText.text = "DONULUYOR...";
 
         int sceneIndex = SceneManager.GetActiveScene().buildIndex;
+        NetworkBootstrap.ExpectedShutdown = true;
         NetworkRunner runner = _match != null ? _match.Runner : null;
         runner ??= UnityEngine.Object.FindFirstObjectByType<NetworkRunner>();
 

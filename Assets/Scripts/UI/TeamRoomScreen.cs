@@ -354,6 +354,7 @@ namespace NewBattle.UI
             int sceneIndex = SceneManager.GetActiveScene().buildIndex;
             NetworkBootstrap.ClearFriendRoom();
             NetworkBootstrap.PendingRejoin = null;
+            NetworkBootstrap.ExpectedShutdown = true;
             LoadingScreen.ShowLeaving(FindLoadingPrefab(), "ANA MENÜYE DÖNÜLÜYOR...");
 
             NetworkRunner runner = _runner;
