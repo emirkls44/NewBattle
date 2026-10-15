@@ -27,8 +27,12 @@ namespace NewBattle.UI
 
         [Header("Gorunum")]
         [Range(0f, 40f)] public float lineThickness = 12f;
-        public Color lineColor = new(0.12f, 0.12f, 0.12f, 1f);
-        public Color fillColor = Color.white;
+        public Color lineColor = new(0.306f, 0.176f, 0.078f, 1f);  // koyu ahsap
+        public Color fillColor = new(0.478f, 0.29f, 0.149f, 1f);   // ahsap kahvesi
+
+        [Tooltip("Kurulum aracinin renk temasi surumu (elle degistirme).")]
+        [SerializeField, HideInInspector] private int themeVersion;
+        public int ThemeVersion { get => themeVersion; set => themeVersion = value; }
 
         private void OnEnable() => Apply();
         private void OnValidate() => Apply();
