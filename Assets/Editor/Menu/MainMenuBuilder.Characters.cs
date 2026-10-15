@@ -45,6 +45,10 @@ namespace NewBattle.EditorTools
             if (!string.IsNullOrEmpty(starters))
                 added.Add(starters);
 
+            string bots = EnsureBotCharacters(library);
+            if (!string.IsNullOrEmpty(bots))
+                added.Add("Yeni bot karakterleri: " + bots);
+
             if (library.Find("melek") == null && AssetDatabase.LoadAssetAtPath<GameObject>(AngelModelPath) != null)
             {
                 PrepareHumanoid(AngelModelPath);

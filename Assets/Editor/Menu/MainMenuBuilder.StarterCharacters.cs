@@ -36,6 +36,68 @@ namespace NewBattle.EditorTools
             new() { Id = "ayse", Name = "Ayşe", Folder = "Assets/Arts/Characters/Character_Ayse", File = "Ayse" }
         };
 
+        /// <summary>
+        /// Dusman botlari cesitlendiren karakterler: oyuncunun listesinde gorunmez (hediye
+        /// kilidi), botlar Ahmet / Ayse ile birlikte bunlardan da rastgele gelir.
+        /// </summary>
+        private static readonly StarterSpec[] BotSpecs =
+        {
+            new() { Id = "mert", Name = "Mert", Folder = "Assets/Arts/Characters/Character_Mert", File = "Mert" },
+            new() { Id = "elif", Name = "Elif", Folder = "Assets/Arts/Characters/Character_Elif", File = "Elif" }
+        };
+
+        private static string EnsureBotCharacters(CharacterLibrary library)
+        {
+            var added = new System.Collections.Generic.List<string>();
+
+            foreach (StarterSpec spec in BotSpecs)
+            {
+                string modelPath = $"{spec.Folder}/{spec.File}.fbx";
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(modelPath) == null)
+                    continue;
+
+                if (library.Find(spec.Id) != null)
+                {
+                    if (PrepareStarterModel(modelPath))
+                        added.Add($"{spec.Name}: kemik eşleştirmesi düzeltildi");
+                    continue;
+                }
+
+                PrepareStarterModel(modelPath);
+                Avatar avatar = LoadAvatar(modelPath);
+                if (avatar == null || !avatar.isHuman)
+                {
+                    Debug.LogError($"{spec.Name} modeli Humanoid olarak alinamadi: {modelPath} > Inspector > Rig sekmesini kontrol et.");
+                    continue;
+                }
+
+                // Durus degerleri Ayse'den (ayni Meshy iskeleti); KarakterKutuphanesi'nden ayarlanir.
+                library.EditorSet(new CharacterDefinition
+                {
+                    id = spec.Id,
+                    displayName = spec.Name,
+                    model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath),
+                    avatar = avatar,
+                    material = EnsureCharacterMaterial($"{spec.Folder}/{spec.File}_Mat.mat", $"{spec.Folder}/{spec.File}_texture.png"),
+                    menuZoom = 1.25f,
+                    menuOffsetY = -0.131f,
+                    neckBackTilt = 29.3f,
+                    headBackTilt = 2.1f,
+                    botSkin = true,
+                    unlock = CharacterUnlockType.Gift
+                }, makeDefault: false);
+                added.Add($"{spec.Name} (bot)");
+            }
+
+            if (added.Count > 0)
+            {
+                EditorUtility.SetDirty(library);
+                AssetDatabase.SaveAssets();
+            }
+
+            return string.Join(", ", added);
+        }
+
         private static string EnsureStarterCharacters(CharacterLibrary library)
         {
             var added = new System.Collections.Generic.List<string>();

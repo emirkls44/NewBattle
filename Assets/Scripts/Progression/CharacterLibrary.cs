@@ -60,6 +60,8 @@ namespace NewBattle.Progression
         [Tooltip("Baslangic karakteri: ilk acilista secilebilir (Ahmet / Ayse). Secilen oyuncunun " +
                  "olur; digeri 'Level' kilidiyle (Requirement seviyesinde) acilir.")]
         public bool starter;
+        [Tooltip("Isaretliyse botlar (dusmanlar) da bu karakterle gelir. Baslangic karakterleri zaten gelir.")]
+        public bool botSkin;
         public CharacterUnlockType unlock = CharacterUnlockType.Free;
         [Tooltip("Level ve LevelAndCoins: gereken seviye. Coins: fiyat.")]
         [Min(0)] public int requirement;
@@ -217,6 +219,19 @@ namespace NewBattle.Progression
         }
 
         /// <summary>Botlara ve varsayilana: rastgele bir baslangic karakteri (yoksa varsayilan).</summary>
+        /// <summary>Botlarin gorunumu: baslangic karakterleri + "botSkin" isaretli olanlar.</summary>
+        public CharacterDefinition RandomBotCharacter()
+        {
+            var list = new List<CharacterDefinition>(Starters);
+            foreach (CharacterDefinition character in characters)
+            {
+                if (character != null && character.botSkin && character.model != null && !list.Contains(character))
+                    list.Add(character);
+            }
+
+            return list.Count > 0 ? list[UnityEngine.Random.Range(0, list.Count)] : Default;
+        }
+
         public CharacterDefinition RandomStarter()
         {
             var list = new List<CharacterDefinition>(Starters);

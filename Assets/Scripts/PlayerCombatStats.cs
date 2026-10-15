@@ -56,7 +56,7 @@ public class PlayerCombatStats : NetworkBehaviour
             // Botlar da Ahmet ya da Ayse olarak gelir (hepsi ayni gorunmesin).
             NewBattle.Progression.CharacterDefinition botCharacter =
                 NewBattle.Progression.CharacterLibrary.Instance != null
-                    ? NewBattle.Progression.CharacterLibrary.Instance.RandomStarter()
+                    ? NewBattle.Progression.CharacterLibrary.Instance.RandomBotCharacter()
                     : null;
             if (botCharacter != null)
                 CharacterId = botCharacter.id;
