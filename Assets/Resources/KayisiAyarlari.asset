@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f381bc998f2df1c4e94bf43d2c905823, type: 3}
+  m_Name: KayisiAyarlari
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.ApricotSettings
+  model: {fileID: 2570469293870930568, guid: 02461048208dd044aa6cc28709e74e45, type: 3}
+  icon: {fileID: 21300000, guid: 6731ed0d0687d294e974f4fe97734629, type: 3}
+  silhouette: {fileID: 21300000, guid: d8911656d912e03469703cefee30c12f, type: 3}
+  smoke: {fileID: 21300000, guid: 7684efd82ed14f94c90b0668dd3c2fac, type: 3}
+  zonePrefab:
+    RawGuidValue: 637018dbe3379ab4faa6c563cf5b7345
+  maxCarry: 3
+  pickupAmount: 1
+  throwDistance: 7
+  minThrowDistance: 2
+  flightSeconds: 0.6
+  throwCooldown: 0.6
+  arcHeight: 0.35
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  radius: 2.5
+  duration: 6
+  healPerSecond: 12
+  ringColor: {r: 0.35, g: 1, b: 0.3, a: 0.95}
+  fillColor: {r: 0.3, g: 0.95, b: 0.3, a: 0.22}
+  smokeColor: {r: 0.45, g: 0.95, b: 0.45, a: 0.38}
+  silhouetteColor: {r: 0.6, g: 1, b: 0.55, a: 0.9}
+  modelSize: 0.35
+  heldOffset: {x: 0, y: 0.08, z: 0.04}
