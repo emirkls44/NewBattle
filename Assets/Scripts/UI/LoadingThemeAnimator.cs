@@ -5,18 +5,31 @@ using UnityEngine.UI;
 namespace NewBattle.UI
 {
     /// <summary>
-    /// Yukleme ekrani susu: kayisi dizisi sirayla dolup bosalir (ilerleme hissi) ve
-    /// alttaki ipucu birkac saniyede bir degisir. Gercek ilerleme olcmez; baglanti
-    /// durumu LoadingScreen'in Durum yazisinda.
+    /// Yukleme ekrani susu:
+    ///   - Ortadaki kayisi kendi etrafinda saga doner (dikey eksende, para cevirir gibi).
+    ///   - Kayisi dizisi sirayla dolar: dolan kayisi kucuk bir ziplama yapar, dizi hafifce
+    ///     dalgalanir; bos olanlar soluk kayisi rengindedir.
+    ///   - Alttaki ipucu birkac saniyede bir degisir.
+    /// Gercek ilerleme olcmez; baglanti durumu LoadingScreen'in Durum yazisinda.
     /// </summary>
     public class LoadingThemeAnimator : MonoBehaviour
     {
+        [Header("Donen Kayisi")]
+        [Tooltip("Bossa 'DonenKayisi' adli cocuk kullanilir.")]
+        [SerializeField] private RectTransform spinner;
+        [Tooltip("Saniyede kac derece saga donsun (dikey eksen).")]
+        [SerializeField] private float spinDegreesPerSecond = 160f;
+
         [Header("Kayisi Dizisi")]
         [SerializeField] private Image[] apricots;
-        [SerializeField] private Color filledColor = Color.white;
-        [SerializeField] private Color emptyColor = new(0.36f, 0.48f, 0.28f, 0.55f);
+        [SerializeField] private Color filledTint = Color.white;
+        [SerializeField] private Color emptyTint = new(1f, 0.86f, 0.7f, 0.38f);
         [Tooltip("Bir kayisinin dolma suresi (saniye).")]
-        [SerializeField, Min(0.05f)] private float stepSeconds = 0.35f;
+        [SerializeField, Min(0.05f)] private float stepSeconds = 0.32f;
+        [Tooltip("Dolan kayisinin ziplama buyuklugu.")]
+        [SerializeField, Range(0f, 0.8f)] private float popScale = 0.35f;
+        [Tooltip("Dizinin dalgalanma yuksekligi (piksel).")]
+        [SerializeField, Range(0f, 20f)] private float waveHeight = 6f;
 
         [Header("Ipuclari")]
         [SerializeField] private TextMeshProUGUI tipText;
@@ -33,6 +46,30 @@ namespace NewBattle.UI
 
         private float _startTime;
         private int _shownTip = -1;
+        private Vector2[] _basePositions;
+        private float[] _filledAt;
+
+        private void Awake()
+        {
+            if (spinner == null)
+                spinner = transform.Find("DonenKayisi") as RectTransform;
+
+            // Eski duzlemde donme (takla) yerine burada dikey eksende cevrilir.
+            if (spinner != null && spinner.TryGetComponent(out UISpin oldSpin))
+                oldSpin.enabled = false;
+
+            if (apricots != null)
+            {
+                _basePositions = new Vector2[apricots.Length];
+                _filledAt = new float[apricots.Length];
+                for (int i = 0; i < apricots.Length; i++)
+                {
+                    if (apricots[i] != null)
+                        _basePositions[i] = apricots[i].rectTransform.anchoredPosition;
+                    _filledAt[i] = -10f;
+                }
+            }
+        }
 
         private void OnEnable()
         {
@@ -42,23 +79,13 @@ namespace NewBattle.UI
 
         private void Update()
         {
-            float elapsed = Time.unscaledTime - _startTime;
+            float now = Time.unscaledTime;
+            float elapsed = now - _startTime;
 
-            if (apricots != null && apricots.Length > 0)
-            {
-                // Dolar, kisa bir an dolu kalir, sonra bastan.
-                int cycle = apricots.Length + 2;
-                int filled = Mathf.Min(apricots.Length, (int)(elapsed / stepSeconds) % cycle);
-                for (int i = 0; i < apricots.Length; i++)
-                {
-                    if (apricots[i] == null)
-                        continue;
+            if (spinner != null)
+                spinner.localRotation = Quaternion.Euler(0f, -elapsed * spinDegreesPerSecond, 0f);
 
-                    Color target = i < filled ? filledColor : emptyColor;
-                    if (apricots[i].color != target)
-                        apricots[i].color = target;
-                }
-            }
+            UpdateApricots(now, elapsed);
 
             if (tipText != null && tips != null && tips.Length > 0)
             {
@@ -68,6 +95,40 @@ namespace NewBattle.UI
                     _shownTip = index;
                     tipText.text = tips[index];
                 }
+            }
+        }
+
+        private void UpdateApricots(float now, float elapsed)
+        {
+            if (apricots == null || apricots.Length == 0 || _basePositions == null)
+                return;
+
+            // Dolar, kisa bir an dolu kalir, sonra bastan.
+            int cycle = apricots.Length + 2;
+            int filled = Mathf.Min(apricots.Length, (int)(elapsed / stepSeconds) % cycle);
+
+            for (int i = 0; i < apricots.Length; i++)
+            {
+                Image apricot = apricots[i];
+                if (apricot == null)
+                    continue;
+
+                bool isFilled = i < filled;
+                if (isFilled && _filledAt[i] < 0f)
+                    _filledAt[i] = now;
+                else if (!isFilled)
+                    _filledAt[i] = -10f;
+
+                apricot.color = isFilled ? filledTint : emptyTint;
+
+                // Dolunca ziplar: buyuyup yerine oturur.
+                float since = _filledAt[i] >= 0f ? now - _filledAt[i] : 10f;
+                float pop = since < 0.3f ? Mathf.Sin(since / 0.3f * Mathf.PI) * popScale : 0f;
+                apricot.rectTransform.localScale = Vector3.one * (isFilled ? 1f + pop : 0.82f);
+
+                // Hafif dalga.
+                float wave = Mathf.Sin(elapsed * 4f - i * 0.7f) * waveHeight;
+                apricot.rectTransform.anchoredPosition = _basePositions[i] + new Vector2(0f, wave);
             }
         }
     }
