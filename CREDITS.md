@@ -20,7 +20,7 @@ eklerken buraya satır ekle; lisansı belirsiz hiçbir şeyi oyuna koyma.
 
 | İçerik | Nerede | Durum |
 |---|---|---|
-| Meshy AI modelleri (Ahmet, Ayşe, Melek, Tie Guy, sandık, ilk yardım, roketatar, tank, koltuk, çalı...) | `Assets/Arts/Characters`, `Assets/GameArt/Imported/Props` | Ücretli Meshy planıyla özel (private) lisans — ticari kullanım serbest |
+| Meshy AI modelleri (Ahmet, Ayşe, Melek, Tie Guy, kayısı, sandık, ilk yardım, roketatar, tank, koltuk, çalı...) | `Assets/Arts/Characters`, `Assets/GameArt/Imported/Props` | Ücretli Meshy planıyla özel (private) lisans — ticari kullanım serbest |
 | Mixamo animasyonları (`mixamo.com` klipleri) | Karakter animasyonları | Adobe Mixamo: oyunlarda ticari kullanım serbest, atıf gerekmez (ham animasyon dosyası olarak ayrıca dağıtılamaz) |
 | Tüm ses efektleri ve menü müziği | `Assets/GameArt/Audio` | Bizim: `Tools/Audio/generate_sounds.py` ile sentezlendi |
 | Menü görselleri, ikonlar, arka planlar | `Assets/GameArt/MenuUI` | Bizim: `Tools/MenuArt/generate_menu_art.py` |
