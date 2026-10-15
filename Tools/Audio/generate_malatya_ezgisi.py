@@ -1,10 +1,15 @@
 """
-Malatya halay havasinda OZGUN bir ezgi (sifirdan bestelendi; hicbir sarkidan alinmadi).
-Kayisi temasi icin: baglamaya benzeyen telli calgi (tezene tremolosu), alttan dem
-(drone), davul ve def. 9/8 aksak usul (2+2+2+3), La merkezli Anadolu dizisi.
+Malatya davul-zurna halay havasinda OZGUN bir ezgi (sifirdan bestelendi; hicbir
+sarkidan alinmadi). Kayisi / Malatya temasi icin.
+
+  - Zurna: genizden gelen tiz ses (formant), vibrato, notalar arasi kayma, carpma
+    (ustten susleme) ve sondaki tril. Ezgi tek bir surekli nefes gibi sentezlenir.
+  - Dem zurnasi: arkada surekli La.
+  - Davul: pes "gum" (tokmak) ve tiz "tak" (cubuk), 2/4 halay usulu.
+  - Dizi: La Huseyni, Anadolu ara sesleriyle (Si koma bemol, Fa ara ses).
 
 Calistir:   python Tools/Audio/generate_malatya_ezgisi.py
-Cikti:      Assets/GameArt/Audio/Music/malatya_ezgisi.wav  (dongu olarak calinabilir)
+Cikti:      Assets/GameArt/Audio/Music/malatya_ezgisi.wav  (dongu)
 """
 
 import os
@@ -12,134 +17,214 @@ import wave
 
 import numpy as np
 
-RATE = 22050
+RATE = 32000
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "Assets", "GameArt", "Audio", "Music")
-rng = np.random.default_rng(44)
+rng = np.random.default_rng(1453)
 
-EIGHTH = 0.19                 # sekizlik (saniye)
-BAR = 9                       # 9/8: 2+2+2+3
-GROUPS = [0, 2, 4, 6]         # usul vuruslari (sekizlik)
+BPM = 138
+SIXTEENTH = 60.0 / BPM / 4
+BAR = 8  # 2/4 = sekiz onaltilik
 
-# La merkezli dizi: La Si Do Re Mi Fa# Sol La' Si' Do' (derece -> yarim ses, La3 = 0)
-SCALE = [0, 2, 3, 5, 7, 9, 10, 12, 14, 15]
-BASE = 220.0                  # La3
+# La Huseyni: sent (La = 0). Si ve Fa Bati dizisinde olmayan ara seslerdir.
+CENTS = {"A": 0, "B": 150, "C": 300, "D": 500, "E": 700, "F": 850, "G": 1000,
+         "a": 1200, "b": 1350, "c": 1500, "R": None}
+ORDER = ["A", "B", "C", "D", "E", "F", "G", "a", "b", "c"]
+ZURNA_LA = 440.0
 
-
-def freq(degree, octave=0):
-    return BASE * 2 ** ((SCALE[degree] + 12 * octave) / 12)
-
-
-# Ozgun ezgi: her olcu (derece, sekizlik) ciftleri, toplam 9.
-PHRASE_A = [
-    [(4, 2), (5, 2), (4, 2), (3, 3)],
-    [(2, 2), (3, 2), (4, 2), (2, 3)],
-    [(1, 2), (2, 2), (3, 1), (2, 1), (1, 3)],
-    [(0, 2), (1, 2), (2, 2), (0, 3)],
+# Ozgun ezgi: (nota, onaltilik). "R" = sus. Her olcu 8 onaltilik.
+INTRO = [
+    [("a", 8)],
+    [("G", 2), ("a", 2), ("G", 1), ("F", 1), ("E", 2)],
+    [("F", 2), ("E", 2), ("D", 1), ("C", 1), ("B", 2)],
+    [("A", 6), ("R", 2)],
 ]
-PHRASE_B = [
-    [(7, 2), (6, 2), (5, 2), (7, 3)],
-    [(6, 2), (5, 2), (4, 2), (5, 3)],
-    [(4, 2), (3, 2), (2, 1), (3, 1), (4, 3)],
-    [(3, 2), (2, 2), (1, 2), (0, 3)],
+VERSE = [
+    [("E", 2), ("E", 2), ("F", 1), ("E", 1), ("D", 2)],
+    [("C", 2), ("D", 2), ("B", 2), ("C", 2)],
+    [("D", 1), ("C", 1), ("B", 2), ("A", 2), ("B", 2)],
+    [("A", 6), ("R", 2)],
+    [("E", 2), ("E", 2), ("F", 1), ("E", 1), ("D", 2)],
+    [("C", 2), ("D", 2), ("E", 4)],
+    [("D", 1), ("C", 1), ("B", 1), ("C", 1), ("B", 2), ("A", 2)],
+    [("A", 8)],
 ]
-PHRASE_C = [
-    [(4, 1), (5, 1), (6, 2), (5, 2), (4, 3)],
-    [(7, 2), (8, 2), (7, 2), (6, 3)],
-    [(5, 2), (4, 2), (3, 1), (4, 1), (5, 3)],
-    [(4, 2), (3, 2), (2, 2), (1, 3)],
+CHORUS = [
+    [("a", 2), ("G", 2), ("a", 2), ("G", 1), ("F", 1)],
+    [("E", 2), ("F", 2), ("G", 4)],
+    [("F", 1), ("G", 1), ("F", 1), ("E", 1), ("D", 2), ("E", 2)],
+    [("E", 6), ("R", 2)],
+    [("a", 2), ("G", 2), ("F", 1), ("G", 1), ("F", 1), ("E", 1)],
+    [("D", 2), ("E", 2), ("D", 1), ("C", 1), ("B", 2)],
+    [("C", 1), ("B", 1), ("A", 2), ("B", 1), ("C", 1), ("B", 2)],
+    [("A", 8)],
 ]
-PHRASE_D = [
-    [(2, 2), (3, 2), (4, 2), (5, 3)],
-    [(4, 2), (3, 2), (2, 2), (3, 3)],
-    [(2, 1), (1, 1), (2, 2), (1, 2), (0, 3)],
-    [(0, 9)],
-]
-SONG = PHRASE_A + PHRASE_B + PHRASE_A + PHRASE_C + PHRASE_D
+SONG = INTRO + VERSE + CHORUS + VERSE + CHORUS
 
 
-def pluck(f, seconds, brightness=0.55):
-    """Karplus-Strong: baglama benzeri telli ses."""
-    n = int(RATE * seconds)
-    period = max(2, int(RATE / f))
-    buf = rng.uniform(-1, 1, period)
-    out = np.empty(n)
-    for i in range(n):
-        out[i] = buf[i % period]
-        buf[i % period] = brightness * buf[i % period] + (1 - brightness) * buf[(i + 1) % period]
-        buf[i % period] *= 0.996
+def hz(name, octave=0):
+    return ZURNA_LA * 2 ** ((CENTS[name] / 1200) + octave)
+
+
+def step_above(name):
+    i = ORDER.index(name)
+    return ORDER[min(i + 1, len(ORDER) - 1)]
+
+
+# ---------------------------------------------------------------- zurna
+
+def melody_curves(song):
+    """Tum ezgi icin tek surekli perde ve ses egrisi (zurnaci nefes almadan calar gibi)."""
+    total = sum(d for bar in song for _, d in bar) * SIXTEENTH
+    n = int(RATE * total)
+    f = np.full(n, hz("A"))
+    amp = np.zeros(n)
+    t0 = 0.0
+    last = hz("A")
+    events = [(name, d) for bar in song for name, d in bar]
+    for idx, (name, dur) in enumerate(events):
+        seconds = dur * SIXTEENTH
+        s, e = int(RATE * t0), int(RATE * (t0 + seconds))
+        t0 += seconds
+        if name == "R":
+            amp[s:e] = 0.0
+            continue
+        target = hz(name)
+        seg = e - s
+        tt = np.arange(seg) / RATE
+        curve = np.full(seg, target)
+
+        # Onceki notadan kisa kayma (portamento)
+        glide = min(seg, int(RATE * 0.025))
+        curve[:glide] = np.linspace(last, target, glide)
+
+        # Carpma: uzunca notalarin basinda ustten kisa susleme
+        if dur >= 2 and rng.random() < 0.55:
+            grace = min(seg // 3, int(RATE * 0.05))
+            curve[:grace] = hz(step_above(name))
+
+        # Son La'da tril (La - Si)
+        is_last = idx == len(events) - 1 or (dur >= 6 and name == "A")
+        if is_last:
+            trill_len = int(seg * 0.55)
+            flip = (np.arange(trill_len) // int(RATE * 0.055)) % 2
+            curve[:trill_len] = np.where(flip == 0, target, hz("B"))
+
+        # Vibrato uzun notalarda derinlesir
+        depth = 0.004 if dur < 3 else 0.012
+        curve *= 1 + depth * np.sin(2 * np.pi * 6.2 * tt) * np.clip(tt / 0.12, 0, 1)
+        f[s:e] = curve
+        last = target
+
+        # Ses: dil vurusu (tekrarlanan notada belirgin), hafif sonum
+        env = np.ones(seg)
+        attack = min(seg, int(RATE * 0.012))
+        env[:attack] = np.linspace(0.35, 1.0, attack)
+        dip = min(seg, int(RATE * 0.02))
+        env[-dip:] *= np.linspace(1.0, 0.7, dip)
+        amp[s:e] = env * (0.92 + 0.08 * rng.random())
+    return f, amp
+
+
+def zurna(f, amp, brightness=1.0):
+    """Genizden gelen cift kamisli ses: zengin harmonikler + iki formant + nefes."""
+    phase = 2 * np.pi * np.cumsum(f) / RATE
+    out = np.zeros(len(f))
+    base = float(np.median(f))
+    for h in range(1, 18):
+        fh = h * base
+        if fh > RATE / 2 - 500:
+            break
+        formant = 1 + 2.4 * np.exp(-((fh - 1250) / 420) ** 2) + 1.6 * np.exp(-((fh - 2700) / 650) ** 2)
+        weight = formant / h ** (0.75 / brightness)
+        out += weight * np.sin(h * phase + h * 0.7)
+    out = np.tanh(out * 0.9)  # kamis sertligi
+    breath = rng.normal(0, 1, len(f))
+    breath = np.convolve(breath, np.ones(6) / 6, mode="same")
+    return (out + 0.05 * breath) * amp
+
+
+# ---------------------------------------------------------------- davul
+
+def gum(seconds=0.45):
+    t = np.arange(int(RATE * seconds)) / RATE
+    pitch = 55 + 70 * np.exp(-t * 22)
+    body = np.sin(2 * np.pi * np.cumsum(pitch) / RATE) * np.exp(-t * 6.5)
+    thump = rng.normal(0, 1, len(t)) * np.exp(-t * 60)
+    thump = np.convolve(thump, np.ones(12) / 12, mode="same")
+    return 1.0 * body + 0.6 * thump
+
+
+def tak(seconds=0.12, strength=1.0):
+    t = np.arange(int(RATE * seconds)) / RATE
+    noise = rng.normal(0, 1, len(t))
+    hp = noise - np.convolve(noise, np.ones(4) / 4, mode="same")  # tiz
+    skin = np.sin(2 * np.pi * 330 * t) * np.exp(-t * 45)
+    return strength * (0.8 * hp * np.exp(-t * 55) + 0.5 * skin)
+
+
+def drums(bars, intro_bars):
+    n = int(RATE * bars * BAR * SIXTEENTH) + RATE
+    out = np.zeros(n)
+
+    def put(sound, sixteenth):
+        s = int(RATE * sixteenth * SIXTEENTH)
+        e = min(n, s + len(sound))
+        out[s:e] += sound[:e - s]
+
+    for bar in range(bars):
+        base = bar * BAR
+        if bar < intro_bars:
+            # Girisde sadece tek tuk gum: zurna serbest acar
+            if bar == intro_bars - 1:
+                put(gum(), base + 4)
+                put(tak(), base + 6)
+                put(tak(strength=0.8), base + 7)
+            continue
+        # Halay usulu: GUM . tak tak | GUM tak . tak  (+ hafif ara vuruslar)
+        put(gum(), base + 0)
+        put(tak(), base + 2)
+        put(tak(), base + 3)
+        put(gum(), base + 4)
+        put(tak(), base + 5)
+        put(tak(), base + 7)
+        put(tak(strength=0.35), base + 1)
+        put(tak(strength=0.35), base + 6)
+        # Her dort olcude bir doldurma
+        if bar % 4 == 3:
+            for k in (4.5, 5, 5.5, 6, 6.5, 7, 7.5):
+                put(tak(strength=0.6), base + k)
     return out
 
 
-def string_note(f, seconds):
-    """Kisa notada tek tezene, uzun notada tremolo (art arda vurus)."""
-    total = np.zeros(int(RATE * seconds))
-    strokes = 1 if seconds < EIGHTH * 1.5 else int(seconds / (EIGHTH / 2))
-    step = seconds / strokes
-    for s in range(strokes):
-        start = int(RATE * s * step)
-        length = min(len(total) - start, int(RATE * min(seconds - s * step + 0.25, 0.9)))
-        tone = pluck(f, length / RATE) + 0.35 * pluck(f * 2, length / RATE, 0.4)
-        gain = 1.0 if s == 0 else 0.55
-        total[start:start + length] += tone[:length] * gain
-    return total
-
-
-def drum(seconds, low):
-    t = np.arange(int(RATE * seconds)) / RATE
-    if low:  # dum: davul
-        pitch = 70 + 60 * np.exp(-t * 30)
-        body = np.sin(2 * np.pi * np.cumsum(pitch) / RATE) * np.exp(-t * 9)
-        return body + 0.15 * rng.uniform(-1, 1, len(t)) * np.exp(-t * 40)
-    # tek: def
-    hit = rng.uniform(-1, 1, len(t)) * np.exp(-t * 35)
-    ring = np.sin(2 * np.pi * 420 * t) * np.exp(-t * 25)
-    return 0.6 * hit + 0.3 * ring
-
-
-def place(track, sound, start):
-    s = int(RATE * start)
-    e = min(len(track), s + len(sound))
-    if e > s:
-        track[s:e] += sound[:e - s]
-
+# ---------------------------------------------------------------- karisim
 
 def build():
-    total_eighths = BAR * len(SONG)
-    length = total_eighths * EIGHTH
-    melody = np.zeros(int(RATE * (length + 1.0)))
-    drone = np.zeros_like(melody)
-    perc = np.zeros_like(melody)
+    f, amp = melody_curves(SONG)
+    lead = zurna(f, amp)
 
-    position = 0
-    for bar_index, bar in enumerate(SONG):
-        bar_start = bar_index * BAR
-        for degree, eighths in bar:
-            f = freq(degree)
-            place(melody, string_note(f, eighths * EIGHTH), position * EIGHTH)
-            position += eighths
+    # Dem zurnasi: bir oktav pes La, nefes nefes hafif dalgalanir
+    n = len(f)
+    tt = np.arange(n) / RATE
+    dem_f = np.full(n, hz("A", -1)) * (1 + 0.003 * np.sin(2 * np.pi * 5.1 * tt))
+    dem_amp = 0.85 + 0.15 * np.sin(2 * np.pi * 0.3 * tt)
+    intro_end = int(RATE * len(INTRO) * BAR * SIXTEENTH)
+    dem_amp[:intro_end] *= np.linspace(0.0, 1.0, intro_end)
+    dem = zurna(dem_f, dem_amp, brightness=0.8)
 
-        # Dem: her olcunun basinda pes La, 3'luk grupta Mi
-        place(drone, pluck(freq(0, -1), BAR * EIGHTH * 0.6, 0.7) * 0.8, bar_start * EIGHTH)
-        place(drone, pluck(freq(4, -1), 3 * EIGHTH, 0.7) * 0.5, (bar_start + 6) * EIGHTH)
+    bars = len(SONG)
+    perc = drums(bars, len(INTRO))[:n]
 
-        # Usul: dum . tek . dum . tek . tek
-        pattern = [(0, True), (2, False), (4, True), (6, False), (8, False)]
-        for slot, low in pattern:
-            place(perc, drum(0.5, low) * (1.0 if low else 0.55), (bar_start + slot) * EIGHTH)
+    mix = 0.60 * lead + 0.22 * dem + 0.75 * perc
 
-    mix = 0.55 * melody + 0.30 * drone + 0.45 * perc
-    mix = mix[:int(RATE * length)]
-
-    # Basit oda yankisi
-    for delay, gain in ((0.045, 0.25), (0.11, 0.15), (0.19, 0.08)):
+    # Acik hava yankisi (meydan)
+    for delay, gain in ((0.07, 0.22), (0.16, 0.14), (0.29, 0.07)):
         d = int(RATE * delay)
         mix[d:] += gain * mix[:-d]
 
-    # Dongu dikisi yumusak olsun
-    fade = int(RATE * 0.04)
+    fade = int(RATE * 0.05)
     mix[:fade] *= np.linspace(0, 1, fade)
     mix[-fade:] *= np.linspace(1, 0, fade)
-    return mix / (np.max(np.abs(mix)) + 1e-9) * 0.85
+    return mix / (np.max(np.abs(mix)) + 1e-9) * 0.88
 
 
 if __name__ == "__main__":
