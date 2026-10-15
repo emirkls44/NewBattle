@@ -36,14 +36,18 @@ public class PlayerLoadout : NetworkBehaviour
     /// <summary>Cantadaki kayisi sayisi (atilabilir iyilestirme).</summary>
     [Networked] public int ApricotCount { get; private set; }
 
-    /// <summary>Elinde kayisi var (silah yerine): saldiri joystick'i atis yapar.</summary>
-    [Networked] public NetworkBool ApricotEquipped { get; private set; }
+    /// <summary>Cantadaki findik sayisi (atilabilir yavaslatma).</summary>
+    [Networked] public int HazelnutCount { get; private set; }
+
+    /// <summary>Eldeki atilabilir: 0 yok (silah), 1 + ThrowableKind.</summary>
+    [Networked] private int EquippedSlot { get; set; }
 
     // Joystick birakilinca atilir: son gecerli nisan burada tutulur.
     [Networked] private Vector2 ThrowAim { get; set; }
     [Networked] private TickTimer ThrowCooldown { get; set; }
 
-    private GameObject _heldApricot;
+    private GameObject _heldModel;
+    private int _heldModelSlot;
     private Transform _heldHand;
 
     private PlayerShooting _shooting;
@@ -258,53 +262,69 @@ public class PlayerLoadout : NetworkBehaviour
 
     #endregion
 
-    #region Kayisi
+    #region Atilabilir (kayisi, findik)
 
-    public bool CanTakeApricot
+    /// <summary>Elinde atilabilir var (silah yerine): saldiri joystick'i atis yapar.</summary>
+    public bool ThrowableEquipped => EquippedSlot > 0;
+
+    /// <summary>Eldeki atilabilirin turu (ThrowableEquipped degilse anlamsiz).</summary>
+    public ThrowableKind EquippedKind => (ThrowableKind)Mathf.Max(0, EquippedSlot - 1);
+
+    public bool IsEquipped(ThrowableKind kind) => EquippedSlot == (int)kind + 1;
+
+    public int CountOf(ThrowableKind kind) => kind == ThrowableKind.Hazelnut ? HazelnutCount : ApricotCount;
+
+    private void SetCount(ThrowableKind kind, int value)
     {
-        get
-        {
-            ApricotSettings settings = ApricotSettings.Instance;
-            return settings != null && ApricotCount < settings.maxCarry;
-        }
+        if (kind == ThrowableKind.Hazelnut)
+            HazelnutCount = value;
+        else
+            ApricotCount = value;
     }
 
-    /// <summary>Host: yerden kayisi alindi.</summary>
-    public void AddApricots(int amount)
+    public bool CanTake(ThrowableKind kind)
     {
-        ApricotSettings settings = ApricotSettings.Instance;
+        ApricotSettings settings = ApricotSettings.Get(kind);
+        return settings != null && CountOf(kind) < settings.maxCarry;
+    }
+
+    /// <summary>Host: yerden kayisi / findik alindi.</summary>
+    public void AddThrowable(ThrowableKind kind, int amount)
+    {
+        ApricotSettings settings = ApricotSettings.Get(kind);
         if (!HasStateAuthority || settings == null)
             return;
 
-        ApricotCount = Mathf.Clamp(ApricotCount + Mathf.Max(0, amount), 0, settings.maxCarry);
+        SetCount(kind, Mathf.Clamp(CountOf(kind) + Mathf.Max(0, amount), 0, settings.maxCarry));
     }
 
-    /// <summary>Host: yere dusunce kayisi elden birakilir (cantada kalir).</summary>
-    public void UnequipApricot()
+    /// <summary>Host: yere dusunce atilabilir elden birakilir (cantada kalir).</summary>
+    public void UnequipThrowable()
     {
         if (HasStateAuthority)
         {
-            ApricotEquipped = false;
+            EquippedSlot = 0;
             ThrowAim = default;
         }
     }
 
-    /// <summary>Yerel oyuncu: sag ustteki kayisi / silah butonu.</summary>
-    public void RequestApricot(bool equip)
+    /// <summary>Yerel oyuncu: sag ustteki kayisi / findik butonu (null = silaha don).</summary>
+    public void RequestEquip(ThrowableKind? kind)
     {
         if (HasInputAuthority)
-            RPC_EquipApricot(equip);
+            RPC_Equip(kind.HasValue ? (int)kind.Value + 1 : 0);
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_EquipApricot(NetworkBool equip)
+    private void RPC_Equip(int slot)
     {
-        ApricotEquipped = equip && ApricotCount > 0;
+        bool valid = slot > 0 && CountOf((ThrowableKind)(slot - 1)) > 0;
+        EquippedSlot = valid ? slot : 0;
         ThrowAim = default;
     }
 
     /// <summary>
-    /// Host, her tick: kayisi eldeyken saldiri joystick'i. Cekilirken nisan alinir;
+    /// Host, her tick: atilabilir eldeyken saldiri joystick'i. Cekilirken nisan alinir;
     /// parmak kalkinca (girdi tam sifir) atilir. Joystick yavasca ortaya geri
     /// getirilirse atis iptal olur.
     /// </summary>
@@ -313,7 +333,7 @@ public class PlayerLoadout : NetworkBehaviour
         if (!HasStateAuthority)
             return;
 
-        if (!ApricotEquipped || ApricotCount <= 0)
+        if (!ThrowableEquipped || CountOf(EquippedKind) <= 0)
         {
             ThrowAim = default;
             return;
@@ -332,12 +352,12 @@ public class PlayerLoadout : NetworkBehaviour
         ThrowAim = default;
 
         if (released && armed && ThrowCooldown.ExpiredOrNotRunning(Runner))
-            Throw(throwAim);
+            Throw(EquippedKind, throwAim);
     }
 
-    private void Throw(Vector2 aim)
+    private void Throw(ThrowableKind kind, Vector2 aim)
     {
-        ApricotSettings settings = ApricotSettings.Instance;
+        ApricotSettings settings = ApricotSettings.Get(kind);
         if (settings == null || !settings.zonePrefab.IsValid)
             return;
 
@@ -346,29 +366,27 @@ public class PlayerLoadout : NetworkBehaviour
         int teamId = TryGetComponent(out PlayerCombatStats stats) ? stats.TeamId : -1;
         NetworkId thrower = Object.Id;
 
-        ApricotCount--;
-        if (ApricotCount <= 0)
-        {
-            ApricotCount = 0;
-            ApricotEquipped = false;
-        }
+        int left = CountOf(kind) - 1;
+        SetCount(kind, Mathf.Max(0, left));
+        if (left <= 0)
+            EquippedSlot = 0;
 
         ThrowCooldown = TickTimer.CreateFromSeconds(Runner, settings.throwCooldown);
 
         Runner.Spawn(settings.zonePrefab, target, Quaternion.identity, null, (runner, spawned) =>
         {
             if (spawned.TryGetComponent(out ApricotHealZone zone))
-                zone.Init(runner, origin + Vector3.up * 1.3f, target, teamId, thrower);
+                zone.Init(runner, kind, origin + Vector3.up * 1.3f, target, teamId, thrower);
         });
     }
 
-    /// <summary>Kayisi eldeyken sag elde kayisi modeli (silah gizli).</summary>
-    private void ApplyHeldApricot(bool equipped)
+    /// <summary>Atilabilir eldeyken sag elde onun modeli (silah gizli).</summary>
+    private void ApplyHeldModel()
     {
-        if (!equipped)
+        if (!ThrowableEquipped)
         {
-            if (_heldApricot != null && _heldApricot.activeSelf)
-                _heldApricot.SetActive(false);
+            if (_heldModel != null && _heldModel.activeSelf)
+                _heldModel.SetActive(false);
             return;
         }
 
@@ -378,45 +396,51 @@ public class PlayerLoadout : NetworkBehaviour
             _heldHand = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.RightHand) : null;
         }
 
-        ApricotSettings settings = ApricotSettings.Instance;
+        ApricotSettings settings = ApricotSettings.Get(EquippedKind);
         if (_heldHand == null || settings == null || settings.model == null)
             return;
 
-        if (_heldApricot == null)
+        if (_heldModel != null && _heldModelSlot != EquippedSlot)
         {
-            _heldApricot = Instantiate(settings.model);
-            _heldApricot.name = "EldekiKayisi";
-            _heldApricot.transform.localScale = Vector3.one * settings.modelSize;
+            Destroy(_heldModel);
+            _heldModel = null;
         }
 
-        if (!_heldApricot.activeSelf)
-            _heldApricot.SetActive(true);
+        if (_heldModel == null)
+        {
+            _heldModel = Instantiate(settings.model);
+            _heldModel.name = "EldekiAtilabilir";
+            _heldModel.transform.localScale = Vector3.one * settings.modelSize;
+            _heldModelSlot = EquippedSlot;
+        }
+
+        if (!_heldModel.activeSelf)
+            _heldModel.SetActive(true);
 
         // Elin olcegi rigden rige degisir; ebeveyn yapmadan dunyada takip edilir.
-        _heldApricot.transform.SetPositionAndRotation(
+        _heldModel.transform.SetPositionAndRotation(
             _heldHand.position + _heldHand.rotation * settings.heldOffset,
             _heldHand.rotation);
     }
 
     private void LateUpdate()
     {
-        if (Object != null && Object.IsValid && _heldApricot != null && _heldApricot.activeSelf)
-            ApplyHeldApricot(true);
+        if (Object != null && Object.IsValid && _heldModel != null && _heldModel.activeSelf)
+            ApplyHeldModel();
     }
 
     private void OnDestroy()
     {
-        if (_heldApricot != null)
-            Destroy(_heldApricot);
+        if (_heldModel != null)
+            Destroy(_heldModel);
     }
 
     #endregion
 
     private void ApplyVisualState()
     {
-        bool apricot = ApricotEquipped;
-        ApplyHeldApricot(apricot);
-        bool rangedSelected = WeaponId != FistWeaponId && !apricot;
+        ApplyHeldModel();
+        bool rangedSelected = WeaponId != FistWeaponId && !ThrowableEquipped;
 
         if (rifleVisual != null && rifleVisual.activeSelf != rangedSelected)
             rifleVisual.SetActive(rangedSelected);

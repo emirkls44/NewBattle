@@ -13,6 +13,8 @@ namespace NewBattle.UI
     /// </summary>
     public class ApricotSlotHUD : MonoBehaviour
     {
+        [Tooltip("Bu buton hangi atilabilir icin: kayisi ya da findik.")]
+        [SerializeField] private ThrowableKind kind = ThrowableKind.Apricot;
         [SerializeField] private Button button;
         [SerializeField] private Image icon;
         [SerializeField] private Image frame;
@@ -40,7 +42,7 @@ namespace NewBattle.UI
             if (icon != null)
             {
                 _iconBaseScale = icon.rectTransform.localScale;
-                ApricotSettings settings = ApricotSettings.Instance;
+                ApricotSettings settings = ApricotSettings.Get(kind);
                 if (settings != null && settings.icon != null)
                     icon.sprite = settings.icon;
             }
@@ -53,7 +55,7 @@ namespace NewBattle.UI
         {
             if (Ready(_loadout))
             {
-                _loadout.RequestApricot(!_loadout.ApricotEquipped);
+                _loadout.RequestEquip(_loadout.IsEquipped(kind) ? null : kind);
                 NewBattle.Audio.Sfx.PlayUI("buton");
             }
         }
@@ -70,7 +72,7 @@ namespace NewBattle.UI
 
             bool playing = Ready(_loadout) && _dropPhase != null && _dropPhase.Object != null && _dropPhase.Object.IsValid &&
                            _dropPhase.GameplayStarted && !MatchResultHUD.LocalGameplayStopped;
-            int count = playing ? _loadout.ApricotCount : 0;
+            int count = playing ? _loadout.CountOf(kind) : 0;
             SetShown(playing && count > 0);
             if (!playing || count <= 0)
             {
@@ -88,13 +90,13 @@ namespace NewBattle.UI
             }
 
             if (frame != null)
-                frame.color = _loadout.ApricotEquipped ? selectedFrame : normalFrame;
+                frame.color = _loadout.IsEquipped(kind) ? selectedFrame : normalFrame;
 
             if (icon != null)
             {
                 float t = (Time.unscaledTime - _popTime) / 0.28f;
                 float bump = t is >= 0f and < 1f ? Mathf.Sin(t * Mathf.PI) * 0.2f : 0f;
-                float held = _loadout.ApricotEquipped ? 1.08f : 1f;
+                float held = _loadout.IsEquipped(kind) ? 1.08f : 1f;
                 icon.rectTransform.localScale = _iconBaseScale * (held + bump);
             }
         }

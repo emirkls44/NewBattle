@@ -21,6 +21,12 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
     [Tooltip("Bolgesel loot tablosunda kayisinin agirligi (mermi 3, can 2.2, kalkan 2, silah 1.4).")]
     [SerializeField, Min(0f)] private float apricotWeight = 0.8f;
 
+    [Header("Findik (atilabilir yavaslatma)")]
+    [SerializeField] private NetworkPrefabRef hazelnutPickupPrefab;
+    [SerializeField, Range(0, 32)] private int hazelnutCount = 6;
+    [Tooltip("Bolgesel loot tablosunda findigin agirligi.")]
+    [SerializeField, Min(0f)] private float hazelnutWeight = 0.7f;
+
     [Header("Adetler")]
     [SerializeField, Range(0, 32)] private int rifleCount = 8;
     [SerializeField, Range(0, 32)] private int healthCount = 10;
@@ -56,6 +62,8 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
     public NetworkPrefabRef AmmoPickupPrefab => ammoPickupPrefab;
     public NetworkPrefabRef ApricotPickupPrefab => apricotPickupPrefab;
     public float ApricotWeight => apricotWeight;
+    public NetworkPrefabRef HazelnutPickupPrefab => hazelnutPickupPrefab;
+    public float HazelnutWeight => hazelnutWeight;
 
     private void Awake()
     {
@@ -96,6 +104,7 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
         SpawnGroup(runner, shieldPickupPrefab, shieldCount);
         if (ammoPickupPrefab.IsValid) SpawnGroup(runner, ammoPickupPrefab, ammoCount);
         if (apricotPickupPrefab.IsValid) SpawnGroup(runner, apricotPickupPrefab, apricotCount);
+        if (hazelnutPickupPrefab.IsValid) SpawnGroup(runner, hazelnutPickupPrefab, hazelnutCount);
 
         Debug.Log($"[Loot] {rifleCount + healthCount + shieldCount} pickup olusturuldu.");
     }

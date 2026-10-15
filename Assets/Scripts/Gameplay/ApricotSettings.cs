@@ -3,7 +3,25 @@ using UnityEngine;
 
 namespace NewBattle.Gameplay
 {
+    /// <summary>Atilabilir esyalar. Sira aga giden kimliktir; yenisini SONA ekle.</summary>
+    public enum ThrowableKind
+    {
+        Apricot = 0,
+        Hazelnut = 1
+    }
+
+    public enum ThrowEffect
+    {
+        [Tooltip("Alandaki takim arkadaslari (ve atan) iyilesir.")]
+        HealTeam,
+        [Tooltip("Alandaki rakipler neredeyse durana kadar yavaslar.")]
+        SlowEnemies
+    }
+
     /// <summary>
+    /// Atilabilir esya ayarlari: Resources/KayisiAyarlari (iyilestirme) ve
+    /// Resources/FindikAyarlari (yavaslatma). Asagidaki aciklama kayisi icin.
+    ///
     /// Kayisi (atilabilir iyilestirme) ayarlari. Dosya: Assets/Resources/KayisiAyarlari
     /// (Tools > NewBattle > Menü > Kur olusturur). Buradaki her deger oyunda aninda gecerlidir.
     ///
@@ -15,6 +33,15 @@ namespace NewBattle.Gameplay
     public class ApricotSettings : ScriptableObject
     {
         public const string ResourcePath = "KayisiAyarlari";
+        public const string HazelnutResourcePath = "FindikAyarlari";
+
+        [Header("Tur")]
+        public ThrowableKind kind = ThrowableKind.Apricot;
+        public ThrowEffect effect = ThrowEffect.HealTeam;
+        [Tooltip("SlowEnemies: alandaki rakibin hiz carpani (0.15 = neredeyse durur).")]
+        [Range(0.02f, 1f)] public float slowMultiplier = 0.15f;
+        [Tooltip("SlowEnemies: alandan cikinca yavaslik bu kadar daha surer (saniye).")]
+        [Min(0.05f)] public float slowLingerSeconds = 0.5f;
 
         [Header("Gorseller (Kur baglar)")]
         [Tooltip("Elde, havada ucarken gorunen model (boyu 1 metreye olceklenmis).")]
@@ -62,9 +89,18 @@ namespace NewBattle.Gameplay
         public Vector3 heldOffset = new(0f, 0.08f, 0.04f);
 
         private static ApricotSettings _instance;
+        private static ApricotSettings _hazelnut;
 
+        /// <summary>Kayisi ayarlari.</summary>
         public static ApricotSettings Instance =>
             _instance != null ? _instance : _instance = Resources.Load<ApricotSettings>(ResourcePath);
+
+        public static ApricotSettings Get(ThrowableKind kind)
+        {
+            if (kind == ThrowableKind.Hazelnut)
+                return _hazelnut != null ? _hazelnut : _hazelnut = Resources.Load<ApricotSettings>(HazelnutResourcePath);
+            return Instance;
+        }
 
         /// <summary>
         /// Nisandan dusus noktasi. Joystick ne kadar cekildiyse o kadar uzak; arada duvar

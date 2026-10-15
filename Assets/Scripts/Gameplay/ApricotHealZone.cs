@@ -20,6 +20,7 @@ namespace NewBattle.Gameplay
         [Networked] private TickTimer LifeTimer { get; set; }
         [Networked] private float FlightSeconds { get; set; }
         [Networked] private float Duration { get; set; }
+        [Networked] private int Kind { get; set; }
 
         private ApricotSettings _settings;
         private GameObject _flying;
@@ -42,9 +43,10 @@ namespace NewBattle.Gameplay
         }
 
         /// <summary>Host, spawn'dan once.</summary>
-        public void Init(NetworkRunner runner, Vector3 origin, Vector3 target, int teamId, NetworkId thrower)
+        public void Init(NetworkRunner runner, ThrowableKind kind, Vector3 origin, Vector3 target, int teamId, NetworkId thrower)
         {
-            ApricotSettings settings = ApricotSettings.Instance;
+            ApricotSettings settings = ApricotSettings.Get(kind);
+            Kind = (int)kind;
             Origin = origin;
             Target = target;
             TeamId = teamId;
@@ -56,7 +58,7 @@ namespace NewBattle.Gameplay
 
         public override void Spawned()
         {
-            _settings = ApricotSettings.Instance;
+            _settings = ApricotSettings.Get((ThrowableKind)Kind);
             transform.SetPositionAndRotation(Target, Quaternion.identity);
             _block = new MaterialPropertyBlock();
             PlayThrowGesture();
@@ -104,14 +106,19 @@ namespace NewBattle.Gameplay
                 return;
             }
 
-            HealTeam();
+            ApplyEffect();
         }
 
-        private void HealTeam()
+        /// <summary>
+        /// Kayisi: alandaki takim arkadaslari (ve atan) iyilesir.
+        /// Findik: alandaki rakipler (yerdekiler dahil) neredeyse durana kadar yavaslar.
+        /// </summary>
+        private void ApplyEffect()
         {
             if (_settings == null)
                 return;
 
+            bool slow = _settings.effect == ThrowEffect.SlowEnemies;
             float amount = _settings.healPerSecond * Runner.DeltaTime;
             float radiusSqr = _settings.radius * _settings.radius;
             Vector3 center = Target;
@@ -121,18 +128,24 @@ namespace NewBattle.Gameplay
             {
                 PlayerRegistry entry = registry[i];
                 if (entry == null || entry.Health == null || entry.Stats == null || entry.Object == null ||
-                    !entry.Object.IsValid || entry.Runner != Runner || !entry.Health.IsStanding)
+                    !entry.Object.IsValid || entry.Runner != Runner || entry.Health.currentHealth <= 0f)
                     continue;
 
-                // Sadece atanin takimi (tek modda sadece atan).
-                if (entry.Stats.TeamId != TeamId)
+                // Iyilestirme sadece atanin takimina (tek modda sadece atana), yavaslatma sadece rakibe.
+                bool teammate = entry.Stats.TeamId == TeamId;
+                if (slow == teammate || (!slow && !entry.Health.IsStanding))
                     continue;
 
                 Vector3 delta = entry.transform.position - center;
                 if (Mathf.Abs(delta.y) > 2.5f)
                     continue;
                 delta.y = 0f;
-                if (delta.sqrMagnitude <= radiusSqr)
+                if (delta.sqrMagnitude > radiusSqr)
+                    continue;
+
+                if (slow)
+                    entry.Health.ApplySlow(_settings.slowMultiplier, _settings.slowLingerSeconds);
+                else
                     entry.Health.Heal(amount);
             }
         }

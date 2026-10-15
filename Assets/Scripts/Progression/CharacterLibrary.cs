@@ -92,6 +92,16 @@ namespace NewBattle.Progression
         [Tooltip("Karakter ekranindaki karakter resminin boyutu.")]
         [Range(0.5f, 2f)] public float characterScreenScale = 1f;
 
+        [Header("Boy Esitleme")]
+        [Tooltip("Acikken her karakter, model dosyasindaki boyu ne olursa olsun referans karakterle " +
+                 "ayni boya getirilir. Karakterin 'Scale' degeri bunun ustune carpan olarak uygulanir " +
+                 "(1 = referansla ayni boy).")]
+        public bool equalizeHeights = true;
+        [Tooltip("Boyu referans alinan karakterin kimligi.")]
+        public string heightReferenceId = "ayse";
+
+        private readonly Dictionary<string, float> _modelHeights = new();
+
         private static CharacterLibrary _instance;
 
         public static CharacterLibrary Instance
@@ -154,6 +164,67 @@ namespace NewBattle.Progression
             PlayerPrefs.SetString(SelectedKey, character.id);
             PlayerPrefs.Save();
             CharacterSelectionChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Karakteri referans karakterin boyuna getiren olcek carpani (Boy Esitleme kapaliysa 1).
+        /// Boy, model dosyasindaki T pozundan olculur; animasyondan etkilenmez.
+        /// </summary>
+        public float HeightFactor(CharacterDefinition character)
+        {
+            if (!equalizeHeights || character == null || character.model == null)
+                return 1f;
+
+            CharacterDefinition reference = Find(heightReferenceId);
+            if (reference == null || reference.model == null || reference == character)
+                return 1f;
+
+            float own = ModelHeight(character);
+            float target = ModelHeight(reference);
+            return own > 0.0001f && target > 0.0001f ? target / own : 1f;
+        }
+
+        private float ModelHeight(CharacterDefinition character)
+        {
+            if (_modelHeights.TryGetValue(character.id, out float cached))
+                return cached;
+
+            float height = MeasureHeight(character.model.transform, character.removeObjects);
+            _modelHeights[character.id] = height;
+            return height;
+        }
+
+        /// <summary>Mesh'lerin (baglama pozunda) model kokune gore dikey boyu.</summary>
+        private static float MeasureHeight(Transform root, string[] skip)
+        {
+            float min = float.MaxValue, max = float.MinValue;
+            Matrix4x4 toRoot = root.worldToLocalMatrix;
+
+            void Add(Mesh mesh, Transform owner)
+            {
+                if (mesh == null)
+                    return;
+                if (skip != null && System.Array.IndexOf(skip, owner.name) >= 0)
+                    return;
+
+                Bounds bounds = mesh.bounds;
+                Matrix4x4 matrix = toRoot * owner.localToWorldMatrix;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = bounds.center + Vector3.Scale(bounds.extents,
+                        new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f));
+                    float y = matrix.MultiplyPoint3x4(corner).y;
+                    min = Mathf.Min(min, y);
+                    max = Mathf.Max(max, y);
+                }
+            }
+
+            foreach (SkinnedMeshRenderer skinned in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                Add(skinned.sharedMesh, skinned.transform);
+            foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
+                Add(filter.sharedMesh, filter.transform);
+
+            return max > min ? max - min : 0f;
         }
 
         public CharacterDefinition Find(string id)

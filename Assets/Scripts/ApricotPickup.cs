@@ -8,6 +8,8 @@ using UnityEngine;
 /// </summary>
 public class ApricotPickup : TimedLootPickup
 {
+    [Tooltip("Kayisi (iyilestirme) ya da findik (yavaslatma).")]
+    [SerializeField] private ThrowableKind kind = ThrowableKind.Apricot;
     [SerializeField] private Color apricotGlow = new(1f, 0.55f, 0.15f, 0.35f);
 
     protected override Color GlowColor => apricotGlow;
@@ -16,12 +18,12 @@ public class ApricotPickup : TimedLootPickup
     {
         return player != null && player.Object != null &&
                player.Object.InputAuthority != PlayerRef.None &&
-               player.CanTakeApricot;
+               player.CanTake(kind);
     }
 
     protected override void GiveTo(PlayerLoadout player)
     {
-        ApricotSettings settings = ApricotSettings.Instance;
-        player.AddApricots(settings != null ? settings.pickupAmount : 1);
+        ApricotSettings settings = ApricotSettings.Get(kind);
+        player.AddThrowable(kind, settings != null ? settings.pickupAmount : 1);
     }
 }

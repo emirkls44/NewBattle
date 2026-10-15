@@ -55,8 +55,25 @@ public class HealthController : NetworkBehaviour
 
     public float ReviveRadius => reviveRadius;
 
-    /// <summary>Yurume hizi carpani: yerdeyken surunme hizi.</summary>
-    public float MoveMultiplier => IsDowned ? crawlSpeedMultiplier : 1f;
+    // Findik alani: rakibi yavaslatir (aga yazilir ki tahmin eden istemci de ayni hizda yurusun).
+    [Networked] private TickTimer SlowTimer { get; set; }
+    [Networked] private float SlowFactor { get; set; }
+
+    /// <summary>Su an yavaslamis mi (findik alani).</summary>
+    public bool IsSlowed => Runner != null && SlowTimer.IsRunning && !SlowTimer.Expired(Runner);
+
+    /// <summary>Yurume hizi carpani: yerdeyken surunme, findik alaninda yavaslama.</summary>
+    public float MoveMultiplier => (IsDowned ? crawlSpeedMultiplier : 1f) * (IsSlowed ? SlowFactor : 1f);
+
+    /// <summary>Host: bu kadar sure hizi carpanla yavaslat (her tick yenilenir).</summary>
+    public void ApplySlow(float factor, float seconds)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        SlowFactor = Mathf.Clamp(factor, 0.02f, 1f);
+        SlowTimer = TickTimer.CreateFromSeconds(Runner, seconds);
+    }
 
     [Networked] public DeathCause LastDeathCause { get; private set; }
     /// <summary>Oldureni (oyuncu ya da bot) ag nesnesi.</summary>
@@ -191,7 +208,7 @@ public class HealthController : NetworkBehaviour
         KnockerLabel = weapon.Length > 16 ? weapon.Substring(0, 16) : weapon;
 
         if (TryGetComponent(out PlayerLoadout held))
-            held.UnequipApricot();
+            held.UnequipThrowable();
 
         // Silah elden gider (yere duser, kalan mermisiyle); kaldirilinca elde silah olmaz.
         if (TryGetComponent(out PlayerLoadout loadout) && loadout.HasRangedWeapon)

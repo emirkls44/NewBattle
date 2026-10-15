@@ -116,9 +116,11 @@ namespace NewBattle.Gameplay
             }
 
             // Kayisi eldeyse bomba atisi gibi egri cizgi + dusecegi yerde halka.
-            ApricotSettings apricot = ApricotSettings.Instance;
-            if (_loadout != null && _loadout.Object != null && _loadout.Object.IsValid &&
-                _loadout.ApricotEquipped && apricot != null)
+            ApricotSettings apricot = _loadout != null && _loadout.Object != null && _loadout.Object.IsValid &&
+                                      _loadout.ThrowableEquipped
+                ? ApricotSettings.Get(_loadout.EquippedKind)
+                : null;
+            if (apricot != null)
             {
                 if (aim.sqrMagnitude <= 0.04f)
                 {
@@ -161,7 +163,9 @@ namespace NewBattle.Gameplay
             _landingRing.transform.SetPositionAndRotation(target + Vector3.up * 0.05f, Quaternion.identity);
             _landingRing.transform.localScale = Vector3.one * settings.radius;
             _landingRing.GetPropertyBlock(_propertyBlock);
-            _propertyBlock.SetColor(OverlayMeshLibrary.BaseColorId, landingColor);
+            Color ring = settings.ringColor;
+            ring.a = landingColor.a;
+            _propertyBlock.SetColor(OverlayMeshLibrary.BaseColorId, ring);
             _propertyBlock.SetFloat(OverlayMeshLibrary.FillId, 1f);
             _landingRing.SetPropertyBlock(_propertyBlock);
         }

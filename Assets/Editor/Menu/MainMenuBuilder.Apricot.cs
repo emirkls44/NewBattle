@@ -13,57 +13,115 @@ using Object = UnityEngine.Object;
 namespace NewBattle.EditorTools
 {
     /// <summary>
-    /// Kayisi (atilabilir iyilestirme) kurulumu. Var olanlara dokunmaz, eksikleri ekler:
-    ///   - Doku ayarlari, materyal, 1 metreye olceklenmis model prefabi (KayisiModel)
-    ///   - Yerdeki kayisi ag prefabi (ApricotPickup, can paketinden turetilir)
-    ///   - Iyilestirme alani ag prefabi (ApricotHealZone)
-    ///   - Resources/KayisiAyarlari (tum degerler Inspector'dan ayarlanir)
-    ///   - Sahnedeki LootSpawner'a kayisi prefabi (haritada loot olarak cikar)
-    ///   - Game_UI'da silah gostergesinin yaninda kayisi butonu (KayisiYuvasi)
+    /// Atilabilir esyalar (kayisi: iyilestirme, findik: yavaslatma). Var olanlara dokunmaz,
+    /// eksikleri ekler; her biri icin:
+    ///   - Doku ayarlari, materyal, 1 metreye olceklenmis model prefabi (KayisiModel / FindikModel)
+    ///   - Yerdeki ag prefabi (ApricotPickup bileseniyle, can paketinden turetilir)
+    ///   - Resources/KayisiAyarlari, Resources/FindikAyarlari (Inspector'dan ayarlanir)
+    ///   - Sahnedeki LootSpawner'a loot kaydi
+    ///   - Game_UI'da silah gostergesinin yaninda buton (KayisiYuvasi / FindikYuvasi)
+    /// Iki esya ayni alan prefabini (ApricotHealZone) kullanir; etki ayardan gelir.
     /// </summary>
     public static partial class MainMenuBuilder
     {
         private const string ApricotFolder = "Assets/GameArt/Imported/Props/Kayisi";
-        private const string ApricotSettingsPath = "Assets/Resources/" + ApricotSettings.ResourcePath + ".asset";
-        private const string ApricotMaterialPath = ApricotFolder + "/Kayisi_Mat.mat";
-        private const string ApricotModelPath = ApricotFolder + "/KayisiModel.prefab";
-        private const string ApricotIconPath = "Assets/GameArt/HudIcons/kayisi.png";
-        private const string ApricotPickupPath = "Assets/Prefabs/Pickups/ApricotPickup.prefab";
         private const string ApricotZonePath = "Assets/Prefabs/Pickups/ApricotHealZone.prefab";
+        private const string ThrowableSmokePath = ApricotFolder + "/duman.png";
         private const string HealthPickupSource = "Assets/Prefabs/Pickups/HealthPickup.prefab";
+
+        private sealed class ThrowableSpec
+        {
+            public ThrowableKind Kind;
+            public string Label;
+            public string Folder;
+            public string File;
+            public string Silhouette;
+            public string IconPath;
+            public string SettingsPath;
+            public string PickupPath;
+            public string SlotName;
+            public Color Glow;
+            public System.Action<ApricotSettings> Defaults;
+
+            public string Fbx => $"{Folder}/{File}.fbx";
+            public string BaseColor => $"{Folder}/{File}_BaseColor.png";
+            public string Normal => $"{Folder}/{File}_Normal.png";
+            public string MaterialPath => $"{Folder}/{File}_Mat.mat";
+            public string ModelPath => $"{Folder}/{File}Model.prefab";
+        }
+
+        private static readonly ThrowableSpec[] Throwables =
+        {
+            new()
+            {
+                Kind = ThrowableKind.Apricot, Label = "Kayısı", Folder = ApricotFolder, File = "Kayisi",
+                Silhouette = ApricotFolder + "/kayisi_siluet.png", IconPath = "Assets/GameArt/HudIcons/kayisi.png",
+                SettingsPath = "Assets/Resources/" + ApricotSettings.ResourcePath + ".asset",
+                PickupPath = "Assets/Prefabs/Pickups/ApricotPickup.prefab", SlotName = "KayisiYuvasi",
+                Glow = new Color(1f, 0.55f, 0.15f, 0.35f),
+                Defaults = s => { s.kind = ThrowableKind.Apricot; s.effect = ThrowEffect.HealTeam; }
+            },
+            new()
+            {
+                Kind = ThrowableKind.Hazelnut, Label = "Fındık", Folder = "Assets/GameArt/Imported/Props/Findik", File = "Findik",
+                Silhouette = "Assets/GameArt/Imported/Props/Findik/findik_siluet.png", IconPath = "Assets/GameArt/HudIcons/findik.png",
+                SettingsPath = "Assets/Resources/" + ApricotSettings.HazelnutResourcePath + ".asset",
+                PickupPath = "Assets/Prefabs/Pickups/HazelnutPickup.prefab", SlotName = "FindikYuvasi",
+                Glow = new Color(0.62f, 0.4f, 0.2f, 0.35f),
+                Defaults = s =>
+                {
+                    s.kind = ThrowableKind.Hazelnut;
+                    s.effect = ThrowEffect.SlowEnemies;
+                    s.slowMultiplier = 0.15f;
+                    s.healPerSecond = 0f;
+                    s.duration = 5f;
+                    s.ringColor = new Color(0.7f, 0.45f, 0.2f, 0.95f);
+                    s.fillColor = new Color(0.55f, 0.34f, 0.15f, 0.28f);
+                    s.smokeColor = new Color(0.62f, 0.44f, 0.26f, 0.42f);
+                    s.silhouetteColor = new Color(0.82f, 0.6f, 0.38f, 0.9f);
+                }
+            }
+        };
 
         private static bool EnsureApricot(Canvas canvas, out string summary)
         {
-            var parts = new System.Collections.Generic.List<string>();
+            var all = new System.Collections.Generic.List<string>();
+            EnsureApricotZone(all);
 
-            ConfigureApricotTextures();
-
-            Material material = EnsureApricotMaterial(parts);
-            GameObject model = EnsureApricotModel(material, parts);
-            if (model == null)
+            for (int i = 0; i < Throwables.Length; i++)
             {
-                summary = string.Empty;
-                return false;
+                ThrowableSpec spec = Throwables[i];
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(spec.Fbx) == null)
+                    continue;
+
+                var parts = new System.Collections.Generic.List<string>();
+                ConfigureThrowableTextures(spec);
+                Material material = EnsureThrowableMaterial(spec, parts);
+                GameObject model = EnsureThrowableModel(spec, material, parts);
+                if (model == null)
+                    continue;
+
+                EnsureThrowablePickup(spec, model, parts);
+                EnsureThrowableSettings(spec, model, parts);
+                EnsureThrowableInLoot(spec, parts);
+                if (EnsureThrowableSlot(canvas, spec, i))
+                    parts.Add("sağ üstte buton");
+
+                if (parts.Count > 0)
+                    all.Add(spec.Label + ": " + string.Join(", ", parts));
             }
 
-            EnsureApricotPickup(model, parts);
-            EnsureApricotZone(parts);
-            EnsureApricotSettings(model, parts);
-            EnsureApricotInLoot(parts);
-            if (EnsureApricotSlot(canvas))
-                parts.Add("sağ üstte kayısı butonu");
-
-            summary = parts.Count > 0 ? "Kayısı: " + string.Join(", ", parts) : string.Empty;
-            return parts.Count > 0;
+            summary = string.Join(" · ", all);
+            return all.Count > 0;
         }
 
-        private static void ConfigureApricotTextures()
+        private static void ConfigureThrowableTextures(ThrowableSpec spec)
         {
-            SetTexture(ApricotFolder + "/Kayisi_BaseColor.png", TextureImporterType.Default, 512);
-            SetTexture(ApricotFolder + "/Kayisi_Normal.png", TextureImporterType.NormalMap, 512);
-            SetTexture(ApricotFolder + "/kayisi_siluet.png", TextureImporterType.Sprite, 128);
-            SetTexture(ApricotFolder + "/duman.png", TextureImporterType.Sprite, 128);
-            SetTexture(ApricotIconPath, TextureImporterType.Sprite, 256);
+            SetTexture(spec.BaseColor, TextureImporterType.Default, 512);
+            SetTexture(spec.Normal, TextureImporterType.NormalMap, 512);
+            SetTexture(spec.Silhouette, TextureImporterType.Sprite, 128);
+            SetTexture(ThrowableSmokePath, TextureImporterType.Sprite, 128);
+            SetTexture(spec.IconPath, TextureImporterType.Sprite, 256);
         }
 
         private static void SetTexture(string path, TextureImporterType type, int maxSize)
@@ -86,9 +144,9 @@ namespace NewBattle.EditorTools
             importer.SaveAndReimport();
         }
 
-        private static Material EnsureApricotMaterial(System.Collections.Generic.List<string> parts)
+        private static Material EnsureThrowableMaterial(ThrowableSpec spec, System.Collections.Generic.List<string> parts)
         {
-            var material = AssetDatabase.LoadAssetAtPath<Material>(ApricotMaterialPath);
+            var material = AssetDatabase.LoadAssetAtPath<Material>(spec.MaterialPath);
             if (material != null)
                 return material;
 
@@ -96,8 +154,8 @@ namespace NewBattle.EditorTools
             if (shader == null)
                 shader = Shader.Find("Universal Render Pipeline/Lit");
 
-            material = new Material(shader) { name = "Kayisi_Mat" };
-            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(ApricotFolder + "/Kayisi_BaseColor.png");
+            material = new Material(shader) { name = spec.File + "_Mat" };
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(spec.BaseColor);
             if (material.HasProperty("_BaseMap"))
                 material.SetTexture("_BaseMap", texture);
             if (material.HasProperty("_MainTex"))
@@ -105,7 +163,7 @@ namespace NewBattle.EditorTools
             if (material.HasProperty("_BaseColor"))
                 material.SetColor("_BaseColor", Color.white);
 
-            AssetDatabase.CreateAsset(material, ApricotMaterialPath);
+            AssetDatabase.CreateAsset(material, spec.MaterialPath);
             parts.Add("materyal");
             return material;
         }
@@ -115,20 +173,20 @@ namespace NewBattle.EditorTools
         /// degistirilirse (yeni model) prefab ayni yerde (ayni kimlikle) yeniden kurulur;
         /// loot, elde ve havada gorunen kayisi kendiliginden yenisi olur.
         /// </summary>
-        private static GameObject EnsureApricotModel(Material material, System.Collections.Generic.List<string> parts)
+        private static GameObject EnsureThrowableModel(ThrowableSpec spec, Material material, System.Collections.Generic.List<string> parts)
         {
-            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(ApricotModelPath);
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(spec.ModelPath);
             if (existing != null && ApricotModelIsCurrent(existing))
                 return existing;
 
-            var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(ApricotFolder + "/Kayisi.fbx");
+            var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(spec.Fbx);
             if (fbx == null)
             {
-                Debug.LogError("Kayisi: " + ApricotFolder + "/Kayisi.fbx bulunamadi.");
+                Debug.LogError(spec.File + ": " + spec.Fbx + " bulunamadi.");
                 return existing;
             }
 
-            GameObject root = existing != null ? PrefabUtility.LoadPrefabContents(ApricotModelPath) : new GameObject("KayisiModel");
+            GameObject root = existing != null ? PrefabUtility.LoadPrefabContents(spec.ModelPath) : new GameObject(spec.File + "Model");
             var oldChildren = new System.Collections.Generic.List<GameObject>();
             foreach (Transform child in root.transform)
                 oldChildren.Add(child.gameObject);
@@ -155,7 +213,7 @@ namespace NewBattle.EditorTools
             bounds = LocalMeshBounds(root.transform);
             instance.transform.localPosition -= bounds.center;
 
-            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, ApricotModelPath);
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, spec.ModelPath);
             if (existing != null)
                 PrefabUtility.UnloadPrefabContents(root);
             else
@@ -213,18 +271,18 @@ namespace NewBattle.EditorTools
         }
 
         /// <summary>Can paketinin kopyasi: halka, parilti, ag ayarlari ayni; gorsel kayisi.</summary>
-        private static void EnsureApricotPickup(GameObject model, System.Collections.Generic.List<string> parts)
+        private static void EnsureThrowablePickup(ThrowableSpec spec, GameObject model, System.Collections.Generic.List<string> parts)
         {
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(ApricotPickupPath) != null)
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(spec.PickupPath) != null)
                 return;
 
-            if (!AssetDatabase.CopyAsset(HealthPickupSource, ApricotPickupPath))
+            if (!AssetDatabase.CopyAsset(HealthPickupSource, spec.PickupPath))
             {
-                Debug.LogError("Kayisi: can paketi kopyalanamadi: " + HealthPickupSource);
+                Debug.LogError(spec.File + ": can paketi kopyalanamadi: " + HealthPickupSource);
                 return;
             }
 
-            GameObject contents = PrefabUtility.LoadPrefabContents(ApricotPickupPath);
+            GameObject contents = PrefabUtility.LoadPrefabContents(spec.PickupPath);
             try
             {
                 RecoveryPickup old = contents.GetComponent<RecoveryPickup>();
@@ -248,6 +306,11 @@ namespace NewBattle.EditorTools
                     Object.DestroyImmediate(old, true);
                 }
 
+                var pickupSettings = new SerializedObject(pickup);
+                pickupSettings.FindProperty("kind").enumValueIndex = (int)spec.Kind;
+                pickupSettings.FindProperty("apricotGlow").colorValue = spec.Glow;
+                pickupSettings.ApplyModifiedPropertiesWithoutUndo();
+
                 Transform modelSlot = FindDeep(contents.transform, "Model");
                 if (modelSlot != null)
                 {
@@ -257,14 +320,14 @@ namespace NewBattle.EditorTools
                         Object.DestroyImmediate(filter, true);
 
                     var visual = (GameObject)PrefabUtility.InstantiatePrefab(model, modelSlot);
-                    visual.name = "Kayisi";
+                    visual.name = spec.File;
                     float parentScale = Mathf.Max(0.0001f, modelSlot.lossyScale.x);
                     visual.transform.localScale = Vector3.one * (0.6f / parentScale);
                     visual.transform.localPosition = Vector3.zero;
                     visual.transform.localRotation = Quaternion.Euler(-10f, 25f, 0f);
                 }
 
-                PrefabUtility.SaveAsPrefabAsset(contents, ApricotPickupPath);
+                PrefabUtility.SaveAsPrefabAsset(contents, spec.PickupPath);
                 parts.Add("yerdeki kayısı prefabı");
             }
             finally
@@ -286,23 +349,25 @@ namespace NewBattle.EditorTools
             parts.Add("iyileştirme alanı prefabı");
         }
 
-        private static void EnsureApricotSettings(GameObject model, System.Collections.Generic.List<string> parts)
+        private static void EnsureThrowableSettings(ThrowableSpec spec, GameObject model, System.Collections.Generic.List<string> parts)
         {
-            var settings = AssetDatabase.LoadAssetAtPath<ApricotSettings>(ApricotSettingsPath);
+            var settings = AssetDatabase.LoadAssetAtPath<ApricotSettings>(spec.SettingsPath);
             bool created = false;
             if (settings == null)
             {
                 settings = ScriptableObject.CreateInstance<ApricotSettings>();
-                Directory.CreateDirectory(Path.GetDirectoryName(ApricotSettingsPath));
-                AssetDatabase.CreateAsset(settings, ApricotSettingsPath);
+                spec.Defaults?.Invoke(settings);
+                Directory.CreateDirectory(Path.GetDirectoryName(spec.SettingsPath));
+                AssetDatabase.CreateAsset(settings, spec.SettingsPath);
                 created = true;
             }
 
             bool changed = created;
+            if (settings.kind != spec.Kind) { settings.kind = spec.Kind; changed = true; }
             if (settings.model == null) { settings.model = model; changed = true; }
-            if (settings.icon == null) { settings.icon = AssetDatabase.LoadAssetAtPath<Sprite>(ApricotIconPath); changed = true; }
-            if (settings.silhouette == null) { settings.silhouette = AssetDatabase.LoadAssetAtPath<Sprite>(ApricotFolder + "/kayisi_siluet.png"); changed = true; }
-            if (settings.smoke == null) { settings.smoke = AssetDatabase.LoadAssetAtPath<Sprite>(ApricotFolder + "/duman.png"); changed = true; }
+            if (settings.icon == null) { settings.icon = AssetDatabase.LoadAssetAtPath<Sprite>(spec.IconPath); changed = true; }
+            if (settings.silhouette == null) { settings.silhouette = AssetDatabase.LoadAssetAtPath<Sprite>(spec.Silhouette); changed = true; }
+            if (settings.smoke == null) { settings.smoke = AssetDatabase.LoadAssetAtPath<Sprite>(ThrowableSmokePath); changed = true; }
 
             string zoneGuid = AssetDatabase.AssetPathToGUID(ApricotZonePath);
             if (!settings.zonePrefab.IsValid && !string.IsNullOrEmpty(zoneGuid))
@@ -316,44 +381,49 @@ namespace NewBattle.EditorTools
                 EditorUtility.SetDirty(settings);
                 AssetDatabase.SaveAssets();
                 if (created)
-                    parts.Add("Resources/KayisiAyarlari");
+                    parts.Add(Path.GetFileNameWithoutExtension(spec.SettingsPath) + " ayar dosyası");
             }
         }
 
-        private static void EnsureApricotInLoot(System.Collections.Generic.List<string> parts)
+        private static void EnsureThrowableInLoot(ThrowableSpec spec, System.Collections.Generic.List<string> parts)
         {
             LootSpawner spawner = Object.FindFirstObjectByType<LootSpawner>(FindObjectsInactive.Include);
-            string guid = AssetDatabase.AssetPathToGUID(ApricotPickupPath);
+            string guid = AssetDatabase.AssetPathToGUID(spec.PickupPath);
             if (spawner == null || string.IsNullOrEmpty(guid))
                 return;
 
-            FieldInfo field = typeof(LootSpawner).GetField("apricotPickupPrefab", BindingFlags.Instance | BindingFlags.NonPublic);
+            string fieldName = spec.Kind == ThrowableKind.Hazelnut ? "hazelnutPickupPrefab" : "apricotPickupPrefab";
+            FieldInfo field = typeof(LootSpawner).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             if (field == null || ((NetworkPrefabRef)field.GetValue(spawner)).IsValid)
                 return;
 
-            Undo.RecordObject(spawner, "Kayisi loot");
+            Undo.RecordObject(spawner, spec.File + " loot");
             field.SetValue(spawner, new NetworkPrefabRef(guid));
             EditorUtility.SetDirty(spawner);
             parts.Add("haritada loot olarak çıkıyor");
         }
 
         /// <summary>Silah gostergesinin solunda kayisi butonu (resim + sol altta sayi).</summary>
-        private static bool EnsureApricotSlot(Canvas canvas)
+        private static bool EnsureThrowableSlot(Canvas canvas, ThrowableSpec spec, int order)
         {
-            if (canvas.GetComponentInChildren<ApricotSlotHUD>(true) != null)
-                return false;
+            foreach (ApricotSlotHUD existing in canvas.GetComponentsInChildren<ApricotSlotHUD>(true))
+            {
+                if (new SerializedObject(existing).FindProperty("kind").enumValueIndex == (int)spec.Kind)
+                    return false;
+            }
 
             var root = (RectTransform)canvas.transform;
             Vector2 topRight = new(1f, 1f);
             WeaponDisplayHUD weapon = canvas.GetComponentInChildren<WeaponDisplayHUD>(true);
             var weaponRect = weapon != null ? (RectTransform)weapon.transform : null;
             Vector2 size = new(140f, 140f);
+            float offset = order * (size.x + 12f);
             Vector2 position = weaponRect != null
-                ? weaponRect.anchoredPosition - new Vector2(weaponRect.rect.width + 12f, 0f)
-                : new Vector2(-445f, -25f);
+                ? weaponRect.anchoredPosition - new Vector2(weaponRect.rect.width + 12f + offset, 0f)
+                : new Vector2(-445f - offset, -25f);
 
-            RectTransform slot = NewRect("KayisiYuvasi", weaponRect != null ? weaponRect.parent : root);
-            Undo.RegisterCreatedObjectUndo(slot.gameObject, "Kayisi butonu");
+            RectTransform slot = NewRect(spec.SlotName, weaponRect != null ? weaponRect.parent : root);
+            Undo.RegisterCreatedObjectUndo(slot.gameObject, spec.SlotName);
             Place(slot, topRight, topRight, position, size);
 
             RectTransform background = NewRect("Zemin", slot);
@@ -368,7 +438,7 @@ namespace NewBattle.EditorTools
 
             RectTransform iconRect = NewRect("Resim", slot);
             Place(iconRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(4f, 6f), new Vector2(112f, 112f));
-            Image icon = AddImage(iconRect, AssetDatabase.LoadAssetAtPath<Sprite>(ApricotIconPath), Color.white);
+            Image icon = AddImage(iconRect, AssetDatabase.LoadAssetAtPath<Sprite>(spec.IconPath), Color.white);
             icon.preserveAspect = true;
 
             TextMeshProUGUI count = AddText(slot, "Sayi", "1", 46f, Color.white, TextAlignmentOptions.BottomLeft, shadow: true);
@@ -385,6 +455,7 @@ namespace NewBattle.EditorTools
 
             ApricotSlotHUD hud = slot.gameObject.AddComponent<ApricotSlotHUD>();
             var serialized = new SerializedObject(hud);
+            serialized.FindProperty("kind").enumValueIndex = (int)spec.Kind;
             serialized.FindProperty("button").objectReferenceValue = button;
             serialized.FindProperty("icon").objectReferenceValue = icon;
             serialized.FindProperty("frame").objectReferenceValue = frame;

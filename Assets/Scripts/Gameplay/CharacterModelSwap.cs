@@ -86,7 +86,10 @@ namespace NewBattle.Gameplay
                 }
             }
 
-            root.localScale = applied.BaseScale * character.scale;
+            // Boy esitleme: modelin dosyadaki boyu ne olursa olsun referans karakterle ayni boy.
+            CharacterLibrary library = CharacterLibrary.Instance;
+            Vector3 baseScale = applied.BaseScale * (library != null ? library.HeightFactor(character) : 1f);
+            root.localScale = baseScale * character.scale;
             animator.avatar = character.avatar;
             animator.Rebind();
 
@@ -94,7 +97,7 @@ namespace NewBattle.Gameplay
             PostureCorrection posture = root.GetComponent<PostureCorrection>();
             if (posture == null)
                 posture = root.gameObject.AddComponent<PostureCorrection>();
-            posture.Configure(animator, character, applied.BaseScale);
+            posture.Configure(animator, character, baseScale);
 
             applied.Id = character.id;
             Swapped?.Invoke(animator);

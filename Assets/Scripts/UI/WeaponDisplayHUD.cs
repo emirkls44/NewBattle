@@ -62,9 +62,9 @@ namespace NewBattle.UI
         /// <summary>Kayisi eldeyken silah kutusuna basinca silaha / yumruga donulur.</summary>
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (IsReady(_loadout) && _loadout.ApricotEquipped)
+            if (IsReady(_loadout) && _loadout.ThrowableEquipped)
             {
-                _loadout.RequestApricot(false);
+                _loadout.RequestEquip(null);
                 NewBattle.Audio.Sfx.PlayUI("buton");
             }
         }
@@ -93,7 +93,7 @@ namespace NewBattle.UI
             // Kayisi eldeyken silah soluk durur.
             if (icon != null)
             {
-                Color tint = _loadout.ApricotEquipped ? new Color(1f, 1f, 1f, 0.45f) : Color.white;
+                Color tint = _loadout.ThrowableEquipped ? new Color(1f, 1f, 1f, 0.45f) : Color.white;
                 if (icon.color != tint)
                     icon.color = tint;
             }

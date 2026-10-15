@@ -143,6 +143,8 @@ namespace NewBattle.Gameplay
 
             if (spawner.ApricotPickupPrefab.IsValid && spawner.ApricotWeight > 0f)
                 table.Add(NewEntry("Kayisi", spawner.ApricotPickupPrefab, spawner.ApricotWeight));
+            if (spawner.HazelnutPickupPrefab.IsValid && spawner.HazelnutWeight > 0f)
+                table.Add(NewEntry("Findik", spawner.HazelnutPickupPrefab, spawner.HazelnutWeight));
 
             lootTable = table.ToArray();
 
