@@ -69,7 +69,7 @@ public class WeaponHandIK : MonoBehaviour
     private void LateUpdate()
     {
         bool holding = weapon != null && weapon.activeInHierarchy &&
-                       (_health == null || _health.currentHealth > 0f) &&
+                       (_health == null || _health.IsStanding) &&
                        (_descent == null || !_descent.IsDescending);
 
         _current = Mathf.MoveTowards(_current, holding ? weight : 0f, blendSpeed * Time.deltaTime);

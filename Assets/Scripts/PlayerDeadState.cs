@@ -36,7 +36,8 @@ public class PlayerDeadState : PlayerStateBase
 
     public override void EnterState()
     {
-        if (_animator != null && _hasDeathTrigger)
+        // Yerdeyken olen (takim modu) zaten yere yatmis: dusme animasyonu bastan oynamasin.
+        if (_animator != null && _hasDeathTrigger && !_animator.GetCurrentAnimatorStateInfo(0).IsName("Death"))
             _animator.SetTrigger(DeathHash);
 
         if (_collider != null)

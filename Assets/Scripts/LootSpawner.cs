@@ -117,7 +117,7 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
     /// Host: oyuncu oldu. Silahi (yumruk degilse, kalan mermi ve nadirligiyle) ve
     /// can / kalkan paketi oldugu yerin etrafina saçilir; herkes alabilir.
     /// </summary>
-    public void DropDeathLoot(Vector3 deathPosition, PlayerLoadout loadout)
+    public void DropDeathLoot(Vector3 deathPosition, PlayerLoadout loadout, bool supplies = true)
     {
         if (!dropOnDeath || _runner == null || !_runner.IsServer)
             return;
@@ -134,9 +134,10 @@ public class LootSpawner : MonoBehaviour, INetworkRunnerCallbacks
             }));
         }
 
-        if (dropHealth && healthPickupPrefab.IsValid)
+        // supplies=false: takim modunda yere dusunce sadece silah birakilir.
+        if (supplies && dropHealth && healthPickupPrefab.IsValid)
             drops.Add((healthPickupPrefab, null));
-        if (dropShield && shieldPickupPrefab.IsValid)
+        if (supplies && dropShield && shieldPickupPrefab.IsValid)
             drops.Add((shieldPickupPrefab, null));
 
         if (drops.Count == 0)

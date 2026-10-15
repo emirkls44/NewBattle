@@ -23,6 +23,36 @@ public class HealthController : NetworkBehaviour
              "gider, kalkan bitince tasan kisim cana isler.")]
     [Range(0f, 1f)] public float shieldAbsorbRatio = 1f;
 
+    [Header("Yere Dusme (takim modu)")]
+    [Tooltip("Takim modunda cani biten oyuncu, takimindan ayakta biri varsa olmez: yere duser. " +
+             "Takimda ayakta kimse kalmazsa yerdekiler de olur.")]
+    public bool knockdownEnabled = true;
+    [Tooltip("Yere dusunce can bu olur ve zamanla azalir (bitince olur).")]
+    [Min(1f)] public float downedHealth = 100f;
+    [Tooltip("Kimse kaldirmazsa yerdeki oyuncu bu surede olur (saniye).")]
+    [Min(3f)] public float bleedOutSeconds = 30f;
+    [Tooltip("Yerdeyken alinan hasarin carpani (1.5 = %50 daha hizli azalir).")]
+    [Min(1f)] public float downedDamageMultiplier = 1.5f;
+    [Tooltip("Takim arkadasinin kaldirmak icin yaninda durmasi gereken sure (saniye).")]
+    [Min(0.5f)] public float reviveSeconds = 5f;
+    [Tooltip("Kaldirma halkasinin yaricapi (metre).")]
+    [Min(0.5f)] public float reviveRadius = 1.8f;
+    [Tooltip("Kaldirilinca canin ne kadari dolu olur (0.5 = %50). Kalkan ve silah olmaz.")]
+    [Range(0.05f, 1f)] public float reviveHealthFraction = 0.5f;
+
+    /// <summary>Yerde, takim arkadasinin kaldirmasini bekliyor (canli sayilir ama hareket edemez).</summary>
+    [Networked] public NetworkBool IsDowned { get; private set; }
+    /// <summary>Kaldirma ilerlemesi 0-1.</summary>
+    [Networked] public float ReviveProgress { get; private set; }
+    [Networked] private PlayerRef KnockerPlayer { get; set; }
+    [Networked] private NetworkId KnockerId { get; set; }
+    [Networked] private NetworkString<_16> KnockerLabel { get; set; }
+
+    /// <summary>Ayakta ve savasabilir (olu ya da yerde degil).</summary>
+    public bool IsStanding => currentHealth > 0f && !IsDowned;
+
+    public float ReviveRadius => reviveRadius;
+
     [Networked] public DeathCause LastDeathCause { get; private set; }
     /// <summary>Oldureni (oyuncu ya da bot) ag nesnesi.</summary>
     [Networked] public NetworkId KillerObject { get; private set; }
@@ -45,7 +75,12 @@ public class HealthController : NetworkBehaviour
         {
             currentHealth = maxHealth;
             currentShield = 0f;
+            IsDowned = false;
+            ReviveProgress = 0f;
         }
+
+        if (GetComponent<NewBattle.Gameplay.ReviveRingVisual>() == null)
+            gameObject.AddComponent<NewBattle.Gameplay.ReviveRingVisual>();
     }
 
     public void TakeDamage(float baseDamage)
@@ -76,6 +111,12 @@ public class HealthController : NetworkBehaviour
         if (baseDamage <= 0f)
             return;
 
+        if (IsDowned)
+        {
+            TakeDownedDamage(baseDamage, attacker, attackerObject, weaponLabel);
+            return;
+        }
+
         bool shieldWasHit = currentShield > 0f;
 
         // Kalkan EMER, bagisiklik vermez. Hasarin shieldAbsorbRatio kadari once
@@ -98,15 +139,207 @@ public class HealthController : NetworkBehaviour
         // sadece bu pencere boyunca gorunur (bkz. WorldHealthBar).
         MarkCombatants(attacker);
 
-        Rpc_ShowDamageNumber(baseDamage, shieldWasHit, attacker, currentHealth <= 0f);
+        // Takim modunda arkadasi ayaktaysa olmez, yere duser.
+        bool knocked = currentHealth <= 0f && CanBeKnockedDown();
+        Rpc_ShowDamageNumber(baseDamage, shieldWasHit, attacker, currentHealth <= 0f && !knocked);
+
+        if (knocked)
+            KnockDown(attacker, attackerObject, weaponLabel);
+        else if (currentHealth <= 0f)
+            CompleteDeath(attacker, attackerObject, weaponLabel);
+    }
+
+    private void CompleteDeath(PlayerRef attacker, NetworkObject attackerObject, string weaponLabel)
+    {
+        IsDowned = false;
+        ReviveProgress = 0f;
+        currentHealth = 0f;
+        RecordDeath(attacker, attackerObject, weaponLabel);
+        AwardKill(attacker);
+        Rpc_AnnounceDeath(attackerObject != null ? attackerObject.Id : default, weaponLabel ?? string.Empty);
+        DropLoot();
+        Die();
+    }
+
+    // ------------------------------------------------------------------
+    // Yere dusme / kaldirma (sadece host)
+    // ------------------------------------------------------------------
+
+    private bool CanBeKnockedDown()
+    {
+        return knockdownEnabled &&
+               NetworkBootstrap.ActiveMode == BattleGameMode.Squad &&
+               NetworkBootstrap.ActiveTeamSize > 1 &&
+               HasStandingTeammate();
+    }
+
+    private void KnockDown(PlayerRef attacker, NetworkObject attackerObject, string weaponLabel)
+    {
+        IsDowned = true;
+        ReviveProgress = 0f;
+        currentHealth = downedHealth;
+        currentShield = 0f;
+
+        KnockerPlayer = attacker;
+        KnockerId = attackerObject != null ? attackerObject.Id : default;
+        string weapon = weaponLabel ?? string.Empty;
+        KnockerLabel = weapon.Length > 16 ? weapon.Substring(0, 16) : weapon;
+
+        // Silah elden gider (yere duser, kalan mermisiyle); kaldirilinca elde silah olmaz.
+        if (TryGetComponent(out PlayerLoadout loadout) && loadout.HasRangedWeapon)
+        {
+            LootSpawner spawner = Runner.GetComponent<LootSpawner>();
+            if (spawner != null)
+                spawner.DropDeathLoot(transform.position, loadout, supplies: false);
+            loadout.DropWeapon();
+        }
+
+        Rpc_Knocked(attacker);
+    }
+
+    /// <summary>Yerdeyken vurulursa can daha hizli gider; biterse olur (vuran oldurmus sayilir).</summary>
+    private void TakeDownedDamage(float baseDamage, PlayerRef attacker, NetworkObject attackerObject, string weaponLabel)
+    {
+        float damage = baseDamage * downedDamageMultiplier;
+        currentHealth = Mathf.Max(0f, currentHealth - damage);
+        MarkCombatants(attacker);
+        Rpc_ShowDamageNumber(damage, false, attacker, currentHealth <= 0f);
 
         if (currentHealth <= 0f)
+            FinishDowned(attacker, attackerObject, weaponLabel);
+    }
+
+    /// <summary>
+    /// Yerdeki oyuncu olur. Vuran yoksa (kan kaybi, alan, takim elendi) yere seren oldurmus sayilir.
+    /// </summary>
+    private void FinishDowned(PlayerRef attacker, NetworkObject attackerObject, string weaponLabel)
+    {
+        if (attacker == PlayerRef.None && attackerObject == null)
         {
-            RecordDeath(attacker, attackerObject, weaponLabel);
-            AwardKill(attacker);
-            Rpc_AnnounceDeath(attackerObject != null ? attackerObject.Id : default, weaponLabel ?? string.Empty);
-            DropLoot();
-            Die();
+            attacker = KnockerPlayer;
+            if (KnockerId.IsValid)
+                Runner.TryFindObject(KnockerId, out attackerObject);
+            weaponLabel = KnockerLabel.ToString();
+        }
+
+        CompleteDeath(attacker, attackerObject, weaponLabel);
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (!HasStateAuthority || !IsDowned || currentHealth <= 0f)
+            return;
+
+        // Takimda ayakta kimse kalmadi (oldu, yere dustu ya da cikti): kaldiracak kimse yok.
+        if (!HasStandingTeammate())
+        {
+            FinishDowned(PlayerRef.None, null, null);
+            return;
+        }
+
+        if (FindReviver() != null)
+        {
+            // Kaldirilirken kan kaybi durur.
+            ReviveProgress = Mathf.Min(1f, ReviveProgress + Runner.DeltaTime / Mathf.Max(0.1f, reviveSeconds));
+            if (ReviveProgress >= 1f)
+                Revive();
+            return;
+        }
+
+        ReviveProgress = 0f;
+        currentHealth = Mathf.Max(0f, currentHealth - downedHealth / Mathf.Max(1f, bleedOutSeconds) * Runner.DeltaTime);
+        if (currentHealth <= 0f)
+            FinishDowned(PlayerRef.None, null, null);
+    }
+
+    private void Revive()
+    {
+        IsDowned = false;
+        ReviveProgress = 0f;
+        currentHealth = Mathf.Max(1f, maxHealth * reviveHealthFraction);
+        currentShield = 0f;
+        Rpc_Revived();
+    }
+
+    private bool HasStandingTeammate()
+    {
+        PlayerCombatStats own = OwnStats();
+        if (own == null)
+            return false;
+
+        var registry = NewBattle.Gameplay.PlayerRegistry.All;
+        for (int i = 0; i < registry.Count; i++)
+        {
+            NewBattle.Gameplay.PlayerRegistry entry = registry[i];
+            if (IsStandingTeammate(entry, own))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Kaldirma halkasinin icinde duran, ayaktaki takim arkadasi.</summary>
+    private HealthController FindReviver()
+    {
+        PlayerCombatStats own = OwnStats();
+        if (own == null)
+            return null;
+
+        Vector3 position = transform.position;
+        var registry = NewBattle.Gameplay.PlayerRegistry.All;
+        for (int i = 0; i < registry.Count; i++)
+        {
+            NewBattle.Gameplay.PlayerRegistry entry = registry[i];
+            if (!IsStandingTeammate(entry, own))
+                continue;
+
+            Vector3 delta = entry.transform.position - position;
+            if (Mathf.Abs(delta.y) > 2f)
+                continue;
+
+            delta.y = 0f;
+            if (delta.sqrMagnitude <= reviveRadius * reviveRadius)
+                return entry.Health;
+        }
+
+        return null;
+    }
+
+    private bool IsStandingTeammate(NewBattle.Gameplay.PlayerRegistry entry, PlayerCombatStats own)
+    {
+        return entry != null && entry.Health != null && entry.Health != this &&
+               entry.Object != null && entry.Object.IsValid && entry.Runner == Runner &&
+               entry.Health.IsStanding && own.IsTeammate(entry.Stats);
+    }
+
+    private PlayerCombatStats OwnStats()
+    {
+        if (_ownStats == null)
+            _ownStats = GetComponent<PlayerCombatStats>();
+        return _ownStats;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_Knocked(PlayerRef attacker)
+    {
+        if (HasInputAuthority)
+        {
+            NewBattle.Audio.Sfx.PlayHud("olum");
+            NewBattle.Gameplay.ScreenAnnouncer.Show("YERE DÜŞTÜN!\nTakım arkadaşın seni kaldırabilir");
+        }
+        else if (Runner != null && attacker != PlayerRef.None && attacker == Runner.LocalPlayer)
+        {
+            NewBattle.Audio.Sfx.PlayHud("oldurme");
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_Revived()
+    {
+        if (HasInputAuthority)
+        {
+            NewBattle.Audio.Sfx.PlayHud("odul");
+            NewBattle.Gameplay.ScreenAnnouncer.Show("KALDIRILDIN!");
         }
     }
 
@@ -215,7 +448,7 @@ public class HealthController : NetworkBehaviour
 
     public void Heal(float healAmount)
     {
-        if (!HasStateAuthority || healAmount <= 0f)
+        if (!HasStateAuthority || healAmount <= 0f || IsDowned)
             return;
 
         currentHealth = Mathf.Min(currentHealth + healAmount, maxHealth);
@@ -223,7 +456,7 @@ public class HealthController : NetworkBehaviour
 
     public void AddShield(float shieldAmount)
     {
-        if (!HasStateAuthority || shieldAmount <= 0f)
+        if (!HasStateAuthority || shieldAmount <= 0f || IsDowned)
             return;
 
         currentShield = Mathf.Min(currentShield + shieldAmount, maxShield);
@@ -236,7 +469,7 @@ public class HealthController : NetworkBehaviour
 
         foreach (var change in _changeDetector.DetectChanges(this))
         {
-            if (change == nameof(currentHealth) || change == nameof(currentShield))
+            if (change == nameof(currentHealth) || change == nameof(currentShield) || change == nameof(IsDowned))
                 OnHealthChanged?.Invoke();
         }
     }

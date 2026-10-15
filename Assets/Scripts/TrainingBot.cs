@@ -167,7 +167,7 @@ public class TrainingBot : NetworkBehaviour
         if (!HasStateAuthority || Object.InputAuthority != PlayerRef.None)
             return;
 
-        if (_health != null && _health.currentHealth <= 0f)
+        if (_health != null && (_health.currentHealth <= 0f || _health.IsDowned))
             return;
 
         if (_lobbyCountdown != null && !_lobbyCountdown.MatchStarted)
@@ -354,6 +354,9 @@ public class TrainingBot : NetworkBehaviour
                 score -= 4f;
             if (entry.Health != null)
                 score += entry.Health.currentHealth / Mathf.Max(1f, entry.Health.maxHealth) * 2f;
+            // Yerdeki rakip kacamaz, ates edemez: once ayaktakilerle ilgilen.
+            if (entry.Health != null && entry.Health.IsDowned)
+                score += 8f;
 
             if (score < bestScore)
             {

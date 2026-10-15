@@ -240,8 +240,9 @@ public class CharacterAnimationDriver : MonoBehaviour
             return;
 
         MeasureVelocity(deltaTime);
+        UpdateDownedPose();
 
-        bool dead = IsDead();
+        bool dead = IsDead() || _downed;
         bool frozen = dead || IsDescending();
         float speed = frozen ? 0f : _velocity.magnitude;
 
@@ -453,6 +454,29 @@ public class CharacterAnimationDriver : MonoBehaviour
         }
 
         return false;
+    }
+
+    private static readonly int DeathStateHash = Animator.StringToHash("Death");
+    private static readonly int LocomotionStateHash = Animator.StringToHash("Locomotion");
+    private bool _downed;
+
+    /// <summary>Takim modunda yere dusunce yere yatar, kaldirilinca kalkar.</summary>
+    private void UpdateDownedPose()
+    {
+        bool downed = _health != null && _health.Object != null && _health.Object.IsValid && _health.IsDowned;
+        if (downed == _downed)
+            return;
+
+        _downed = downed;
+        if (downed)
+        {
+            if (animator.HasState(0, DeathStateHash))
+                animator.CrossFadeInFixedTime(DeathStateHash, 0.15f, 0);
+        }
+        else if (!IsDead() && animator.HasState(0, LocomotionStateHash))
+        {
+            animator.CrossFadeInFixedTime(LocomotionStateHash, 0.35f, 0);
+        }
     }
 
     private bool IsDead()

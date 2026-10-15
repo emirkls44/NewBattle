@@ -7,6 +7,9 @@ public class WorldHealthBar : MonoBehaviour
     [SerializeField] private Vector3 worldOffset = new(0f, 2.25f, 0f);
     [SerializeField] private Color healthColor = new(0.15f, 0.9f, 0.25f, 1f);
     [SerializeField] private Color shieldColor = new(0.15f, 0.65f, 1f, 1f);
+    [Tooltip("Takim modunda yere dusmus oyuncunun can rengi.")]
+    [SerializeField] private Color downedColor = new(1f, 0.22f, 0.2f, 1f);
+    private Image _healthImage;
 
     private HealthController _health;
     private NewBattle.Gameplay.PlayerPresence _presence;
@@ -158,6 +161,12 @@ public class WorldHealthBar : MonoBehaviour
                 ? Mathf.Clamp01(_health.currentHealth / _health.maxHealth)
                 : 0f;
             SetBarWidth(_healthFill, healthRatio, -4.5f);
+
+            // Yerdeyken (takim modu) can kirmizi: azalan kan kaybi.
+            if (_healthImage == null)
+                _healthImage = _healthFill.GetComponent<Image>();
+            if (_healthImage != null)
+                _healthImage.color = _health.IsDowned ? downedColor : healthColor;
         }
 
         if (_shieldFill != null)

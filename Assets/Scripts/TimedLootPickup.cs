@@ -121,7 +121,7 @@ public abstract class TimedLootPickup : NetworkBehaviour
     {
         if (player == null || player.Object == null || !player.Object.IsValid || player.Runner != Runner) return false;
         var health = player.GetComponent<HealthController>();
-        if (health == null || health.Object == null || !health.Object.IsValid || health.currentHealth <= 0f) return false;
+        if (health == null || health.Object == null || !health.Object.IsValid || !health.IsStanding) return false;
         Vector3 delta = player.transform.position - transform.position;
         if (Mathf.Abs(delta.y) > 2.5f) return false;
         delta.y = 0;

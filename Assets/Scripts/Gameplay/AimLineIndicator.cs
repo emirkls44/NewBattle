@@ -115,7 +115,7 @@ namespace NewBattle.Gameplay
         {
             aim = Vector2.zero;
 
-            if (_health == null || _health.currentHealth <= 0f)
+            if (_health == null || !_health.IsStanding)
                 return false;
 
             // Parasutle inerken nisan alinmaz.

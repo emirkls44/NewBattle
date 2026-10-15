@@ -140,6 +140,23 @@ public class LocalPlayerHUD : MonoBehaviour
             && _health.Runner != null;
     }
 
+    private Color _healthBaseColor;
+    private bool _healthColorSaved;
+
+    private void SetDownedTint(bool downed)
+    {
+        if (healthFill == null)
+            return;
+
+        if (!_healthColorSaved)
+        {
+            _healthBaseColor = healthFill.color;
+            _healthColorSaved = true;
+        }
+
+        healthFill.color = downed ? new Color(1f, 0.22f, 0.2f, 1f) : _healthBaseColor;
+    }
+
     private void Refresh()
     {
         if (!ReferencesAreValid())
@@ -161,7 +178,10 @@ public class LocalPlayerHUD : MonoBehaviour
             healthValue = Mathf.FloorToInt(Mathf.Max(0f, _health.currentHealth + 0.001f));
             shieldValue = Mathf.FloorToInt(Mathf.Max(0f, _health.currentShield + 0.001f));
 
-            if (_previousValuesInitialized)
+            // Yerdeyken can kirmizi ve surekli azalir; her tikte sarsilmasin.
+            SetDownedTint(_health.IsDowned);
+
+            if (_previousValuesInitialized && !_health.IsDowned)
             {
                 if (_health.currentHealth < _previousHealth - 0.001f)
                     PlayHealthDamagePulse();

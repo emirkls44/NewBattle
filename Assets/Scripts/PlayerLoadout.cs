@@ -173,6 +173,13 @@ public class PlayerLoadout : NetworkBehaviour
         return dps * WeaponLootSettings.DamageMultiplier(rarity);
     }
 
+    /// <summary>Host: yere dusen oyuncunun silahi elinden gider (yumruga doner).</summary>
+    public void DropWeapon()
+    {
+        if (HasStateAuthority)
+            ClearWeapon();
+    }
+
     private void ClearWeapon()
     {
         WeaponId = FistWeaponId;

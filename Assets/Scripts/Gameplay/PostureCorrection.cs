@@ -70,7 +70,9 @@ namespace NewBattle.Gameplay
             if (transform.localScale != targetScale)
                 transform.localScale = targetScale;
 
-            CorrectFeet(_definition.footFlatten, _definition.toeLock);
+            // Yere yatmisken (olum / takim modunda yere dusme) ayaklari zemine yatirma.
+            if (!_animator.GetCurrentAnimatorStateInfo(0).IsName("Death"))
+                CorrectFeet(_definition.footFlatten, _definition.toeLock);
 
             float neckTilt = _definition.neckBackTilt;
             float headTilt = _definition.headBackTilt;
