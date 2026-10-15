@@ -110,24 +110,35 @@ namespace NewBattle.EditorTools
             return material;
         }
 
-        /// <summary>Model, ortalanmis ve en buyuk boyu 1 metre olacak sekilde prefab yapilir.</summary>
+        /// <summary>
+        /// Model, ortalanmis ve en buyuk boyu 1 metre olacak sekilde prefab yapilir. Kayisi.fbx
+        /// degistirilirse (yeni model) prefab ayni yerde (ayni kimlikle) yeniden kurulur;
+        /// loot, elde ve havada gorunen kayisi kendiliginden yenisi olur.
+        /// </summary>
         private static GameObject EnsureApricotModel(Material material, System.Collections.Generic.List<string> parts)
         {
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(ApricotModelPath);
-            if (existing != null)
+            if (existing != null && ApricotModelIsCurrent(existing))
                 return existing;
 
             var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(ApricotFolder + "/Kayisi.fbx");
             if (fbx == null)
             {
                 Debug.LogError("Kayisi: " + ApricotFolder + "/Kayisi.fbx bulunamadi.");
-                return null;
+                return existing;
             }
 
-            var root = new GameObject("KayisiModel");
+            GameObject root = existing != null ? PrefabUtility.LoadPrefabContents(ApricotModelPath) : new GameObject("KayisiModel");
+            var oldChildren = new System.Collections.Generic.List<GameObject>();
+            foreach (Transform child in root.transform)
+                oldChildren.Add(child.gameObject);
+            foreach (GameObject child in oldChildren)
+                Object.DestroyImmediate(child);
+
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(fbx);
             PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
             instance.transform.SetParent(root.transform, false);
+            instance.transform.localPosition = Vector3.zero;
 
             foreach (Collider collider in instance.GetComponentsInChildren<Collider>(true))
                 Object.DestroyImmediate(collider);
@@ -136,38 +147,69 @@ namespace NewBattle.EditorTools
             foreach (Renderer renderer in renderers)
                 renderer.sharedMaterial = material;
 
-            Bounds bounds = WorldBounds(renderers);
+            Bounds bounds = LocalMeshBounds(root.transform);
             float size = Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
             if (size > 0.0001f)
                 instance.transform.localScale *= 1f / size;
 
-            bounds = WorldBounds(renderers);
+            bounds = LocalMeshBounds(root.transform);
             instance.transform.localPosition -= bounds.center;
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, ApricotModelPath);
-            Object.DestroyImmediate(root);
-            parts.Add("model");
+            if (existing != null)
+                PrefabUtility.UnloadPrefabContents(root);
+            else
+                Object.DestroyImmediate(root);
+
+            parts.Add(existing != null ? "yeni model" : "model");
             return prefab;
         }
 
-        private static Bounds WorldBounds(Renderer[] renderers)
+        /// <summary>Prefab gecerli mesh'i gosteriyor ve 1 metreye olceklenmis, ortalanmis mi.</summary>
+        private static bool ApricotModelIsCurrent(GameObject prefab)
         {
-            Bounds bounds = default;
-            bool first = true;
-            foreach (Renderer renderer in renderers)
+            foreach (MeshFilter filter in prefab.GetComponentsInChildren<MeshFilter>(true))
             {
-                if (first)
+                if (filter.sharedMesh == null)
+                    return false;
+            }
+
+            Bounds bounds = LocalMeshBounds(prefab.transform);
+            float size = Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
+            return Mathf.Abs(size - 1f) < 0.05f && bounds.center.magnitude < 0.05f;
+        }
+
+        /// <summary>Mesh kutularinin koke gore birlesimi (prefab dosyasinda da calisir).</summary>
+        private static Bounds LocalMeshBounds(Transform root)
+        {
+            Bounds result = default;
+            bool first = true;
+            Matrix4x4 toRoot = root.worldToLocalMatrix;
+            foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null)
+                    continue;
+
+                Bounds mesh = filter.sharedMesh.bounds;
+                Matrix4x4 matrix = toRoot * filter.transform.localToWorldMatrix;
+                for (int i = 0; i < 8; i++)
                 {
-                    bounds = renderer.bounds;
-                    first = false;
-                }
-                else
-                {
-                    bounds.Encapsulate(renderer.bounds);
+                    Vector3 corner = mesh.center + Vector3.Scale(mesh.extents,
+                        new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f));
+                    Vector3 point = matrix.MultiplyPoint3x4(corner);
+                    if (first)
+                    {
+                        result = new Bounds(point, Vector3.zero);
+                        first = false;
+                    }
+                    else
+                    {
+                        result.Encapsulate(point);
+                    }
                 }
             }
 
-            return bounds;
+            return result;
         }
 
         /// <summary>Can paketinin kopyasi: halka, parilti, ag ayarlari ayni; gorsel kayisi.</summary>
