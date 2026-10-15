@@ -83,6 +83,76 @@ namespace NewBattle.EditorTools
             }
         };
 
+        /// <summary>
+        /// Kur'a basmayi unutma derdi olmasin: Unity derledikten sonra eksik bir atilabilir
+        /// esya (yeni eklenen model, ayar dosyasi, loot kaydi ya da sag ustteki buton) varsa
+        /// kendiliginden kurulur ve sahne kaydedilir.
+        /// </summary>
+        [InitializeOnLoadMethod]
+        private static void AutoInstallThrowablesLater()
+        {
+            EditorApplication.delayCall += AutoInstallThrowables;
+        }
+
+        private static void AutoInstallThrowables()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                return;
+
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                EditorApplication.delayCall += AutoInstallThrowables;
+                return;
+            }
+
+            Canvas canvas = FindGameCanvas();
+            if (canvas == null || !ThrowablesNeedInstall(canvas))
+                return;
+
+            if (!PrepareFont())
+                return;
+            PrepareMaterials();
+
+            if (EnsureApricot(canvas, out string summary))
+            {
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
+                UnityEditor.SceneManagement.EditorSceneManager.SaveScene(canvas.gameObject.scene);
+                Debug.Log("Atilabilir esyalar otomatik kuruldu: " + summary);
+            }
+        }
+
+        private static bool ThrowablesNeedInstall(Canvas canvas)
+        {
+            LootSpawner spawner = Object.FindFirstObjectByType<LootSpawner>(FindObjectsInactive.Include);
+            ApricotSlotHUD[] slots = canvas.GetComponentsInChildren<ApricotSlotHUD>(true);
+
+            foreach (ThrowableSpec spec in Throwables)
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(spec.Fbx) == null)
+                    continue;
+
+                if (AssetDatabase.LoadAssetAtPath<ApricotSettings>(spec.SettingsPath) == null ||
+                    AssetDatabase.LoadAssetAtPath<GameObject>(spec.PickupPath) == null)
+                    return true;
+
+                if (spawner != null)
+                {
+                    string fieldName = spec.Kind == ThrowableKind.Hazelnut ? "hazelnutPickupPrefab" : "apricotPickupPrefab";
+                    FieldInfo field = typeof(LootSpawner).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+                    if (field != null && !((NetworkPrefabRef)field.GetValue(spawner)).IsValid)
+                        return true;
+                }
+
+                bool hasSlot = false;
+                foreach (ApricotSlotHUD slot in slots)
+                    hasSlot |= new SerializedObject(slot).FindProperty("kind").enumValueIndex == (int)spec.Kind;
+                if (!hasSlot)
+                    return true;
+            }
+
+            return false;
+        }
+
         private static bool EnsureApricot(Canvas canvas, out string summary)
         {
             var all = new System.Collections.Generic.List<string>();
