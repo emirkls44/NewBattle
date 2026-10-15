@@ -121,12 +121,17 @@ public class PlayerController : NetworkBehaviour
         if (HasStateAuthority)
             RescueIfFallen();
 
-        // Yerdeki oyuncu (takim modu) yurumez, ates etmez; arkadasinin kaldirmasini bekler.
-        if (health != null && health.IsDowned)
-            return;
-
         if (!GetInput<NetworkInputData>(out var input))
             return;
+
+        // Yerdeki oyuncu (takim modu) ates edemez, sadece yavasca surunur.
+        if (health != null && health.IsDowned)
+        {
+            input.RightJoystickVector = Vector2.zero;
+            _stateMachine.ProcessInput(input);
+            KeepOnMap();
+            return;
+        }
 
         _stateMachine.ProcessInput(input);
         KeepOnMap();

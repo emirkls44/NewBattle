@@ -38,8 +38,13 @@ public class TrainingBot : NetworkBehaviour
         Loot,
         Fight,
         Flee,
-        Zone
+        Zone,
+        Revive
     }
+
+    [Header("Takim Arkadasi Kaldirma")]
+    [Tooltip("Bu mesafedeki yere dusmus takim arkadasini kaldirmaya gider (metre).")]
+    [SerializeField, Min(0f)] private float reviveSeekRange = 30f;
 
     [Header("Hareket")]
     [Tooltip("Botun kosu hizi carpani. 1'in altinda: gercek oyuncu botlardan biraz hizli.")]
@@ -98,6 +103,7 @@ public class TrainingBot : NetworkBehaviour
     private Vector3? _lastKnownTargetPosition;
     private TimedLootPickup _lootTarget;
     private float _lootWaitStarted = -1f;
+    private HealthController _reviveTarget;
     private readonly Dictionary<TimedLootPickup, float> _ignoredLoot = new();
     private readonly List<TimedLootPickup> _expiredIgnores = new();
 
@@ -167,8 +173,15 @@ public class TrainingBot : NetworkBehaviour
         if (!HasStateAuthority || Object.InputAuthority != PlayerRef.None)
             return;
 
-        if (_health != null && (_health.currentHealth <= 0f || _health.IsDowned))
+        if (_health != null && _health.currentHealth <= 0f)
             return;
+
+        // Yerdeyken ates edemez; en yakin ayaktaki takim arkadasina dogru surunur.
+        if (_health != null && _health.IsDowned)
+        {
+            CrawlToTeammate();
+            return;
+        }
 
         if (_lobbyCountdown != null && !_lobbyCountdown.MatchStarted)
             return;
@@ -270,7 +283,16 @@ public class TrainingBot : NetworkBehaviour
         bool lowHealth = HealthNeed() > 0.7f;
         bool healNearby = _lootTarget is RecoveryPickup;
 
-        if (outsideZone)
+        _reviveTarget = FindDownedTeammate(position);
+
+        if (_reviveTarget != null)
+        {
+            // Yerdeki takim arkadasi her seyden once gelir: yanina gidip halkada bekler
+            // (bu arada gordugu rakibe ates etmeye devam eder).
+            _goal = Goal.Revive;
+            _destination = _reviveTarget.transform.position;
+        }
+        else if (outsideZone)
         {
             _goal = Goal.Zone;
             Vector3 inward = fromCenter.sqrMagnitude > 0.01f ? fromCenter.normalized : Vector3.forward;
@@ -510,6 +532,10 @@ public class TrainingBot : NetworkBehaviour
                 direction = LootMovement(now);
                 break;
 
+            case Goal.Revive:
+                direction = ReviveMovement();
+                break;
+
             default:
                 direction = Flat(_destination - position).magnitude > stoppingDistance
                     ? SteerTowards(_destination)
@@ -518,6 +544,80 @@ public class TrainingBot : NetworkBehaviour
         }
 
         return ApplyUnstuck(direction, now);
+    }
+
+    /// <summary>Yerdeki arkadasin kaldirma halkasina gir ve orada dur.</summary>
+    private Vector3 ReviveMovement()
+    {
+        if (_reviveTarget == null || !_reviveTarget.IsDowned)
+            return Vector3.zero;
+
+        Vector3 target = _reviveTarget.transform.position;
+        float stand = Mathf.Max(0.3f, _reviveTarget.ReviveRadius * 0.45f);
+        return Flat(target - transform.position).magnitude > stand ? SteerTowards(target) : Vector3.zero;
+    }
+
+    /// <summary>Menzildeki en yakin yere dusmus takim arkadasi.</summary>
+    private HealthController FindDownedTeammate(Vector3 position)
+    {
+        if (_ownStats == null || reviveSeekRange <= 0f)
+            return null;
+
+        HealthController best = null;
+        float bestDistance = reviveSeekRange;
+        IReadOnlyList<PlayerRegistry> registry = PlayerRegistry.All;
+        for (int i = 0; i < registry.Count; i++)
+        {
+            PlayerRegistry entry = registry[i];
+            if (entry == null || entry.gameObject == gameObject || entry.Health == null || entry.Runner != Runner ||
+                entry.Object == null || !entry.Object.IsValid || !entry.Health.IsDowned || entry.Health.currentHealth <= 0f ||
+                !_ownStats.IsTeammate(entry.Stats))
+                continue;
+
+            float distance = Flat(entry.transform.position - position).magnitude;
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = entry.Health;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>Bot yerdeyken: en yakin ayaktaki takim arkadasina surunur (kaldirilmak icin).</summary>
+    private void CrawlToTeammate()
+    {
+        if (_ownStats == null)
+            return;
+
+        Vector3 position = transform.position;
+        Transform nearest = null;
+        float nearestDistance = float.MaxValue;
+        IReadOnlyList<PlayerRegistry> registry = PlayerRegistry.All;
+        for (int i = 0; i < registry.Count; i++)
+        {
+            PlayerRegistry entry = registry[i];
+            if (entry == null || entry.gameObject == gameObject || entry.Health == null || entry.Runner != Runner ||
+                entry.Object == null || !entry.Object.IsValid || !entry.Health.IsStanding || !_ownStats.IsTeammate(entry.Stats))
+                continue;
+
+            float distance = Flat(entry.transform.position - position).magnitude;
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearest = entry.transform;
+            }
+        }
+
+        NetworkInputData input = default;
+        if (nearest != null && nearestDistance > _health.ReviveRadius * 0.4f)
+        {
+            Vector3 direction = SteerTowards(nearest.position);
+            input.JoystickInput = new Vector2(direction.x, direction.z);
+        }
+
+        _stateMachine.ProcessInput(input);
     }
 
     private Vector3 FightMovement(float now)

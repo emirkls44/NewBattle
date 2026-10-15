@@ -39,6 +39,8 @@ public class HealthController : NetworkBehaviour
     [Min(0.5f)] public float reviveRadius = 1.8f;
     [Tooltip("Kaldirilinca canin ne kadari dolu olur (0.5 = %50). Kalkan ve silah olmaz.")]
     [Range(0.05f, 1f)] public float reviveHealthFraction = 0.5f;
+    [Tooltip("Yerdeyken surunme hizi (normal hizin orani). 0 = hic hareket edemez.")]
+    [Range(0f, 1f)] public float crawlSpeedMultiplier = 0.3f;
 
     /// <summary>Yerde, takim arkadasinin kaldirmasini bekliyor (canli sayilir ama hareket edemez).</summary>
     [Networked] public NetworkBool IsDowned { get; private set; }
@@ -52,6 +54,9 @@ public class HealthController : NetworkBehaviour
     public bool IsStanding => currentHealth > 0f && !IsDowned;
 
     public float ReviveRadius => reviveRadius;
+
+    /// <summary>Yurume hizi carpani: yerdeyken surunme hizi.</summary>
+    public float MoveMultiplier => IsDowned ? crawlSpeedMultiplier : 1f;
 
     [Networked] public DeathCause LastDeathCause { get; private set; }
     /// <summary>Oldureni (oyuncu ya da bot) ag nesnesi.</summary>

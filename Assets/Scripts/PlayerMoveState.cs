@@ -12,12 +12,14 @@ public class PlayerMoveState : PlayerStateBase
     public float arenaRadius = 33f;
 
     private CharacterController _characterController;
+    private HealthController _health;
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
 
     public override void InitState(PlayerStateMachine playerStateMachine)
     {
         base.InitState(playerStateMachine);
         _characterController = GetComponent<CharacterController>();
+        _health = GetComponent<HealthController>();
     }
 
     public override void EnterState()
@@ -52,7 +54,8 @@ public class PlayerMoveState : PlayerStateBase
         );
         moveDirection.Normalize();
 
-        Vector3 movement = moveDirection * (moveSpeed * stateMachine.MoveSpeedMultiplier * Runner.DeltaTime);
+        float crawl = _health != null ? _health.MoveMultiplier : 1f; // yerdeyken surunur
+        Vector3 movement = moveDirection * (moveSpeed * stateMachine.MoveSpeedMultiplier * crawl * Runner.DeltaTime);
 
         // Transform tasimak yerine CharacterController kullanarak carpismalari koru.
         if (_characterController != null && _characterController.enabled)
