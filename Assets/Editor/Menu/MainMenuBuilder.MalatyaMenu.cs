@@ -14,7 +14,7 @@ namespace NewBattle.EditorTools
     /// Tools > NewBattle > Menü > Malatya Ana Menü (deneme): ana menuyu Malatya / kayisi
     /// temasina ve yeni yerlesime gecirir. Var olan parcalar (kartlar, OYNA, para) tasinir,
     /// baglantilari bozulmaz; Battlelands'e benzeyen ust/alt bar gizlenir.
-    ///   - Arka plan: kayisi bahcesi, ustte kilim seridi
+    ///   - Arka plan: kayisi bahcesi; karakterin ayak hizasinda cizgi, alti beyaz zemin
     ///   - Sol: seviye karti, Iki Kat XP, Gorevler
     ///   - Orta: karakter (daha buyuk), altinda isim
     ///   - Sag ust: para; sag: ahsap tabela butonlar (Magaza, Karakterler, Ayarlar, Profil)
@@ -66,6 +66,8 @@ namespace NewBattle.EditorTools
             }
 
             RectTransform layout = root.Find("MalatyaDuzeni") as RectTransform;
+            // Ikinci kez calistirilinca senin elle yaptigin yerlesime dokunmaz; sadece eksikleri ekler.
+            bool firstTime = layout == null;
             if (layout == null)
             {
                 layout = NewRect("MalatyaDuzeni", root);
@@ -76,7 +78,16 @@ namespace NewBattle.EditorTools
             Transform status = root.Find("Durum");
             layout.SetSiblingIndex(status != null ? status.GetSiblingIndex() : root.childCount - 1);
 
-            EnsureKilimStrip(layout);
+            RemoveKilimStrip(layout);
+            EnsureMenuFloor(root);
+
+            if (!firstTime)
+            {
+                EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
+                EditorSceneManager.SaveScene(root.gameObject.scene);
+                Debug.Log("Malatya ana menu: eksik parcalar eklendi (yerlesime dokunulmadi).");
+                return;
+            }
 
             Vector2 topLeft = new(0f, 1f), topRight = new(1f, 1f), bottomRight = new(1f, 0f);
             MoveInto(root, "SezonKarti", layout, topLeft, new Vector2(30f, -44f), 0.55f);
@@ -114,6 +125,37 @@ namespace NewBattle.EditorTools
             EditorSceneManager.SaveScene(root.gameObject.scene);
             Selection.activeGameObject = layout.gameObject;
             Debug.Log("Malatya ana menu uygulandi. Geri donmek icin: git checkout safe-oncesi-yeni-ana-menu -- Assets/Scenes");
+        }
+
+        /// <summary>
+        /// Karakterin ayak hizasinda koyu bir cizgi, altinda bembeyaz zemin. Arka planin
+        /// ustunde, karakterin altinda durur (magazadan secilen arka planla da calisir).
+        /// Yuksekligi: Hierarchy > AnaMenu > Zemin (RectTransform Height), cizgi: Zemin > Cizgi.
+        /// </summary>
+        private static void EnsureMenuFloor(RectTransform root)
+        {
+            if (root.Find("Zemin") != null)
+                return;
+
+            RectTransform floor = NewRect("Zemin", root);
+            Undo.RegisterCreatedObjectUndo(floor.gameObject, "Zemin");
+            floor.anchorMin = Vector2.zero;
+            floor.anchorMax = new Vector2(1f, 0f);
+            floor.pivot = new Vector2(0.5f, 0f);
+            floor.anchoredPosition = Vector2.zero;
+            floor.sizeDelta = new Vector2(0f, 230f);
+            AddImage(floor, null, Color.white);
+
+            RectTransform line = NewRect("Cizgi", floor);
+            line.anchorMin = new Vector2(0f, 1f);
+            line.anchorMax = Vector2.one;
+            line.pivot = new Vector2(0.5f, 0.5f);
+            line.anchoredPosition = Vector2.zero;
+            line.sizeDelta = new Vector2(0f, 12f);
+            AddImage(line, null, Hex("#1E1E1E"));
+
+            // Arka planin hemen ustu: calisirken secilen arka plan resmi en basa gecer.
+            floor.SetAsFirstSibling();
         }
 
         /// <summary>Bir parcayi yeni duzene tasir (baglantilari ayni kalir).</summary>
@@ -155,22 +197,12 @@ namespace NewBattle.EditorTools
             }
         }
 
-        private static void EnsureKilimStrip(RectTransform layout)
+        /// <summary>Ustteki kilim seridi istenmedi: varsa kaldirilir.</summary>
+        private static void RemoveKilimStrip(RectTransform layout)
         {
-            if (layout.Find("KilimSerit") != null)
-                return;
-
-            RectTransform strip = NewRect("KilimSerit", layout);
-            Undo.RegisterCreatedObjectUndo(strip.gameObject, "Kilim");
-            strip.anchorMin = new Vector2(0f, 1f);
-            strip.anchorMax = new Vector2(1f, 1f);
-            strip.pivot = new Vector2(0.5f, 1f);
-            strip.anchoredPosition = Vector2.zero;
-            strip.sizeDelta = new Vector2(0f, 26f);
-            Image image = AddImage(strip, Sprite("kilim_serit"), Color.white);
-            image.type = Image.Type.Tiled;
-            image.pixelsPerUnitMultiplier = 32f / 26f;
-            strip.SetAsFirstSibling();
+            Transform strip = layout.Find("KilimSerit");
+            if (strip != null)
+                Undo.DestroyObjectImmediate(strip.gameObject);
         }
 
         /// <summary>Sagda ahsap tabela butonlar; var olan islevlere (MenuButton) baglanir.</summary>
