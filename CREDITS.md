@@ -24,6 +24,7 @@ eklerken buraya satır ekle; lisansı belirsiz hiçbir şeyi oyuna koyma.
 | Mixamo animasyonları (`mixamo.com` klipleri) | Karakter animasyonları | Adobe Mixamo: oyunlarda ticari kullanım serbest, atıf gerekmez (ham animasyon dosyası olarak ayrıca dağıtılamaz) |
 | Tüm ses efektleri ve menü müziği | `Assets/GameArt/Audio` | Bizim: `Tools/Audio/generate_sounds.py` ile sentezlendi |
 | Menü görselleri, ikonlar, arka planlar | `Assets/GameArt/MenuUI` | Bizim: `Tools/MenuArt/generate_menu_art.py` |
+| Mağazadaki menü arka planları | `Assets/GameArt/MenuBackgrounds` | Bizim: `Tools/MenuArt/generate_menu_backgrounds.py` |
 | Silah ikonları | `Assets/GameArt/HudIcons/Weapons` | Bizim: `Tools/Icons/render_weapon_icons.py` (oyunun kendi modellerinden) |
 | HUD rozetleri (can, kalkan, kuru kafa, oyuncu) | `Assets/GameArt/HudIcons` | Bizim: `Tools/Icons/draw_hud_icons.py` (internetten alınan eskilerin yerine) |
 | Binalar, loot, çimen, ada, harita | `Assets/GameArt/Meshes`, `GeneratedIslandAssets` | Bizim: editör scriptleriyle üretildi |
