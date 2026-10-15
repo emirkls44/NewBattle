@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec1b1e17f78d3a948a379c13a04fdc3b, type: 3}
   m_Name: ArkaPlanKutuphanesi
   m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Progression.MenuBackgroundLibrary
-  defaultName: "Kay\u0131s\u0131 Bah\xE7esi (Varsay\u0131lan)"
-  defaultImage: {fileID: 21300000, guid: 99f6f6548951f95409b25e83fbd95535, type: 3}
+  defaultName: "Sar\u0131 (Varsay\u0131lan)"
+  defaultImage: {fileID: 21300000, guid: de301723ba6b8104da89614593509ff4, type: 3}
   backgrounds:
   - id: gun_batimi
     displayName: "G\xFCn Bat\u0131m\u0131"
