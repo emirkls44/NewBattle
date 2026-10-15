@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f381bc998f2df1c4e94bf43d2c905823, type: 3}
+  m_Name: FindikAyarlari
+  m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Gameplay.ApricotSettings
+  kind: 1
+  effect: 1
+  slowMultiplier: 0.15
+  slowLingerSeconds: 0.5
+  model: {fileID: 4703201656840046336, guid: f0a5067a1c5feb34ebc84936c0a0ffdb, type: 3}
+  icon: {fileID: 21300000, guid: 84d357c30a2aaca4a816437ff7e1ba4e, type: 3}
+  silhouette: {fileID: 21300000, guid: 0a864730b69074e40bb247c88af9f7cf, type: 3}
+  smoke: {fileID: 21300000, guid: 7684efd82ed14f94c90b0668dd3c2fac, type: 3}
+  zonePrefab:
+    RawGuidValue: 637018dbe3379ab4faa6c563cf5b7345
+  maxCarry: 3
+  pickupAmount: 1
+  throwDistance: 7
+  minThrowDistance: 2
+  flightSeconds: 0.6
+  throwCooldown: 0.6
+  arcHeight: 0.35
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  radius: 2.5
+  duration: 5
+  healPerSecond: 0
+  ringColor: {r: 0.7, g: 0.45, b: 0.2, a: 0.95}
+  fillColor: {r: 0.55, g: 0.34, b: 0.15, a: 0.28}
+  smokeColor: {r: 0.62, g: 0.44, b: 0.26, a: 0.42}
+  silhouetteColor: {r: 0.82, g: 0.6, b: 0.38, a: 0.9}
+  modelSize: 0.35
+  heldOffset: {x: 0, y: 0.08, z: 0.04}
