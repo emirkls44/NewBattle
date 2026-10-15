@@ -128,34 +128,60 @@ namespace NewBattle.EditorTools
         }
 
         /// <summary>
-        /// Karakterin ayak hizasinda koyu bir cizgi, altinda bembeyaz zemin. Arka planin
-        /// ustunde, karakterin altinda durur (magazadan secilen arka planla da calisir).
-        /// Yuksekligi: Hierarchy > AnaMenu > Zemin (RectTransform Height), cizgi: Zemin > Cizgi.
+        /// Altta ve ustte cizgili beyaz bantlar (arka planin ustunde, karakterin altinda).
+        /// Ayarlari AnaMenu > MenuBands bileseninde: yukseklikler, cizgi kalinligi, renkler.
         /// </summary>
         private static void EnsureMenuFloor(RectTransform root)
         {
-            if (root.Find("Zemin") != null)
-                return;
+            RectTransform bottom = EnsureBand(root, "Zemin", atTop: false, 230f);
+            RectTransform top = EnsureBand(root, "Tavan", atTop: true, 120f);
 
-            RectTransform floor = NewRect("Zemin", root);
-            Undo.RegisterCreatedObjectUndo(floor.gameObject, "Zemin");
-            floor.anchorMin = Vector2.zero;
-            floor.anchorMax = new Vector2(1f, 0f);
-            floor.pivot = new Vector2(0.5f, 0f);
-            floor.anchoredPosition = Vector2.zero;
-            floor.sizeDelta = new Vector2(0f, 230f);
-            AddImage(floor, null, Color.white);
+            // Arka planin hemen ustu: calisirken secilen arka plan resmi en basa gecer.
+            top.SetAsFirstSibling();
+            bottom.SetAsFirstSibling();
 
-            RectTransform line = NewRect("Cizgi", floor);
-            line.anchorMin = new Vector2(0f, 1f);
-            line.anchorMax = Vector2.one;
+            MenuBands bands = root.GetComponent<MenuBands>();
+            bool added = bands == null;
+            if (added)
+                bands = Undo.AddComponent<MenuBands>(root.gameObject);
+
+            var serialized = new SerializedObject(bands);
+            serialized.FindProperty("bottom").objectReferenceValue = bottom;
+            serialized.FindProperty("top").objectReferenceValue = top;
+            if (added)
+            {
+                // Zemini elle ayarladiysan o yukseklikler korunur.
+                serialized.FindProperty("bottomHeight").floatValue = bottom.sizeDelta.y;
+                serialized.FindProperty("topHeight").floatValue = top.sizeDelta.y;
+            }
+            serialized.ApplyModifiedProperties();
+        }
+
+        private static RectTransform EnsureBand(RectTransform root, string name, bool atTop, float height)
+        {
+            if (root.Find(name) is RectTransform existing)
+                return existing;
+
+            RectTransform band = NewRect(name, root);
+            Undo.RegisterCreatedObjectUndo(band.gameObject, name);
+            float edge = atTop ? 1f : 0f;
+            band.anchorMin = new Vector2(0f, edge);
+            band.anchorMax = new Vector2(1f, edge);
+            band.pivot = new Vector2(0.5f, edge);
+            band.anchoredPosition = Vector2.zero;
+            band.sizeDelta = new Vector2(0f, height);
+            AddImage(band, null, Color.white);
+
+            // Cizgi bandin ekrana bakan kenarinda: zeminde ustte, tavanda altta.
+            RectTransform line = NewRect("Cizgi", band);
+            float lineEdge = atTop ? 0f : 1f;
+            line.anchorMin = new Vector2(0f, lineEdge);
+            line.anchorMax = new Vector2(1f, lineEdge);
             line.pivot = new Vector2(0.5f, 0.5f);
             line.anchoredPosition = Vector2.zero;
             line.sizeDelta = new Vector2(0f, 12f);
             AddImage(line, null, Hex("#1E1E1E"));
-
-            // Arka planin hemen ustu: calisirken secilen arka plan resmi en basa gecer.
-            floor.SetAsFirstSibling();
+            return band;
         }
 
         /// <summary>Bir parcayi yeni duzene tasir (baglantilari ayni kalir).</summary>
