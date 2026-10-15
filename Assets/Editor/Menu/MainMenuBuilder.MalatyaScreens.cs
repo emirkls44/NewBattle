@@ -51,7 +51,19 @@ namespace NewBattle.EditorTools
             var loading = AssetDatabase.LoadAssetAtPath<GameObject>(LoadingPrefabPath);
             bool loadingNeeded = loading != null && loading.GetComponent<LoadingThemeAnimator>() == null;
             DropSelectionScreen drop = Object.FindFirstObjectByType<DropSelectionScreen>(FindObjectsInactive.Include);
-            bool dropNeeded = drop != null && drop.transform.Find("SagPanel") == null;
+            bool dropNeeded = drop != null && drop.transform.Find("SagPanel") == null && drop.transform.Find("BilgiPaneli") == null;
+
+            // Ilk surumde harita soldaydi; harita saga, panel sola (bir kez).
+            if (drop != null && drop.transform.Find("SagPanel") is Transform oldPanel)
+            {
+                Undo.RecordObject(oldPanel.gameObject, "Panel adi");
+                oldPanel.name = "BilgiPaneli";
+                LayoutMalatyaDropScreen((RectTransform)drop.transform);
+                EditorSceneManager.MarkSceneDirty(drop.gameObject.scene);
+                EditorSceneManager.SaveScene(drop.gameObject.scene);
+                Debug.Log("Inis yeri secimi: harita saga, bilgi paneli sola alindi.");
+            }
+
             if (!loadingNeeded && !dropNeeded)
                 return;
 
@@ -211,43 +223,17 @@ namespace NewBattle.EditorTools
             foreach (string hide in new[] { "Arkaplan/Bulut1", "Arkaplan/Bulut2", "Harita/Resim/Bulut", "Harita/Resim/Bulut2" })
                 Hide(root.Find(hide));
 
-            // Harita sola.
-            if (root.Find("Harita") is RectTransform holder)
-            {
-                Undo.RecordObject(holder, "Harita yeri");
-                holder.anchorMin = new Vector2(0f, 0.07f);
-                holder.anchorMax = new Vector2(0f, 0.93f);
-                holder.pivot = new Vector2(0f, 0.5f);
-                holder.anchoredPosition = new Vector2(80f, 0f);
-                Paint(holder.Find("Cerceve"), WoodDark);
-            }
-
-            // Sag panel (kagit).
-            RectTransform panel = NewRect("SagPanel", root);
-            Undo.RegisterCreatedObjectUndo(panel.gameObject, "Sag panel");
-            panel.anchorMin = new Vector2(1f, 0.07f);
-            panel.anchorMax = new Vector2(1f, 0.93f);
-            panel.pivot = new Vector2(1f, 0.5f);
-            panel.anchoredPosition = new Vector2(-40f, 0f);
-            panel.sizeDelta = new Vector2(800f, 0f);
+            // Bilgi paneli (kagit).
+            RectTransform panel = NewRect("BilgiPaneli", root);
+            Undo.RegisterCreatedObjectUndo(panel.gameObject, "Bilgi paneli");
             AddImage(panel, Sprite("ui_round"), Parchment).pixelsPerUnitMultiplier = 1.4f;
             panel.SetSiblingIndex(root.Find("Arkaplan") != null ? root.Find("Arkaplan").GetSiblingIndex() + 1 : 0);
+            Paint(root.Find("Harita/Cerceve"), WoodDark);
 
-            Vector2 topRight = Vector2.one, leftTop = new(0f, 1f), center = new(0.5f, 0.5f);
-            Move(root.Find("Baslik"), topRight, leftTop, new Vector2(-800f, -100f), new Vector2(760f, 84f));
-            Move(root.Find("AltBaslik"), topRight, leftTop, new Vector2(-798f, -186f), new Vector2(740f, 54f));
-            Move(root.Find("ModIkonu"), topRight, center, new Vector2(-760f, -282f), new Vector2(60f, 60f));
-            Move(root.Find("ModYazisi"), topRight, new Vector2(0f, 0.5f), new Vector2(-718f, -282f), new Vector2(400f, 50f));
-            Move(root.Find("CiftXpDurumu"), topRight, leftTop, new Vector2(-800f, -332f), new Vector2(470f, 74f));
-            Move(root.Find("Oyuncular"), topRight, leftTop, new Vector2(-795f, -440f), null);
-            Move(root.Find("Bekleme"), topRight, new Vector2(0.5f, 1f), new Vector2(-420f, -560f), new Vector2(720f, 120f));
-            Move(root.Find("GeriSayim"), topRight, center, new Vector2(-420f, -800f), new Vector2(440f, 300f));
+            LayoutMalatyaDropScreen(root);
 
             if (root.Find("Pusula") is RectTransform compass)
             {
-                Undo.RecordObject(compass, "Pusula");
-                compass.anchorMin = compass.anchorMax = new Vector2(0f, 1f);
-                compass.anchoredPosition = new Vector2(950f, -150f);
                 Paint(compass, InkBrown);
                 foreach (TextMeshProUGUI letter in compass.GetComponentsInChildren<TextMeshProUGUI>(true))
                     Tint(letter.transform, InkBrown);
@@ -321,6 +307,47 @@ namespace NewBattle.EditorTools
             Undo.RecordObject(text, "Yazi rengi");
             text.color = color;
             EditorUtility.SetDirty(text);
+        }
+
+        /// <summary>Harita sagda, bilgi paneli (baslik, mod, oyuncular, geri sayim) solda.</summary>
+        private static void LayoutMalatyaDropScreen(RectTransform root)
+        {
+            if (root.Find("Harita") is RectTransform holder)
+            {
+                Undo.RecordObject(holder, "Harita yeri");
+                holder.anchorMin = new Vector2(1f, 0.07f);
+                holder.anchorMax = new Vector2(1f, 0.93f);
+                holder.pivot = new Vector2(1f, 0.5f);
+                holder.anchoredPosition = new Vector2(-80f, 0f);
+            }
+
+            if (root.Find("BilgiPaneli") is RectTransform panel)
+            {
+                Undo.RecordObject(panel, "Panel yeri");
+                panel.anchorMin = new Vector2(0f, 0.07f);
+                panel.anchorMax = new Vector2(0f, 0.93f);
+                panel.pivot = new Vector2(0f, 0.5f);
+                panel.anchoredPosition = new Vector2(40f, 0f);
+                panel.sizeDelta = new Vector2(800f, 0f);
+            }
+
+            Vector2 topLeft = new(0f, 1f), center = new(0.5f, 0.5f);
+            Move(root.Find("Baslik"), topLeft, topLeft, new Vector2(70f, -100f), new Vector2(760f, 84f));
+            Move(root.Find("AltBaslik"), topLeft, topLeft, new Vector2(72f, -186f), new Vector2(740f, 54f));
+            Move(root.Find("ModIkonu"), topLeft, center, new Vector2(110f, -282f), new Vector2(60f, 60f));
+            Move(root.Find("ModYazisi"), topLeft, new Vector2(0f, 0.5f), new Vector2(152f, -282f), new Vector2(400f, 50f));
+            Move(root.Find("CiftXpDurumu"), topLeft, topLeft, new Vector2(70f, -332f), new Vector2(470f, 74f));
+            Move(root.Find("Oyuncular"), topLeft, topLeft, new Vector2(75f, -440f), null);
+            Move(root.Find("Bekleme"), topLeft, new Vector2(0.5f, 1f), new Vector2(440f, -560f), new Vector2(720f, 120f));
+            Move(root.Find("GeriSayim"), topLeft, center, new Vector2(440f, -800f), new Vector2(440f, 300f));
+
+            // Pusula haritanin sag ust kosesinde.
+            if (root.Find("Pusula") is RectTransform compass)
+            {
+                Undo.RecordObject(compass, "Pusula");
+                compass.anchorMin = compass.anchorMax = Vector2.one;
+                compass.anchoredPosition = new Vector2(-150f, -150f);
+            }
         }
 
         private static void Move(Transform target, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2? size)

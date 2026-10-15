@@ -689,38 +689,61 @@ public class MatchResultHUD : MonoBehaviour
     }
 
     /// <summary>
-    /// Ayakta duran karakterin kutusu kemiklerden (ayak - bas) hesaplanir. Renderer
-    /// kutusu kullanilamiyor: deri mesh'inin kutusu poz degisince hemen guncellenmiyor ve
-    /// karakter olurken yerde yatiyorsa (takim modunda yere dusme) kamera ona gore cok
-    /// yaklasiyor, karakter devasa gorunup basligin ustune biniyordu.
+    /// Karakterin o anki pozdaki gercek kutusu: deri mesh'leri pozuyla "pisirilir" (BakeMesh)
+    /// ve kose noktalarindan olculur. Renderer.bounds deri mesh'inde poz degisince hemen
+    /// guncellenmiyor; kemiklerden tahmin ise iri kafali (chibi) karakterlerde kafayi
+    /// kisa olcuyordu. Ikisinde de kamera fazla yaklasip karakter devasa gorunuyor,
+    /// basligin ustune biniyordu.
     /// </summary>
     private static bool TryStandingBounds(Animator animator, out Bounds bounds)
     {
         bounds = default;
-        if (animator == null || !animator.isHuman)
+        if (animator == null)
             return false;
 
-        Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
-        Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
-        Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);
-        Transform leftFoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
-        Transform rightFoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
-        if (head == null || hips == null || leftFoot == null || rightFoot == null)
-            return false;
+        bool any = false;
+        var baked = new Mesh();
+        foreach (SkinnedMeshRenderer skinned in animator.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+        {
+            if (skinned == null || skinned.sharedMesh == null || !skinned.gameObject.activeInHierarchy)
+                continue;
 
-        float footY = Mathf.Min(leftFoot.position.y, rightFoot.position.y);
-        float headSize = neck != null ? Mathf.Max(0.05f, head.position.y - neck.position.y) : 0.15f;
-        float topY = head.position.y + headSize * 2.2f; // sac / kafa ustu
-        float height = topY - footY;
-        if (height < 0.5f)
-            return false; // hala yerde yatiyor; renderer kutusuna don
+            skinned.BakeMesh(baked, true);
+            Matrix4x4 toWorld = Matrix4x4.TRS(skinned.transform.position, skinned.transform.rotation, Vector3.one);
+            foreach (Vector3 vertex in baked.vertices)
+            {
+                Vector3 point = toWorld.MultiplyPoint3x4(vertex);
+                if (!any)
+                {
+                    bounds = new Bounds(point, Vector3.zero);
+                    any = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(point);
+                }
+            }
+        }
 
-        // Ayak bileginden tabana biraz pay.
-        footY -= height * 0.03f;
-        height = topY - footY;
-        Vector3 center = new(hips.position.x, footY + height * 0.5f, hips.position.z);
-        bounds = new Bounds(center, new Vector3(height * 0.5f, height, height * 0.5f));
-        return true;
+        Object.Destroy(baked);
+
+        foreach (MeshRenderer rigid in animator.GetComponentsInChildren<MeshRenderer>(false))
+        {
+            if (rigid == null || rigid.GetComponent<NewBattle.Gameplay.OverlayVisual>() != null)
+                continue;
+            if (!any)
+            {
+                bounds = rigid.bounds;
+                any = true;
+            }
+            else
+            {
+                bounds.Encapsulate(rigid.bounds);
+            }
+        }
+
+        // Hala yerde yatiyorsa (poz alinamadi) renderer kutusuna don.
+        return any && bounds.size.y > 0.5f;
     }
 
     private async void ReturnToMainMenu()
