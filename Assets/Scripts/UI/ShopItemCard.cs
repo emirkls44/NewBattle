@@ -50,7 +50,14 @@ namespace NewBattle.UI
         public Button Button => GetComponent<Button>();
 
         /// <summary>Kart olusturulurken hangi urunu gosterecegini bildirir.</summary>
-        public void Setup(ShopItem item) => Item = item;
+        public void Setup(ShopItem item)
+        {
+            Item = item;
+
+            // Arka plan resimleri yatay: kartta ezilmesin.
+            if (icon != null && item != null && item.kind == ShopItemKind.MenuBackground)
+                icon.preserveAspect = true;
+        }
 
         public void Bind(string price, bool showCoin, State state, string note, Sprite fallbackIcon, bool previewing)
         {
@@ -86,7 +93,8 @@ namespace NewBattle.UI
             }
 
             if (ownedMark != null)
-                ownedMark.SetActive(state == State.Owned && Item.kind == ShopItemKind.LobbyAnimation);
+                ownedMark.SetActive(state == State.Owned &&
+                                    (Item.kind == ShopItemKind.LobbyAnimation || Item.kind == ShopItemKind.MenuBackground));
 
             if (noteText != null)
             {

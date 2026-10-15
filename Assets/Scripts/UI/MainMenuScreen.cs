@@ -120,6 +120,10 @@ namespace NewBattle.UI
         {
             _bootstrap = FindBootstrap();
 
+            // Magazadan alinan arka plan (secili degilse sari arka plan kalir).
+            if (GetComponent<MenuBackgroundView>() == null)
+                gameObject.AddComponent<MenuBackgroundView>();
+
             // Fusion maci baslatirken sahneyi yeniden yukler. Yeni yuklenen
             // sahnede menu tekrar acilmasin.
             if (_bootstrap != null && _bootstrap.IsRunning)

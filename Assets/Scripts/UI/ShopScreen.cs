@@ -228,6 +228,10 @@ namespace NewBattle.UI
                         BindAnimationCard(card, previewing);
                         break;
 
+                    case ShopItemKind.MenuBackground:
+                        BindBackgroundCard(card);
+                        break;
+
                     case ShopItemKind.WatchAdCoins:
                     {
                         int left = Mathf.Max(0, item.dailyLimit - AdWatchesToday(item));
@@ -269,6 +273,90 @@ namespace NewBattle.UI
             {
                 card.Bind(library.RequirementText(animation), false, ShopItemCard.State.Locked, "Lobi animasyonu", animationIcon, previewing);
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Ana menu arka planlari
+        // ------------------------------------------------------------------
+
+        private void BindBackgroundCard(ShopItemCard card)
+        {
+            MenuBackgroundLibrary backgrounds = MenuBackgroundLibrary.Instance;
+            MenuBackground background = backgrounds != null ? backgrounds.Find(card.Item.backgroundId) : null;
+            MenuBackground current = backgrounds != null ? backgrounds.Current : null;
+
+            if (background == null)
+            {
+                // Varsayilan sari: herkesin, bedava.
+                bool active = current == null;
+                card.Bind(active ? "AKTİF" : "KULLAN", false, active ? ShopItemCard.State.Owned : ShopItemCard.State.Buy,
+                    "Menü arka planı", animationIcon, false);
+                return;
+            }
+
+            if (!backgrounds.IsOwned(background))
+            {
+                card.Bind(background.price.ToString(), true, ShopItemCard.State.Buy, "Menü arka planı", animationIcon, false);
+                return;
+            }
+
+            bool selected = current == background;
+            card.Bind(selected ? "AKTİF" : "KULLAN", false, selected ? ShopItemCard.State.Owned : ShopItemCard.State.Buy,
+                selected ? "Dokun: kapat" : "Menü arka planı", animationIcon, false);
+        }
+
+        /// <summary>
+        /// Alinmamissa satin al (onayla), alinmissa etkinlestir; etkinse kapat (sariya don).
+        /// </summary>
+        private void BackgroundPressed(ShopItem item)
+        {
+            MenuBackgroundLibrary backgrounds = MenuBackgroundLibrary.Instance;
+            if (backgrounds == null)
+                return;
+
+            MenuBackground background = backgrounds.Find(item.backgroundId);
+            MenuBackground current = backgrounds.Current;
+
+            if (background == null || current == background)
+            {
+                bool changed = current != null;
+                backgrounds.Select(null);
+                Toast(changed ? "VARSAYILAN ARKA PLAN" : "ZATEN AKTİF");
+                Refresh();
+                return;
+            }
+
+            if (backgrounds.IsOwned(background))
+            {
+                backgrounds.Select(background);
+                Toast("ARKA PLAN DEĞİŞTİ!");
+                Refresh();
+                return;
+            }
+
+            if (PlayerProgress.Coins < background.price)
+            {
+                Toast("PARA YETMİYOR!");
+                Sfx.PlayUI("hata");
+                return;
+            }
+
+            AskConfirm($"{background.displayName}\n{background.price} para karşılığında alınsın mı?", () =>
+            {
+                if (backgrounds.TryPurchase(background))
+                {
+                    backgrounds.Select(background);
+                    Toast("SATIN ALINDI!");
+                    Sfx.PlayUI("satin_al");
+                }
+                else
+                {
+                    Toast("PARA YETMİYOR!");
+                    Sfx.PlayUI("hata");
+                }
+
+                Refresh();
+            });
         }
 
         private void RefreshPreview()
@@ -342,6 +430,10 @@ namespace NewBattle.UI
 
                 case ShopItemKind.WatchAdCoins:
                     WatchAdForCoins(item);
+                    break;
+
+                case ShopItemKind.MenuBackground:
+                    BackgroundPressed(item);
                     break;
 
                 default:

@@ -12,7 +12,9 @@ namespace NewBattle.Progression
         [Tooltip("Reklam izleyerek ucretsiz para (gunluk sinirli).")]
         WatchAdCoins,
         [Tooltip("Gercek parayla para paketi (odeme sistemi gelene kadar YAKINDA).")]
-        CoinPack
+        CoinPack,
+        [Tooltip("Ana menu arka plani; fiyati ve resmi ArkaPlanKutuphanesi'ndedir.")]
+        MenuBackground
     }
 
     [Serializable]
@@ -26,6 +28,9 @@ namespace NewBattle.Progression
 
         [Tooltip("LobbyAnimation: kutuphanedeki animasyonun kimligi.")]
         public string animationId;
+
+        [Tooltip("MenuBackground: arka plan kutuphanesindeki kimlik (bos = varsayilan sari).")]
+        public string backgroundId;
 
         [Tooltip("WatchAdCoins / CoinPack: verilecek para.")]
         [Min(0)] public int coins;
@@ -49,6 +54,9 @@ namespace NewBattle.Progression
                  "Parayla acilanlar satin alinir; seviye/galibiyetle acilanlar sartini gosterir.")]
         [FormerlySerializedAs("autoAddCoinAnimations")]
         public bool autoAddAnimations = true;
+
+        [Tooltip("Isaretliyse arka plan kutuphanesindeki tum arka planlar (ve varsayilan sari) animasyonlardan sonra eklenir.")]
+        public bool autoAddBackgrounds = true;
 
         public List<ShopItem> items = new()
         {
@@ -84,6 +92,34 @@ namespace NewBattle.Progression
                         displayName = animation.displayName,
                         icon = animation.icon,
                         animationId = animation.id
+                    });
+                }
+            }
+
+            MenuBackgroundLibrary backgrounds = MenuBackgroundLibrary.Instance;
+            if (autoAddBackgrounds && backgrounds != null && backgrounds.backgrounds.Count > 0)
+            {
+                result.Add(new ShopItem
+                {
+                    id = "arkaplan_varsayilan",
+                    kind = ShopItemKind.MenuBackground,
+                    displayName = backgrounds.defaultName,
+                    icon = backgrounds.defaultImage,
+                    backgroundId = string.Empty
+                });
+
+                foreach (MenuBackground background in backgrounds.backgrounds)
+                {
+                    if (background == null)
+                        continue;
+
+                    result.Add(new ShopItem
+                    {
+                        id = "arkaplan_" + background.id,
+                        kind = ShopItemKind.MenuBackground,
+                        displayName = background.displayName,
+                        icon = background.image,
+                        backgroundId = background.id
                     });
                 }
             }
