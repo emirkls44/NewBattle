@@ -30,6 +30,7 @@ MonoBehaviour:
     removeObjects:
     - Icosphere
     starter: 0
+    botSkin: 0
     unlock: 3
     requirement: 0
     price: 0
@@ -39,7 +40,7 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: b5b00445bc224e34dacb89ef24ebc255, type: 3}
     avatar: {fileID: 9000000, guid: b5b00445bc224e34dacb89ef24ebc255, type: 3}
     material: {fileID: 2100000, guid: 269781670ae67c440a5f59ce09e76876, type: 2}
-    scale: 1.55
+    scale: 1
     menuZoom: 1.77
     menuOffsetX: -0.037
     menuOffsetY: -0.264
@@ -49,6 +50,7 @@ MonoBehaviour:
     toeLock: 1
     removeObjects: []
     starter: 1
+    botSkin: 0
     unlock: 1
     requirement: 5
     price: 0
@@ -68,8 +70,49 @@ MonoBehaviour:
     toeLock: 1
     removeObjects: []
     starter: 1
+    botSkin: 0
     unlock: 1
     requirement: 5
+    price: 0
+    icon: {fileID: 0}
+  - id: mert
+    displayName: Mert
+    model: {fileID: 919132149155446097, guid: 0d9fe6729d35965459291019371763e9, type: 3}
+    avatar: {fileID: 9000000, guid: 0d9fe6729d35965459291019371763e9, type: 3}
+    material: {fileID: 2100000, guid: a5b662fa7eec85743a8e417ab3476d75, type: 2}
+    scale: 1
+    menuZoom: 1.25
+    menuOffsetX: 0
+    menuOffsetY: -0.131
+    neckBackTilt: 29.3
+    headBackTilt: 2.1
+    footFlatten: 1
+    toeLock: 1
+    removeObjects: []
+    starter: 0
+    botSkin: 1
+    unlock: 3
+    requirement: 0
+    price: 0
+    icon: {fileID: 0}
+  - id: elif
+    displayName: Elif
+    model: {fileID: 919132149155446097, guid: 38fa4074c77f59946b9cc835330cd321, type: 3}
+    avatar: {fileID: 9000000, guid: 38fa4074c77f59946b9cc835330cd321, type: 3}
+    material: {fileID: 2100000, guid: 070ccc91fde0fbc4dabf89fb39382cc4, type: 2}
+    scale: 1
+    menuZoom: 1.25
+    menuOffsetX: 0
+    menuOffsetY: -0.131
+    neckBackTilt: 29.3
+    headBackTilt: 2.1
+    footFlatten: 1
+    toeLock: 1
+    removeObjects: []
+    starter: 0
+    botSkin: 1
+    unlock: 3
+    requirement: 0
     price: 0
     icon: {fileID: 0}
   characterScreenOffset: {x: -1.43, y: -11.4}
