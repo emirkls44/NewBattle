@@ -6,9 +6,9 @@ namespace NewBattle.UI
 {
     /// <summary>
     /// Yukleme ekrani susu:
-    ///   - Ortadaki kayisi kendi etrafinda saga doner (dikey eksende, para cevirir gibi).
-    ///   - Kayisi dizisi sirayla dolar: dolan kayisi kucuk bir ziplama yapar, dizi hafifce
-    ///     dalgalanir; bos olanlar soluk kayisi rengindedir.
+    ///   - Ortadaki duz kayisi saat yonunde (saga) doner.
+    ///   - Daire dizisi sirayla kayisi turuncusuna dolar; bos olanlar yaprak yesili.
+    ///     Istersen ziplama ve dalga da acilabilir (Pop Scale / Wave Height).
     ///   - Alttaki ipucu birkac saniyede bir degisir.
     /// Gercek ilerleme olcmez; baglanti durumu LoadingScreen'in Durum yazisinda.
     /// </summary>
@@ -17,19 +17,19 @@ namespace NewBattle.UI
         [Header("Donen Kayisi")]
         [Tooltip("Bossa 'DonenKayisi' adli cocuk kullanilir.")]
         [SerializeField] private RectTransform spinner;
-        [Tooltip("Saniyede kac derece saga donsun (dikey eksen).")]
-        [SerializeField] private float spinDegreesPerSecond = 160f;
+        [Tooltip("Saniyede kac derece saat yonunde (saga) donsun.")]
+        [SerializeField] private float spinDegreesPerSecond = 120f;
 
         [Header("Kayisi Dizisi")]
         [SerializeField] private Image[] apricots;
-        [SerializeField] private Color filledTint = Color.white;
-        [SerializeField] private Color emptyTint = new(1f, 0.86f, 0.7f, 0.38f);
+        [SerializeField] private Color filledTint = new(0.949f, 0.6f, 0.29f, 1f);   // kayisi turuncusu
+        [SerializeField] private Color emptyTint = new(0.361f, 0.478f, 0.278f, 1f); // yaprak yesili
         [Tooltip("Bir kayisinin dolma suresi (saniye).")]
         [SerializeField, Min(0.05f)] private float stepSeconds = 0.32f;
         [Tooltip("Dolan kayisinin ziplama buyuklugu.")]
-        [SerializeField, Range(0f, 0.8f)] private float popScale = 0.35f;
+        [SerializeField, Range(0f, 0.8f)] private float popScale;
         [Tooltip("Dizinin dalgalanma yuksekligi (piksel).")]
-        [SerializeField, Range(0f, 20f)] private float waveHeight = 6f;
+        [SerializeField, Range(0f, 20f)] private float waveHeight;
 
         [Header("Ipuclari")]
         [SerializeField] private TextMeshProUGUI tipText;
@@ -54,7 +54,7 @@ namespace NewBattle.UI
             if (spinner == null)
                 spinner = transform.Find("DonenKayisi") as RectTransform;
 
-            // Eski duzlemde donme (takla) yerine burada dikey eksende cevrilir.
+            // Donmeyi bu bilesen yapar; eski UISpin kapatilir (cift donmesin).
             if (spinner != null && spinner.TryGetComponent(out UISpin oldSpin))
                 oldSpin.enabled = false;
 
@@ -83,7 +83,7 @@ namespace NewBattle.UI
             float elapsed = now - _startTime;
 
             if (spinner != null)
-                spinner.localRotation = Quaternion.Euler(0f, -elapsed * spinDegreesPerSecond, 0f);
+                spinner.localRotation = Quaternion.Euler(0f, 0f, -elapsed * spinDegreesPerSecond);
 
             UpdateApricots(now, elapsed);
 
@@ -124,7 +124,7 @@ namespace NewBattle.UI
                 // Dolunca ziplar: buyuyup yerine oturur.
                 float since = _filledAt[i] >= 0f ? now - _filledAt[i] : 10f;
                 float pop = since < 0.3f ? Mathf.Sin(since / 0.3f * Mathf.PI) * popScale : 0f;
-                apricot.rectTransform.localScale = Vector3.one * (isFilled ? 1f + pop : 0.82f);
+                apricot.rectTransform.localScale = Vector3.one * (1f + pop);
 
                 // Hafif dalga.
                 float wave = Mathf.Sin(elapsed * 4f - i * 0.7f) * waveHeight;

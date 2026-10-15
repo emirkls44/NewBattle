@@ -50,6 +50,12 @@ namespace NewBattle.EditorTools
 
             var loading = AssetDatabase.LoadAssetAtPath<GameObject>(LoadingPrefabPath);
             bool loadingNeeded = loading != null && loading.GetComponent<LoadingThemeAnimator>() == null;
+
+            // Taslaktaki gibi duz kayisi + daire dizisi (bir kez).
+            if (!loadingNeeded && loading != null &&
+                loading.transform.Find("DonenKayisi")?.GetComponent<Image>() is Image spinnerImage &&
+                (spinnerImage.sprite == null || spinnerImage.sprite.name != "kayisi_duz"))
+                UseFlatLoadingArt();
             DropSelectionScreen drop = Object.FindFirstObjectByType<DropSelectionScreen>(FindObjectsInactive.Include);
             bool dropNeeded = drop != null && drop.transform.Find("SagPanel") == null && drop.transform.Find("BilgiPaneli") == null;
 
@@ -96,7 +102,8 @@ namespace NewBattle.EditorTools
         private static void ApplyMalatyaLoading()
         {
             SetTexture(ApricotIconSpritePath, TextureImporterType.Sprite, 256);
-            Sprite apricot = AssetDatabase.LoadAssetAtPath<Sprite>(ApricotIconSpritePath);
+            Sprite apricot = Sprite("kayisi_duz") ?? AssetDatabase.LoadAssetAtPath<Sprite>(ApricotIconSpritePath);
+            Sprite dotSprite = Sprite("ui_circle") ?? apricot;
 
             GameObject root = PrefabUtility.LoadPrefabContents(LoadingPrefabPath);
             try
@@ -144,7 +151,7 @@ namespace NewBattle.EditorTools
                 {
                     RectTransform dot = NewRect($"Kayisi{i + 1}", row);
                     Place(dot, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(33f + i * 66f, 0f), new Vector2(54f, 54f));
-                    dots[i] = AddImage(dot, apricot, Color.white);
+                    dots[i] = AddImage(dot, dotSprite, Color.white);
                     dots[i].type = Image.Type.Simple;
                     dots[i].preserveAspect = true;
                 }
@@ -170,6 +177,46 @@ namespace NewBattle.EditorTools
 
                 PrefabUtility.SaveAsPrefabAsset(root, LoadingPrefabPath);
                 Debug.Log("Yukleme ekrani Malatya temasina gecti (YuklemeEkrani prefabi).");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>Yukleme: duz kayisi (taslaktaki) ve duz daireler.</summary>
+        private static void UseFlatLoadingArt()
+        {
+            AssetDatabase.ImportAsset(ArtFolder + "/kayisi_duz.png");
+            Sprite flat = Sprite("kayisi_duz");
+            Sprite dot = Sprite("ui_circle");
+            if (flat == null)
+                return;
+
+            GameObject root = PrefabUtility.LoadPrefabContents(LoadingPrefabPath);
+            try
+            {
+                if (root.transform.Find("DonenKayisi") is Transform spinner)
+                {
+                    spinner.GetComponent<Image>().sprite = flat;
+                    if (spinner.TryGetComponent(out UISpin oldSpin))
+                        Object.DestroyImmediate(oldSpin);
+                }
+
+                if (root.transform.Find("KayisiDizisi") is Transform row && dot != null)
+                {
+                    foreach (Transform item in row)
+                    {
+                        if (item.TryGetComponent(out Image image))
+                        {
+                            image.sprite = dot;
+                            image.preserveAspect = true;
+                        }
+                    }
+                }
+
+                PrefabUtility.SaveAsPrefabAsset(root, LoadingPrefabPath);
+                Debug.Log("Yukleme ekrani: duz kayisi ve daire dizisi (taslaktaki gibi).");
             }
             finally
             {

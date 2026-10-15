@@ -80,7 +80,22 @@ def apricot_pin(size=256):
     img.resize((size, size), Image.LANCZOS).save(OUT_PIN)
 
 
+def flat_apricot(size=256):
+    """Yukleme ekranindaki duz kayisi: turuncu daire, ustte sap, sagda yaprak."""
+    s = size * 4
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    r = s * 0.35
+    cx, cy = s * 0.5, s * 0.55
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(242, 153, 74, 255))
+    d.rectangle([cx - s * 0.025, cy - r - s * 0.08, cx + s * 0.025, cy - r + s * 0.04], fill=(122, 74, 38, 255))
+    d.polygon([(cx + s * 0.02, cy - r - s * 0.01), (cx + s * 0.18, cy - r - s * 0.13), (cx + s * 0.30, cy - r - s * 0.03),
+               (cx + s * 0.14, cy - r + s * 0.03)], fill=(110, 154, 69, 255))
+    img.resize((size, size), Image.LANCZOS).save(os.path.join(ROOT, "Assets", "GameArt", "MenuUI", "kayisi_duz.png"))
+
+
 if __name__ == "__main__":
     paper_map()
     apricot_pin()
+    flat_apricot()
     print("ok")
