@@ -644,16 +644,17 @@ public class MatchResultHUD : MonoBehaviour
         if (renderers.Length == 0)
             return;
 
-        Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
-            bounds.Encapsulate(renderers[i].bounds);
+        Bounds bounds;
+        if (!TryStandingBounds(previewAnimator, out bounds))
+        {
+            bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+                bounds.Encapsulate(renderers[i].bounds);
+        }
 
         Vector3 groundingOffset = stage - new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
         _previewCharacter.transform.position += groundingOffset;
-
-        bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
-            bounds.Encapsulate(renderers[i].bounds);
+        bounds.center += groundingOffset;
 
         _previewTexture = PreviewTexture.Create(512, 512, "MatchResultCharacterTexture");
         target.texture = _previewTexture;
@@ -685,6 +686,41 @@ public class MatchResultHUD : MonoBehaviour
         previewLight.cullingMask = 1 << PreviewLayer;
         // Isik da kameranin tarafindan, hafif soldan-yukaridan karakterin yuzune vurur.
         previewLight.transform.rotation = Quaternion.Euler(38f, 148f, 0f);
+    }
+
+    /// <summary>
+    /// Ayakta duran karakterin kutusu kemiklerden (ayak - bas) hesaplanir. Renderer
+    /// kutusu kullanilamiyor: deri mesh'inin kutusu poz degisince hemen guncellenmiyor ve
+    /// karakter olurken yerde yatiyorsa (takim modunda yere dusme) kamera ona gore cok
+    /// yaklasiyor, karakter devasa gorunup basligin ustune biniyordu.
+    /// </summary>
+    private static bool TryStandingBounds(Animator animator, out Bounds bounds)
+    {
+        bounds = default;
+        if (animator == null || !animator.isHuman)
+            return false;
+
+        Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
+        Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
+        Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+        Transform leftFoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+        Transform rightFoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+        if (head == null || hips == null || leftFoot == null || rightFoot == null)
+            return false;
+
+        float footY = Mathf.Min(leftFoot.position.y, rightFoot.position.y);
+        float headSize = neck != null ? Mathf.Max(0.05f, head.position.y - neck.position.y) : 0.15f;
+        float topY = head.position.y + headSize * 2.2f; // sac / kafa ustu
+        float height = topY - footY;
+        if (height < 0.5f)
+            return false; // hala yerde yatiyor; renderer kutusuna don
+
+        // Ayak bileginden tabana biraz pay.
+        footY -= height * 0.03f;
+        height = topY - footY;
+        Vector3 center = new(hips.position.x, footY + height * 0.5f, hips.position.z);
+        bounds = new Bounds(center, new Vector3(height * 0.5f, height, height * 0.5f));
+        return true;
     }
 
     private async void ReturnToMainMenu()
