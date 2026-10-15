@@ -29,6 +29,7 @@ public class PlayerController : NetworkBehaviour
 
     private PlayerStateMachine _stateMachine;
     private PlayerShooting _shooting;
+    private PlayerLoadout _loadout;
     private ChangeDetector _changeDetector;
     private LobbyCountdownController _lobbyCountdown;
     private DropPhaseController _dropPhase;
@@ -130,8 +131,13 @@ public class PlayerController : NetworkBehaviour
         _stateMachine.ProcessInput(input);
         KeepOnMap();
 
+        // Kayisi eldeyse saldiri joystick'i atis yapar (birakinca atilir).
+        if (_loadout == null)
+            _loadout = GetComponent<PlayerLoadout>();
+        if (_loadout != null && _loadout.ApricotEquipped)
+            _loadout.ProcessThrow(input.RightJoystickVector);
         // Saldiri state'e bagli degildir: oyuncu dururken de kosarken de saldirabilir.
-        if (input.RightJoystickVector.sqrMagnitude > 0.01f)
+        else if (input.RightJoystickVector.sqrMagnitude > 0.01f)
             _shooting.ProcessShooting(input.RightJoystickVector);
     }
 

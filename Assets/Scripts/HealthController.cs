@@ -185,6 +185,9 @@ public class HealthController : NetworkBehaviour
         string weapon = weaponLabel ?? string.Empty;
         KnockerLabel = weapon.Length > 16 ? weapon.Substring(0, 16) : weapon;
 
+        if (TryGetComponent(out PlayerLoadout held))
+            held.UnequipApricot();
+
         // Silah elden gider (yere duser, kalan mermisiyle); kaldirilinca elde silah olmaz.
         if (TryGetComponent(out PlayerLoadout loadout) && loadout.HasRangedWeapon)
         {

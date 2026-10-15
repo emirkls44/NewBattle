@@ -33,6 +33,19 @@ public class PlayerLoadout : NetworkBehaviour
     /// <summary>Elindeki silahin mermisi. Yumrukta anlamsizdir.</summary>
     [Networked] public int Ammo { get; private set; }
 
+    /// <summary>Cantadaki kayisi sayisi (atilabilir iyilestirme).</summary>
+    [Networked] public int ApricotCount { get; private set; }
+
+    /// <summary>Elinde kayisi var (silah yerine): saldiri joystick'i atis yapar.</summary>
+    [Networked] public NetworkBool ApricotEquipped { get; private set; }
+
+    // Joystick birakilinca atilir: son gecerli nisan burada tutulur.
+    [Networked] private Vector2 ThrowAim { get; set; }
+    [Networked] private TickTimer ThrowCooldown { get; set; }
+
+    private GameObject _heldApricot;
+    private Transform _heldHand;
+
     private PlayerShooting _shooting;
     private PlayerController _playerController;
     private Animator _animator;
@@ -245,9 +258,165 @@ public class PlayerLoadout : NetworkBehaviour
 
     #endregion
 
+    #region Kayisi
+
+    public bool CanTakeApricot
+    {
+        get
+        {
+            ApricotSettings settings = ApricotSettings.Instance;
+            return settings != null && ApricotCount < settings.maxCarry;
+        }
+    }
+
+    /// <summary>Host: yerden kayisi alindi.</summary>
+    public void AddApricots(int amount)
+    {
+        ApricotSettings settings = ApricotSettings.Instance;
+        if (!HasStateAuthority || settings == null)
+            return;
+
+        ApricotCount = Mathf.Clamp(ApricotCount + Mathf.Max(0, amount), 0, settings.maxCarry);
+    }
+
+    /// <summary>Host: yere dusunce kayisi elden birakilir (cantada kalir).</summary>
+    public void UnequipApricot()
+    {
+        if (HasStateAuthority)
+        {
+            ApricotEquipped = false;
+            ThrowAim = default;
+        }
+    }
+
+    /// <summary>Yerel oyuncu: sag ustteki kayisi / silah butonu.</summary>
+    public void RequestApricot(bool equip)
+    {
+        if (HasInputAuthority)
+            RPC_EquipApricot(equip);
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_EquipApricot(NetworkBool equip)
+    {
+        ApricotEquipped = equip && ApricotCount > 0;
+        ThrowAim = default;
+    }
+
+    /// <summary>
+    /// Host, her tick: kayisi eldeyken saldiri joystick'i. Cekilirken nisan alinir;
+    /// parmak kalkinca (girdi tam sifir) atilir. Joystick yavasca ortaya geri
+    /// getirilirse atis iptal olur.
+    /// </summary>
+    public void ProcessThrow(Vector2 aim)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        if (!ApricotEquipped || ApricotCount <= 0)
+        {
+            ThrowAim = default;
+            return;
+        }
+
+        float strength = aim.sqrMagnitude;
+        if (strength > 0.04f)
+        {
+            ThrowAim = aim;
+            return;
+        }
+
+        bool released = strength < 0.000001f;
+        bool armed = ThrowAim.sqrMagnitude > 0.04f;
+        Vector2 throwAim = ThrowAim;
+        ThrowAim = default;
+
+        if (released && armed && ThrowCooldown.ExpiredOrNotRunning(Runner))
+            Throw(throwAim);
+    }
+
+    private void Throw(Vector2 aim)
+    {
+        ApricotSettings settings = ApricotSettings.Instance;
+        if (settings == null || !settings.zonePrefab.IsValid)
+            return;
+
+        Vector3 origin = transform.position;
+        Vector3 target = settings.ResolveLanding(origin, aim, transform);
+        int teamId = TryGetComponent(out PlayerCombatStats stats) ? stats.TeamId : -1;
+        NetworkId thrower = Object.Id;
+
+        ApricotCount--;
+        if (ApricotCount <= 0)
+        {
+            ApricotCount = 0;
+            ApricotEquipped = false;
+        }
+
+        ThrowCooldown = TickTimer.CreateFromSeconds(Runner, settings.throwCooldown);
+
+        Runner.Spawn(settings.zonePrefab, target, Quaternion.identity, null, (runner, spawned) =>
+        {
+            if (spawned.TryGetComponent(out ApricotHealZone zone))
+                zone.Init(runner, origin + Vector3.up * 1.3f, target, teamId, thrower);
+        });
+    }
+
+    /// <summary>Kayisi eldeyken sag elde kayisi modeli (silah gizli).</summary>
+    private void ApplyHeldApricot(bool equipped)
+    {
+        if (!equipped)
+        {
+            if (_heldApricot != null && _heldApricot.activeSelf)
+                _heldApricot.SetActive(false);
+            return;
+        }
+
+        if (_heldHand == null)
+        {
+            Animator animator = GetComponentInChildren<Animator>();
+            _heldHand = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.RightHand) : null;
+        }
+
+        ApricotSettings settings = ApricotSettings.Instance;
+        if (_heldHand == null || settings == null || settings.model == null)
+            return;
+
+        if (_heldApricot == null)
+        {
+            _heldApricot = Instantiate(settings.model);
+            _heldApricot.name = "EldekiKayisi";
+            _heldApricot.transform.localScale = Vector3.one * settings.modelSize;
+        }
+
+        if (!_heldApricot.activeSelf)
+            _heldApricot.SetActive(true);
+
+        // Elin olcegi rigden rige degisir; ebeveyn yapmadan dunyada takip edilir.
+        _heldApricot.transform.SetPositionAndRotation(
+            _heldHand.position + _heldHand.rotation * settings.heldOffset,
+            _heldHand.rotation);
+    }
+
+    private void LateUpdate()
+    {
+        if (Object != null && Object.IsValid && _heldApricot != null && _heldApricot.activeSelf)
+            ApplyHeldApricot(true);
+    }
+
+    private void OnDestroy()
+    {
+        if (_heldApricot != null)
+            Destroy(_heldApricot);
+    }
+
+    #endregion
+
     private void ApplyVisualState()
     {
-        bool rangedSelected = WeaponId != FistWeaponId;
+        bool apricot = ApricotEquipped;
+        ApplyHeldApricot(apricot);
+        bool rangedSelected = WeaponId != FistWeaponId && !apricot;
 
         if (rifleVisual != null && rifleVisual.activeSelf != rangedSelected)
             rifleVisual.SetActive(rangedSelected);

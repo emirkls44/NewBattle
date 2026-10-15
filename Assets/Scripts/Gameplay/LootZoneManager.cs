@@ -133,13 +133,18 @@ namespace NewBattle.Gameplay
             if (spawner == null)
                 return;
 
-            lootTable = new[]
+            var table = new System.Collections.Generic.List<LootEntry>
             {
                 NewEntry("Mermi", spawner.AmmoPickupPrefab, 3.0f),
                 NewEntry("Saglik", spawner.HealthPickupPrefab, 2.2f),
                 NewEntry("Kalkan", spawner.ShieldPickupPrefab, 2.0f),
                 NewEntry("Silah", spawner.RiflePickupPrefab, 1.4f)
             };
+
+            if (spawner.ApricotPickupPrefab.IsValid && spawner.ApricotWeight > 0f)
+                table.Add(NewEntry("Kayisi", spawner.ApricotPickupPrefab, spawner.ApricotWeight));
+
+            lootTable = table.ToArray();
 
             Debug.Log("LootZoneManager: Loot tablosu LootSpawner prefablarindan devralindi.");
         }

@@ -1,6 +1,7 @@
 using NewBattle.Gameplay;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace NewBattle.UI
@@ -13,7 +14,7 @@ namespace NewBattle.UI
     /// Resimler: icons[silah kimligi] (0 = yumruk). Kur, Assets/GameArt/HudIcons/Weapons
     /// altindaki weapon_&lt;id&gt;.png dosyalarini baglar (Tools/Icons/*.py uretir).
     /// </summary>
-    public class WeaponDisplayHUD : MonoBehaviour
+    public class WeaponDisplayHUD : MonoBehaviour, IPointerClickHandler
     {
         [SerializeField] private Image icon;
         [SerializeField] private TextMeshProUGUI ammoText;
@@ -51,6 +52,21 @@ namespace NewBattle.UI
             _group.interactable = false;
             _group.blocksRaycasts = false;
             _group.alpha = 0f;
+
+            // Kutuya basilabilsin (kayisi eldeyken silaha donmek icin): zemin dokunmayi yakalar.
+            Image background = GetComponentInChildren<Image>(true);
+            if (background != null)
+                background.raycastTarget = true;
+        }
+
+        /// <summary>Kayisi eldeyken silah kutusuna basinca silaha / yumruga donulur.</summary>
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (IsReady(_loadout) && _loadout.ApricotEquipped)
+            {
+                _loadout.RequestApricot(false);
+                NewBattle.Audio.Sfx.PlayUI("buton");
+            }
         }
 
         private void Update()
@@ -70,8 +86,17 @@ namespace NewBattle.UI
             bool playing = ready && _dropPhase != null && _dropPhase.Object != null && _dropPhase.Object.IsValid &&
                            _dropPhase.GameplayStarted && !MatchResultHUD.LocalGameplayStopped;
             _group.alpha = playing ? 1f : 0f;
+            _group.blocksRaycasts = playing;
             if (!playing)
                 return;
+
+            // Kayisi eldeyken silah soluk durur.
+            if (icon != null)
+            {
+                Color tint = _loadout.ApricotEquipped ? new Color(1f, 1f, 1f, 0.45f) : Color.white;
+                if (icon.color != tint)
+                    icon.color = tint;
+            }
 
             int weaponId = ready ? _loadout.WeaponId : PlayerLoadout.FistWeaponId;
             int ammo = ready ? _loadout.Ammo : 0;

@@ -194,6 +194,9 @@ namespace NewBattle.EditorTools
             if (EnsureWeaponDisplay(canvas))
                 added.Add("Silah göstergesi (minimap yanında: resim + mermi)");
 
+            if (EnsureApricot(canvas, out string apricot))
+                added.Add(apricot);
+
             if (EnsureHeightMatchedScalers())
                 added.Add("Ekran ölçeği telefona uyumlu (yüksekliğe eşit)");
 

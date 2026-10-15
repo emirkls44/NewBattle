@@ -35,7 +35,14 @@ namespace NewBattle.Gameplay
         [SerializeField] private bool stopAtObstacle = true;
         [SerializeField] private LayerMask obstacleMask = ~0;
 
+        [Header("Kayisi Atisi")]
+        [SerializeField] private Color throwNearColor = new(1f, 1f, 1f, 0.9f);
+        [SerializeField] private Color throwFarColor = new(0.55f, 1f, 0.5f, 0.9f);
+        [SerializeField] private Color landingColor = new(0.45f, 1f, 0.4f, 0.85f);
+
         private HealthController _health;
+        private PlayerLoadout _loadout;
+        private MeshRenderer _landingRing;
         private NewBattle.Gameplay.ParachuteDescent _descent;
         private PlayerShooting _shooting;
 
@@ -67,6 +74,7 @@ namespace NewBattle.Gameplay
             }
 
             _shooting = GetComponent<PlayerShooting>();
+            _loadout = GetComponent<PlayerLoadout>();
 
             if (_shooting != null && _shooting.FirePoint != null)
             {
@@ -107,8 +115,61 @@ namespace NewBattle.Gameplay
                 return;
             }
 
+            // Kayisi eldeyse bomba atisi gibi egri cizgi + dusecegi yerde halka.
+            ApricotSettings apricot = ApricotSettings.Instance;
+            if (_loadout != null && _loadout.Object != null && _loadout.Object.IsValid &&
+                _loadout.ApricotEquipped && apricot != null)
+            {
+                if (aim.sqrMagnitude <= 0.04f)
+                {
+                    SetVisible(false);
+                    return;
+                }
+
+                SetVisible(true);
+                UpdateArc(aim, apricot);
+                return;
+            }
+
+            SetLandingRing(false);
             SetVisible(true);
             UpdateDots(aim);
+        }
+
+        private void UpdateArc(Vector2 aim, ApricotSettings settings)
+        {
+            Vector3 target = settings.ResolveLanding(transform.position, aim, transform);
+            Vector3 start = transform.position + Vector3.up * 1.3f;
+
+            for (int i = 0; i < _dots.Length; i++)
+            {
+                float t = (i + 1f) / _dots.Length;
+                if (!_dots[i].gameObject.activeSelf)
+                    _dots[i].gameObject.SetActive(true);
+
+                _dots[i].transform.position = settings.ArcPoint(start, target, t);
+                _dots[i].GetPropertyBlock(_propertyBlock);
+                _propertyBlock.SetColor(OverlayMeshLibrary.BaseColorId, Color.Lerp(throwNearColor, throwFarColor, t));
+                _propertyBlock.SetFloat(OverlayMeshLibrary.FillId, 1f);
+                _dots[i].SetPropertyBlock(_propertyBlock);
+            }
+
+            if (_landingRing == null)
+                _landingRing = OverlayMeshLibrary.CreateOverlayObject("KayisiHedefi", OverlayMeshLibrary.SoftRing, _container, Vector3.zero, 1f);
+
+            SetLandingRing(true);
+            _landingRing.transform.SetPositionAndRotation(target + Vector3.up * 0.05f, Quaternion.identity);
+            _landingRing.transform.localScale = Vector3.one * settings.radius;
+            _landingRing.GetPropertyBlock(_propertyBlock);
+            _propertyBlock.SetColor(OverlayMeshLibrary.BaseColorId, landingColor);
+            _propertyBlock.SetFloat(OverlayMeshLibrary.FillId, 1f);
+            _landingRing.SetPropertyBlock(_propertyBlock);
+        }
+
+        private void SetLandingRing(bool visible)
+        {
+            if (_landingRing != null && _landingRing.gameObject.activeSelf != visible)
+                _landingRing.gameObject.SetActive(visible);
         }
 
         private bool ShouldShowLine(out Vector2 aim)
@@ -194,6 +255,8 @@ namespace NewBattle.Gameplay
                 return;
 
             _visible = visible;
+            if (!visible)
+                SetLandingRing(false);
 
             foreach (MeshRenderer dot in _dots)
             {
