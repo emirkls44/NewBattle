@@ -11,7 +11,7 @@ namespace NewBattle.EditorTools
 {
     /// <summary>
     /// Malatya temasi: yukleme ekrani ve inis yeri secimi.
-    ///   - Yukleme: koyu yaprak yesili, donen kayisi, sirayla dolan kayisi dizisi, ipuclari.
+    ///   - Yukleme: ahsap kahvesi, donen kayisi, sirayla dolan kayisi dizisi, ipuclari.
     ///   - Inis yeri: eski kagit harita (solda), sagda kagit panel + geri sayim, kayisi ignesi.
     /// Unity derleyince eksikse bir kez kendiliginden uygulanir; sonra Hierarchy'den
     /// istedigin gibi degistirebilirsin (tekrar ezilmez).
@@ -27,7 +27,6 @@ namespace NewBattle.EditorTools
         private static readonly Color Cream = Hex("#FFE9C7");
         private static readonly Color ApricotOrange = Hex("#F2994A");
         private static readonly Color ApricotRust = Hex("#B5452B");
-        private static readonly Color LeafNight = Hex("#2F4A22");
         private static readonly Color Parchment = Hex("#F3E2BE");
         private static readonly Color InkBrown = Hex("#4E2D14");
 
@@ -121,7 +120,7 @@ namespace NewBattle.EditorTools
                 if (rect.Find("Arkaplan")?.GetComponent<Image>() is Image background)
                 {
                     background.sprite = null;
-                    background.color = LeafNight;
+                    background.color = Wood;
                 }
 
                 foreach (string hide in new[] { "KosanKarakter", "Gosterge" })
