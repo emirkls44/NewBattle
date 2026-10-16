@@ -1,12 +1,11 @@
 """
 Sonbahar menu tasarimlari: kullanicinin verdigi resimlerden oyun gorsellerini hazirlar.
   kaynak/sonbahar_arkaplan.jpg -> Assets/GameArt/MenuUI/bg_sonbahar.png (kenar kirpik)
-  kaynak/sonbahar_tasarim.jpg  -> Assets/GameArt/MenuUI/tasarim_sonbahar.png
-     - alttaki duz zemin seridi yerine orman devam eder (butonlar korunur)
+  kaynak/sonbahar_tasarim.jpg  -> Assets/GameArt/MenuUI/tasarim_sonbahar.png (tam resim, 2000x1120)
      - degisen yazilar silinir (para, seviye, isim, mod, online, cift XP); oyun canli yazar.
        Tahtalarda yazinin solundaki / sagindaki temiz tahtadan satir satir doku tasinir
-       (damarlar yatay oldugu icin bulaniklik olmaz); sahne uzerindeki yerlere bos arka
-       plan resmi konur.
+       (damarlar yatay oldugu icin bulaniklik olmaz). Logonun altindaki gri cubuk (yazisiyla)
+       tamamen kaldirilir, yerine bos arka plan resmi konur.
   kaynak/oyunmodu_tasarim.jpg  -> Assets/GameArt/MenuUI/tasarim_oyunmodu.png (oyun modu penceresi)
 
 Calistir:   python Tools/MenuArt/tasarim_hazirla.py   (opencv-python gerekir)
@@ -21,8 +20,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 OUT = os.path.join(ROOT, "Assets", "GameArt", "MenuUI")
-LEFT, RIGHT = 16, 1900  # resimlerin kenarlarindaki koyu cerceve disarida kalsin
-BAND_TOP = 912          # ana menu resminde alttaki duz zemin seridinin basladigi satir
+LEFT, RIGHT = 16, 1900  # arka plan resminin kenarlarindaki koyu cerceve disarida kalsin
 
 # Tahta uzerindeki yazilar (satir satir doku tasima)
 PLANK_TEXT = {
@@ -33,10 +31,8 @@ PLANK_TEXT = {
     "mod": (1562, 904, 1652, 936),
     "ciftxp": (1636, 612, 1840, 676),
 }
-# Sahne uzerindeki yazilar (bos arka plan resminden)
-SCENE_TEXT = {
-    "online": (34, 117, 664, 180),
-}
+# Logonun altindaki gri cubuk: tamamen kaldirilir (bos arka plan resminden)
+GREY_BAR = (34, 117, 664, 180)
 
 rng = np.random.default_rng(3)
 
@@ -63,49 +59,33 @@ def feather_paste(dst, src, x0, y0, x1, y1, soft=6):
     dst[y0:y1, x0:x1] = (region * (1 - alpha) + src[y0:y1, x0:x1].astype(float) * alpha).astype(np.uint8)
 
 
-def band_buttons_mask(design):
-    """Alt seritteki butonlarin maskesi: zemin (yumusak renk gecisi) tahmin edilip ondan ayrilir."""
-    top = BAND_TOP - 20
-    band = design[top:].copy()
-    rough = np.abs(band.astype(float) - cv2.medianBlur(band, 151).astype(float)).max(axis=2) > 28
-    rough = cv2.dilate(rough.astype(np.uint8), np.ones((31, 31), np.uint8))
-    small = cv2.resize(band, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
-    small_mask = cv2.resize(rough, (small.shape[1], small.shape[0]), interpolation=cv2.INTER_NEAREST)
-    background = cv2.inpaint(small, small_mask * 255, 15, cv2.INPAINT_TELEA)
-    background = cv2.GaussianBlur(cv2.resize(background, (band.shape[1], band.shape[0])), (0, 0), 6)
-
-    diff = np.abs(band.astype(float) - background.astype(float)).max(axis=2)
-    mask = (diff > 20).astype(np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
-    # delikleri doldur (butonun ici)
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    filled = np.zeros_like(mask)
-    for contour in contours:
-        if cv2.contourArea(contour) > 400:
-            cv2.drawContours(filled, [contour], -1, 1, thickness=-1)
-    filled = cv2.dilate(filled, np.ones((5, 5), np.uint8))
-    soft = cv2.GaussianBlur(filled.astype(float), (0, 0), 2.0)
-    full = np.zeros(design.shape[:2], float)
-    full[top:] = soft
-    full[:BAND_TOP] = 1.0  # serit ustu: tasarim aynen
-    return full
-
-
-def extend_forest(design, background):
-    """Alt serit: arka plan sahnesinin alt kismi aynalanarak orman asagi devam eder."""
-    height = design.shape[0] - BAND_TOP
-    scene = background[BAND_TOP - height:BAND_TOP][::-1]
-    shade = np.linspace(1.0, 0.86, height)[:, None, None]
-    ground = (scene.astype(float) * shade).astype(np.uint8)
-    out = design.copy()
-    out[BAND_TOP:] = ground
-    # dikis yeri yumusak: tasarimin son satirlari ile karisir
-    blend = 24
-    for i in range(blend):
-        a = (i + 1) / (blend + 1)
-        y = BAND_TOP + i
-        out[y] = (design[BAND_TOP - 1 - i].astype(float) * (1 - a) + ground[i].astype(float) * a).astype(np.uint8)
-    return out
+def remove_grey_bar(design, clean):
+    """Logonun altindaki gri cubugu siler; logonun harfleri ve koyu kenari kalir."""
+    # Bos arka plan tasarimdan biraz farkli tonda: cubugun cevresindeki fark yumusakca iceri
+    # tasinip arka plana eklenir (yapistirilan yerin kenari gorunmesin).
+    x0, y0, x1, y1 = GREY_BAR
+    outside = np.ones(design.shape[:2], float)
+    outside[y0 - 4:y1 + 4, x0 - 4:x1 + 4] = 0.0
+    diff = design.astype(float) - clean.astype(float)
+    outside *= np.abs(diff).max(axis=2) < 25  # logo / yaprak gibi farkli icerik sayilmaz
+    weight = cv2.GaussianBlur(outside, (0, 0), 30)[..., None]
+    offset = cv2.GaussianBlur(diff * outside[..., None], (0, 0), 30) / np.maximum(weight, 1e-3)
+    clean = np.clip(clean.astype(float) + offset, 0, 255).astype(np.uint8)
+    feather_paste(design, clean, *GREY_BAR, soft=3)
+    # Cubugun logoya degen ust kenari: arka plandan daha gri (renksiz) ama ayni parlaklikta
+    # pikseller temizlenir.
+    strip = design[100:128, 34:664].astype(float)
+    base = clean[100:128, 34:664].astype(float)
+    chroma = strip.max(axis=2) - strip.min(axis=2)
+    base_chroma = base.max(axis=2) - base.min(axis=2)
+    same_light = np.abs(strip.mean(axis=2) - base.mean(axis=2)) < 35
+    alpha = (np.clip((base_chroma - chroma) / 20.0, 0, 1) * same_light)[..., None]
+    design[100:128, 34:664] = (strip * (1 - alpha) + base * alpha).astype(np.uint8)
+    # Arka planin farkli oldugu yerde (yaprak ustu) kalan ince gri parcalar komsulardan tamamlanir.
+    strip = design[100:128, 34:664].astype(int)
+    leftover = ((strip.max(axis=2) - strip.min(axis=2) < 50) & (strip.mean(axis=2) > 120)).astype(np.uint8)
+    leftover = cv2.dilate(leftover, np.ones((3, 3), np.uint8))
+    design[100:128, 34:664] = cv2.inpaint(design[100:128, 34:664], leftover * 255, 3, cv2.INPAINT_TELEA)
 
 
 if __name__ == "__main__":
@@ -114,34 +94,10 @@ if __name__ == "__main__":
     cv2.imwrite(os.path.join(OUT, "bg_sonbahar.png"), background)
 
     design = cv2.imread(os.path.join(HERE, "kaynak", "sonbahar_tasarim.jpg"))
-    clean = cv2.resize(background_src, (design.shape[1], design.shape[0]))
-
-    # Alt serit: orman devam eder, butonlar uzerine geri konur.
-    keep = band_buttons_mask(design)[..., None]
-    forest = extend_forest(design, clean)
-    design = (forest.astype(float) * (1 - keep) + design.astype(float) * keep).astype(np.uint8)
-
     for x0, y0, x1, y1 in PLANK_TEXT.values():
         design = plank_fill(design, x0, y0, x1, y1)
-    for x0, y0, x1, y1 in SCENE_TEXT.values():
-        feather_paste(design, clean, x0, y0, x1, y1, soft=3)
-    # Online cubugunun logoya degen ust kenari: arka plandan daha gri (renksiz) ama ayni
-    # parlaklikta pikseller temizlenir; logonun turuncu harfleri ve koyu kenari kalir.
-    strip = design[100:128, 34:664].astype(float)
-    base = clean[100:128, 34:664].astype(float)
-    chroma = strip.max(axis=2) - strip.min(axis=2)
-    base_chroma = base.max(axis=2) - base.min(axis=2)
-    same_light = np.abs(strip.mean(axis=2) - base.mean(axis=2)) < 35
-    alpha = (np.clip((base_chroma - chroma) / 20.0, 0, 1) * same_light)[..., None]
-    design[100:128, 34:664] = (strip * (1 - alpha) + base * alpha).astype(np.uint8)
-    # Arka planin farkli oldugu yerde (yaprak ustu) kalan ince gri parcalar: komsu
-    # piksellerden tamamlanir (birkac piksel yukseklik, bulaniklik gorunmez).
-    strip = design[100:128, 34:664].astype(int)
-    leftover = ((strip.max(axis=2) - strip.min(axis=2) < 50) & (strip.mean(axis=2) > 120)).astype(np.uint8)
-    leftover = cv2.dilate(leftover, np.ones((3, 3), np.uint8))
-    design[100:128, 34:664] = cv2.inpaint(design[100:128, 34:664], leftover * 255, 3, cv2.INPAINT_TELEA)
-
-    cv2.imwrite(os.path.join(OUT, "tasarim_sonbahar.png"), design[:, LEFT:RIGHT])
+    remove_grey_bar(design, cv2.resize(background_src, (design.shape[1], design.shape[0])))
+    cv2.imwrite(os.path.join(OUT, "tasarim_sonbahar.png"), design)
 
     # Oyun modu penceresi (tam ekran, 2000x1116): sabit tik bos kutuyla degisir (secim canli);
     # isim, para, cift XP ve ipucu yazilari silinir (oyun yazar).

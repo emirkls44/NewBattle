@@ -10,18 +10,19 @@ namespace NewBattle.EditorTools
 {
     /// <summary>
     /// Sonbahar ana menu = kullanicinin tasarim resmi birebir (tasarim_sonbahar.png).
-    ///   - Resim ana menunun gorunumudur (oran korunur, kenarlarda bg_sonbahar).
+    ///   - Resim ana menunun gorunumudur, ekrani tam kaplar (eski menu hic gorunmez).
     ///   - Butonlar resimdeki buton resimlerinin tam ustunde gorunmez basma alanlari.
-    ///   - Degisen yazilar (para, seviye, XP, isim, mod, online, cift XP) resimden silindi;
-    ///     yerine oyunun gercek degerleri ayni yere yazilir.
-    /// Koordinatlar tasarim resminin piksel olcusunde (2000x1120 kaynak, soldan 16 px kirpik).
-    /// Unity derleyince bir kez kendiliginden uygulanir. Geri: tag "safe-oncesi-sonbahar-menu".
+    ///   - Degisen yazilar (para, seviye, XP, isim, mod, cift XP) resimden silindi;
+    ///     yerine oyunun gercek degerleri ayni yere yazilir. Logonun altindaki gri cubuk ve
+    ///     online sayaci yok.
+    /// Koordinatlar tasarim resminin piksel olcusunde (2000x1120, tam resim).
+    /// Unity derleyince bir kez kendiliginden uygulanir (resim olcusu degisince yeniden yerlesir). Geri: tag "safe-oncesi-sonbahar-menu".
     /// </summary>
     public static partial class MainMenuBuilder
     {
         private const string DesignSprite = "tasarim_sonbahar";
         private const string DesignBackground = "bg_sonbahar";
-        private const float DesignLeft = 16f, DesignWidth = 1884f, DesignHeight = 1120f;
+        private const float DesignLeft = 0f, DesignWidth = 2000f, DesignHeight = 1120f;
 
         private static readonly (string name, Vector4 rect)[] DesignHits =
         {
@@ -64,8 +65,16 @@ namespace NewBattle.EditorTools
 
             Canvas canvas = FindGameCanvas();
             MainMenuScreen screen = canvas != null ? canvas.GetComponentInChildren<MainMenuScreen>(true) : null;
-            if (screen != null && screen.transform.Find("Tasarim") == null)
+            if (screen != null && !AutumnMenuCurrent(screen.transform))
                 ApplyAutumnMenu(screen.transform);
+        }
+
+        /// <summary>Tasarim katmani var ve guncel resim olcusuyle tam ekran mi?</summary>
+        private static bool AutumnMenuCurrent(Transform root)
+        {
+            AspectRatioFitter fitter = root.Find("Tasarim")?.GetComponent<AspectRatioFitter>();
+            return fitter != null && fitter.aspectMode == AspectRatioFitter.AspectMode.None &&
+                   Mathf.Abs(fitter.aspectRatio - DesignWidth / DesignHeight) < 0.001f;
         }
 
         [MenuItem("Tools/NewBattle/Menü/Sonbahar Ana Menü (tasarım resmi)", false, 6)]
@@ -73,7 +82,7 @@ namespace NewBattle.EditorTools
         {
             Canvas canvas = FindGameCanvas();
             MainMenuScreen screen = canvas != null ? canvas.GetComponentInChildren<MainMenuScreen>(true) : null;
-            if (screen != null && screen.transform.Find("Tasarim") == null)
+            if (screen != null)
                 ApplyAutumnMenu(screen.transform);
         }
 
@@ -97,33 +106,46 @@ namespace NewBattle.EditorTools
                 menuBackground.color = Color.white;
             }
 
-            // Tasarim resmi: oran korunur, ekrana sigar (genis telefonda kenarlarda arka plan).
-            RectTransform layer = NewRect("Tasarim", rootRect);
-            Undo.RegisterCreatedObjectUndo(layer.gameObject, "Tasarim");
-            Stretch(layer, 0f, 0f, 0f, 0f);
-            Image layerImage = AddImage(layer, design, Color.white);
-            layerImage.type = Image.Type.Simple;
-            AspectRatioFitter fitter = layer.gameObject.AddComponent<AspectRatioFitter>();
-            fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            // Tasarim resmi: ekrani tam kaplar (oran farki kucuk; basma alanlari resimle birlikte uzar).
+            // Varsa ayni katman yeni resme gore yeniden yerlesir.
+            RectTransform layer = root.Find("Tasarim") as RectTransform;
+            if (layer == null)
+            {
+                layer = NewRect("Tasarim", rootRect);
+                Undo.RegisterCreatedObjectUndo(layer.gameObject, "Tasarim");
+                AddImage(layer, design, Color.white).type = Image.Type.Simple;
+                layer.gameObject.AddComponent<AspectRatioFitter>();
+            }
+
+            Image layerImage = layer.GetComponent<Image>();
+            Undo.RecordObject(layerImage, "Resim");
+            layerImage.sprite = design;
+            layerImage.color = Color.white;
+            AspectRatioFitter fitter = layer.GetComponent<AspectRatioFitter>();
+            Undo.RecordObject(fitter, "Oran");
+            fitter.aspectMode = AspectRatioFitter.AspectMode.None;
             fitter.aspectRatio = DesignWidth / DesignHeight;
+            Undo.RecordObject(layer, "Tam ekran");
+            Stretch(layer, 0f, 0f, 0f, 0f);
+            layer.localScale = Vector3.one;
             layer.SetAsFirstSibling();
 
             Color cream = Hex("#F6E2C2");
             Color ink = Hex("#4E2D14");
 
             // Degisen yazilar once disari alinir (gizlenen kartlarin icinde kalmasinlar).
-            Transform season = FindDeep(root, "SezonKarti");
-            Transform wallet = FindDeep(root, "ParaPaneli");
-            Transform nameTag = FindDeep(root, "IsimEtiketi");
-            Transform play = FindDeep(root, "OynaButonu");
+            // Ekranin baglantilarindan bulunur: onceki uygulamada tasarim katmanina tasinmis olabilirler.
+            var screenRefs = new SerializedObject(root.GetComponent<MainMenuScreen>());
+            Transform Ref(string field) => (screenRefs.FindProperty(field)?.objectReferenceValue as Component)?.transform;
             Transform doubleXp = FindDeep(root, "CiftXpKarti");
+            Transform modeChip = Ref("modeChipText");
 
-            Overlay(wallet?.Find("ParaMiktari"), layer, new Vector4(1572, 58, 1672, 120), cream, TextAlignmentOptions.Center);
-            Overlay(season?.Find("Seviye"), layer, new Vector4(184, 276, 342, 318), cream, TextAlignmentOptions.Left);
-            Overlay(season?.Find("Rutbe"), layer, new Vector4(184, 316, 300, 342), cream, TextAlignmentOptions.Left);
-            Overlay(season?.Find("SonrakiSeviye"), layer, new Vector4(302, 338, 342, 374), cream, TextAlignmentOptions.Center);
-            Overlay(season?.Find("XpYazisi"), layer, new Vector4(184, 376, 300, 404), cream, TextAlignmentOptions.Left);
-            Transform xpBar = season?.Find("XpBari");
+            Overlay(Ref("coinText"), layer, new Vector4(1572, 58, 1672, 120), cream, TextAlignmentOptions.Center);
+            Overlay(Ref("levelText"), layer, new Vector4(184, 276, 342, 318), cream, TextAlignmentOptions.Left);
+            Overlay(Ref("rankText"), layer, new Vector4(184, 316, 300, 342), cream, TextAlignmentOptions.Left);
+            Overlay(Ref("nextLevelText"), layer, new Vector4(302, 338, 342, 374), cream, TextAlignmentOptions.Center);
+            Overlay(Ref("xpText"), layer, new Vector4(184, 376, 300, 404), cream, TextAlignmentOptions.Left);
+            Transform xpBar = Ref("xpFill")?.parent;
             if (xpBar is RectTransform xpRect)
             {
                 MapTo(xpRect, layer, new Vector4(184, 346, 298, 368));
@@ -131,10 +153,23 @@ namespace NewBattle.EditorTools
                 PaintImage(xpRect.Find("Dolum"), cream);
             }
 
-            Overlay(nameTag?.Find("Isim"), layer, new Vector4(806, 846, 1120, 898), ink, TextAlignmentOptions.Center);
-            Overlay(play?.Find("ModEtiketi/Yazi"), layer, new Vector4(1578, 902, 1662, 938), cream, TextAlignmentOptions.Center);
-            Overlay(FindDeep(root, "OnlineSayac"), layer, new Vector4(70, 116, 640, 162), Hex("#5A3A20"), TextAlignmentOptions.Left);
-            Overlay(doubleXp?.Find("Yazi"), layer, new Vector4(1636, 612, 1842, 676), Color.white, TextAlignmentOptions.Center);
+            Overlay(Ref("playerNameText"), layer, new Vector4(806, 846, 1120, 898), ink, TextAlignmentOptions.Center);
+            Overlay(modeChip, layer, new Vector4(1578, 902, 1662, 938), cream, TextAlignmentOptions.Center);
+            Transform doubleXpText = doubleXp?.Find("Yazi");
+            if (doubleXpText == null)
+            {
+                foreach (Transform child in layer)
+                    if (child.name == "Yazi" && child != modeChip)
+                        doubleXpText = child;
+            }
+            Overlay(doubleXpText, layer, new Vector4(1636, 612, 1842, 676), Color.white, TextAlignmentOptions.Center);
+
+            // Logonun altindaki gri cubuk / online sayaci istenmiyor: yazi kapanir.
+            if (Ref("onlineText") is Transform online && online.TryGetComponent(out TextMeshProUGUI onlineLabel))
+            {
+                Undo.RecordObject(onlineLabel, "Gizle");
+                onlineLabel.enabled = false;
+            }
 
             // Butonlar: resmin ustunde gorunmez basma alanlari.
             foreach ((string name, Vector4 rect) in DesignHits)
