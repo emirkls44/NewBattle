@@ -1,11 +1,12 @@
 """
-Ana menu: tasarim resmindeki butonlar / kartlar / logo arka plandan ayrilir, arka plan ayri olur.
+Ana menu: tasarim resmindeki her buton / kart / logo ayri saydam resim olur, arka plan ayri olur.
   Assets/GameArt/MenuUI/tasarim_sonbahar.png (tasarim_hazirla.py ciktisi, yazilari silinmis)
-      -> Assets/GameArt/MenuUI/tasarim_sonbahar_ust.png (saydam: sadece butonlar, kartlar, logo)
+      -> Assets/GameArt/MenuUI/AnaMenu/<parca>.png (her biri kendi nesnesinde, Hierarchy'de tasinir)
   kaynak/anamenu_arkaplan.jpg (kullanicinin bos orman resmi)
       -> Assets/GameArt/MenuUI/anamenu_arkaplan.png (Unity'de "ArkaPlan" nesnesi, Inspector'dan degisir)
 
 Her parca kendi kutusunda GrabCut ile ayrilir: kutunun ici kesin parca, cevresi olasi arka plan.
+Calisinca her parcanin resimdeki dikdortgenini yazar (MainMenuBuilder.AutumnMenu.cs MenuPieces).
 Calistir:   python Tools/MenuArt/anamenu_katman.py   (opencv-python gerekir)
 """
 
@@ -18,13 +19,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 OUT = os.path.join(ROOT, "Assets", "GameArt", "MenuUI")
 
+# Ayni resme birlesen parcalar (buton + ustundeki cip)
+MERGE = {"etkinlikler": ["hediyeli"], "oyna": ["oyuncu_cipi"]}
+PIECES = os.path.join(OUT, "AnaMenu")
+
 # Tasarim resmindeki parcalar (2000x1120 piksel): (sol, ust, sag, alt)
 PARTS = {
     "para": (1404, 34, 1764, 136),
     "ayarlar": (1774, 40, 1878, 140),
     "sezon": (56, 204, 366, 422),
     "kostum": (64, 478, 194, 630),
-    "oduller": (228, 472, 360, 640),
+    "odul_tac": (228, 472, 360, 600),
+    "odul_cip": (228, 604, 360, 642),
     "mucadeleler": (54, 664, 422, 864),
     "etkinlik_karti": (1560, 300, 1836, 492),
     "cift_xp": (1502, 538, 1876, 754),
@@ -95,21 +101,34 @@ def clean(mask, min_area=400):
     return filled
 
 
+def save_piece(design, name, mask):
+    alpha = cv2.GaussianBlur(mask.astype(float), (0, 0), 0.9)
+    ys, xs = np.nonzero(alpha > 0.02)
+    x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+    rgba = np.dstack([design, np.clip(alpha * 255, 0, 255).astype(np.uint8)])[y0:y1, x0:x1]
+    cv2.imwrite(os.path.join(PIECES, name + ".png"), rgba)
+    print(f'            ("{name}", new Vector4({x0}, {y0}, {x1}, {y1})),')
+
+
 if __name__ == "__main__":
     design = cv2.imread(os.path.join(OUT, "tasarim_sonbahar.png"))
-    mask = np.zeros(design.shape[:2], np.uint8)
+    os.makedirs(PIECES, exist_ok=True)
+    merged = {name for extra in MERGE.values() for name in extra}
+    save_piece(design, "logo", logo_mask(design))
     for name, box in PARTS.items():
-        mask |= part_mask(design, box)
-    mask = clean(mask) | logo_mask(design)
-    x0, y0, x1, y1 = YENI_KOSTUM
-    text = np.zeros_like(mask)
-    text[y0:y1, x0:x1] = cv2.cvtColor(design[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY) < 120
-    mask |= cv2.dilate(text, np.ones((3, 3), np.uint8))
-    alpha = cv2.GaussianBlur(mask.astype(float), (0, 0), 0.9)
-    rgba = np.dstack([design, np.clip(alpha * 255, 0, 255).astype(np.uint8)])
-    cv2.imwrite(os.path.join(OUT, "tasarim_sonbahar_ust.png"), rgba)
+        if name in merged:
+            continue
+        mask = part_mask(design, box)
+        for extra in MERGE.get(name, []):
+            mask |= part_mask(design, PARTS[extra])
+        mask = clean(mask)
+        if name == "kostum":
+            x0, y0, x1, y1 = YENI_KOSTUM
+            text = np.zeros_like(mask)
+            text[y0:y1, x0:x1] = cv2.cvtColor(design[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY) < 120
+            mask |= cv2.dilate(text, np.ones((3, 3), np.uint8))
+        save_piece(design, name, mask)
 
+    # Kullanicinin resmi oldugu gibi (olcusu ayni kalir).
     background = cv2.imread(os.path.join(HERE, "kaynak", "anamenu_arkaplan.jpg"))
-    background = cv2.resize(background, (design.shape[1], design.shape[0]), interpolation=cv2.INTER_AREA)
     cv2.imwrite(os.path.join(OUT, "anamenu_arkaplan.png"), background)
-    print("ok")

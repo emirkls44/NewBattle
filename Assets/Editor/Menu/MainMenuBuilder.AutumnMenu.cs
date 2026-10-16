@@ -16,8 +16,8 @@ namespace NewBattle.EditorTools
     ///     yerine oyunun gercek degerleri ayni yere yazilir. Logonun altindaki gri cubuk ve
     ///     online sayaci yok.
     ///   - Arka plan ayri: "ArkaPlan" nesnesi (kullanicinin orman resmi, Inspector'dan Source Image
-    ///     degistirilir). Tasarim katmani sadece butonlar / kartlar / logo (tasarim_sonbahar_ust.png,
-    ///     Tools/MenuArt/anamenu_katman.py).
+    ///     degistirilir). Her buton / kart / logo kendi nesnesinde kendi resmiyle (AnaMenu/*.png,
+    ///     Tools/MenuArt/anamenu_katman.py); yazilari icinde, Hierarchy'de birlikte tasinir.
     /// Koordinatlar tasarim resminin piksel olcusunde (2000x1120, tam resim).
     /// Unity derleyince bir kez kendiliginden uygulanir (resim olcusu degisince yeniden yerlesir). Geri: tag "safe-oncesi-sonbahar-menu".
     /// </summary>
@@ -25,10 +25,33 @@ namespace NewBattle.EditorTools
     {
         private const string DesignSprite = "tasarim_sonbahar";
         private const string DesignBackground = "bg_sonbahar";
-        private const string DesignOverlaySprite = "tasarim_sonbahar_ust";
+        private const string PieceFolder = "AnaMenu";
         private const string MenuBackgroundSprite = "anamenu_arkaplan";
         private const string MenuBackgroundName = "ArkaPlan";
         private const float DesignLeft = 0f, DesignWidth = 2000f, DesignHeight = 1120f;
+
+        // Parca resmi -> nesnesi (null: yeni nesne) ve resimdeki dikdortgeni (anamenu_katman.py yazar).
+        private static readonly (string sprite, string target, Vector4 rect)[] MenuPieces =
+        {
+            ("logo", null, new Vector4(0, 10, 543, 142)),
+            ("para", "ParaPaneli", new Vector4(1399, 26, 1762, 147)),
+            ("ayarlar", "AyarlarButonu", new Vector4(1769, 20, 1887, 151)),
+            ("sezon", "SezonKarti", new Vector4(43, 194, 378, 448)),
+            ("kostum", "KostumKarti", new Vector4(52, 474, 202, 633)),
+            ("odul_tac", "BattlePassKarti", new Vector4(221, 463, 385, 607)),
+            ("odul_cip", "Oduller", new Vector4(228, 602, 363, 645)),
+            ("mucadeleler", "MucadelelerKarti", new Vector4(47, 638, 443, 872)),
+            ("etkinlik_karti", "EtkinlikKarti", new Vector4(1530, 295, 1860, 503)),
+            ("cift_xp", "CiftXpKarti", new Vector4(1491, 536, 1879, 764)),
+            ("battle_pass", "BattlePassButonu", new Vector4(45, 919, 184, 1056)),
+            ("magaza", "MagazaButonu", new Vector4(205, 916, 342, 1072)),
+            ("liderlik", "LiderlikButonu", new Vector4(349, 931, 482, 1071)),
+            ("isim", null, new Vector4(713, 819, 1216, 922)),
+            ("karakter", "KarakterButonu", new Vector4(811, 920, 955, 1078)),
+            ("arkadaslar", "ArkadaslarButonu", new Vector4(968, 920, 1113, 1078)),
+            ("etkinlikler", "EtkinliklerButonu", new Vector4(1129, 876, 1503, 1087)),
+            ("oyna", "OynaButonu", new Vector4(1483, 893, 1900, 1107)),
+        };
 
         private static readonly (string name, Vector4 rect)[] DesignHits =
         {
@@ -76,45 +99,129 @@ namespace NewBattle.EditorTools
 
             if (!AutumnMenuCurrent(screen.transform))
                 ApplyAutumnMenu(screen.transform);
-            else if (screen.transform.Find(MenuBackgroundName) == null)
-                ApplyMenuBackground(screen.transform);
+            else if (screen.transform.Find("Tasarim") is Transform layer &&
+                     layer.TryGetComponent(out Image design) && design.enabled)
+                ApplyMenuPieces(screen.transform);
         }
 
         /// <summary>
-        /// Arka plan ayri nesne olur ("ArkaPlan", en altta, tam ekran); tasarim katmani saydam
-        /// butonlar / kartlar resmine gecer. Varsa ArkaPlan'a dokunulmaz (Inspector'da secilen resim kalir).
+        /// Arka plan ayri nesne olur ("ArkaPlan", en altta, tam ekran; Inspector'dan degisir). Tasarim
+        /// resmi kapanir; her buton / kart / logo kendi nesnesinde kendi resmini gosterir, degisen yazilar
+        /// ait olduklari parcanin icine alinir (Hierarchy'de parcayla birlikte tasinir).
+        /// Bir kez yapilir (tasarim resmi acikken); sonra kullanicinin yerlestirmesine dokunulmaz.
         /// </summary>
-        private static void ApplyMenuBackground(Transform root)
+        private static void ApplyMenuPieces(Transform root)
         {
-            SetSharpDesign($"{ArtFolder}/{DesignOverlaySprite}.png");
             SetSharpDesign($"{ArtFolder}/{MenuBackgroundSprite}.png");
-            Sprite overlay = Sprite(DesignOverlaySprite);
             Sprite forest = Sprite(MenuBackgroundSprite);
-            if (overlay == null || forest == null || root.Find("Tasarim") is not RectTransform layer)
+            if (forest == null || root.Find("Tasarim") is not RectTransform layer)
                 return;
 
-            Undo.SetCurrentGroupName("Ana menu arka plani");
+            Undo.SetCurrentGroupName("Ana menu parcalari");
+            var screenRefs = new SerializedObject(root.GetComponent<MainMenuScreen>());
+            Transform Ref(string field) => (screenRefs.FindProperty(field)?.objectReferenceValue as Component)?.transform;
+
+            var pieces = new System.Collections.Generic.Dictionary<string, (RectTransform rect, Vector4 pixels)>();
+            foreach ((string sprite, string target, Vector4 rect) in MenuPieces)
+            {
+                Sprite image = Sprite($"{PieceFolder}/{sprite}");
+                if (image == null)
+                    continue;
+
+                RectTransform piece = target != null ? FindDeep(root, target) as RectTransform : null;
+                if (piece == null)
+                {
+                    string name = target ?? (sprite == "logo" ? "Logo" : "IsimTahtasi");
+                    piece = layer.Find(name) as RectTransform;
+                    if (piece == null)
+                    {
+                        piece = NewRect(name, layer);
+                        Undo.RegisterCreatedObjectUndo(piece.gameObject, name);
+                        AddImage(piece, image, Color.white);
+                    }
+                }
+
+                MapTo(piece, layer, rect);
+                Image own = piece.GetComponent<Image>();
+                if (own == null)
+                    own = Undo.AddComponent<Image>(piece.gameObject);
+                Undo.RecordObject(own, "Parca resmi");
+                own.sprite = image;
+                own.type = Image.Type.Simple;
+                own.preserveAspect = false;
+                own.color = Color.white;
+                own.enabled = true;
+                own.raycastTarget = target != null;
+                piece.SetAsLastSibling();
+                pieces[sprite] = (piece, rect);
+            }
+
+            // Degisen yazilar parcalarinin icine (yerleri resimde ayni kalir).
+            Transform modeChip = Ref("modeChipText");
+            Transform doubleXpText = null;
+            foreach (Transform child in layer)
+                if (child.name == "Yazi" && child != modeChip)
+                    doubleXpText = child;
+            Transform xpFill = Ref("xpFill");
+            (Transform child, string piece)[] contents =
+            {
+                (Ref("coinText"), "para"),
+                (Ref("levelText"), "sezon"), (Ref("rankText"), "sezon"), (Ref("nextLevelText"), "sezon"),
+                (Ref("xpText"), "sezon"), (xpFill != null ? xpFill.parent : null, "sezon"),
+                (Ref("playerNameText"), "isim"), (FindDeep(root, "RutbeIkon"), "isim"),
+                (FindDeep(root, "IsimDuzenleButonu"), "isim"),
+                (modeChip, "oyna"),
+                (doubleXpText, "cift_xp"),
+            };
+            foreach ((Transform child, string piece) in contents)
+            {
+                if (child is not RectTransform rect || rect.parent != layer || !pieces.TryGetValue(piece, out var owner))
+                    continue;
+
+                // Katmandaki yeri (resim pikseli) parcaya gore yeniden hesaplanir.
+                float x0 = rect.anchorMin.x * DesignWidth, x1 = rect.anchorMax.x * DesignWidth;
+                float y0 = (1f - rect.anchorMax.y) * DesignHeight, y1 = (1f - rect.anchorMin.y) * DesignHeight;
+                Vector4 box = owner.pixels;
+                float width = box.z - box.x, height = box.w - box.y;
+                Undo.SetTransformParent(rect, owner.rect, "Parcaya al");
+                Undo.RecordObject(rect, "Yerlestir");
+                rect.anchorMin = new Vector2((x0 - box.x) / width, 1f - (y1 - box.y) / height);
+                rect.anchorMax = new Vector2((x1 - box.x) / width, 1f - (y0 - box.y) / height);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+                rect.SetAsLastSibling();
+            }
+
+            // Tasarim resmi kapanir (arka plan ayri, parcalar kendi resimlerinde).
             Image layerImage = layer.GetComponent<Image>();
             Undo.RecordObject(layerImage, "Resim");
-            layerImage.sprite = overlay;
+            layerImage.enabled = false;
             layerImage.raycastTarget = false;
 
             if (root.Find(MenuBackgroundName) is not RectTransform background)
             {
                 background = NewRect(MenuBackgroundName, (RectTransform)root);
                 Undo.RegisterCreatedObjectUndo(background.gameObject, MenuBackgroundName);
-                Image image = AddImage(background, forest, Color.white);
-                image.type = Image.Type.Simple;
-                image.preserveAspect = false;
-                image.raycastTarget = false;
+                AddImage(background, forest, Color.white);
                 Stretch(background, 0f, 0f, 0f, 0f);
+            }
+
+            if (background.GetComponent<Image>() is Image backgroundImage)
+            {
+                Undo.RecordObject(backgroundImage, "Arka plan");
+                if (backgroundImage.sprite == null)
+                    backgroundImage.sprite = forest;
+                backgroundImage.type = Image.Type.Simple;
+                backgroundImage.preserveAspect = false;
+                backgroundImage.raycastTarget = false;
+                backgroundImage.enabled = true;
             }
 
             layer.SetAsFirstSibling();
             background.SetAsFirstSibling();
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             EditorSceneManager.SaveScene(root.gameObject.scene);
-            Debug.Log("Ana menu: arka plan ayri \"ArkaPlan\" nesnesi (Inspector > Image > Source Image ile degisir).");
+            Debug.Log("Ana menu: arka plan \"ArkaPlan\" (Inspector > Image > Source Image); butonlar / kartlar ayri nesneler.");
         }
 
         /// <summary>Tasarim katmani var ve guncel resim olcusuyle tam ekran mi?</summary>
@@ -243,7 +350,7 @@ namespace NewBattle.EditorTools
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             EditorSceneManager.SaveScene(root.gameObject.scene);
             Debug.Log("Sonbahar ana menu: tasarim resmi birebir uygulandi (butonlar resmin ustunde, yazilar canli).");
-            ApplyMenuBackground(root);
+            ApplyMenuPieces(root);
         }
 
         /// <summary>Resim pikselindeki dikdortgene yerlestirir (tasarim katmanina gore).</summary>
