@@ -36,6 +36,10 @@ namespace NewBattle.UI
         [SerializeField] private Color onColor = new(0.36f, 0.77f, 0.22f, 1f);
         [SerializeField] private Color offColor = new(0.6f, 0.6f, 0.62f, 1f);
 
+        [Tooltip("Doluysa acik / kapali dugme bu resimlerle gosterilir (renk boyanmaz).")]
+        [SerializeField] private Sprite onSprite;
+        [SerializeField] private Sprite offSprite;
+
         [Tooltip("Kurulum aracinin yerlesim surumu.")]
         [SerializeField, HideInInspector] private int layoutVersion;
 
@@ -106,8 +110,18 @@ namespace NewBattle.UI
         {
             if (label != null)
                 label.text = on ? "AÇIK" : "KAPALI";
-            if (face != null)
+            if (face == null)
+                return;
+
+            if (onSprite != null && offSprite != null)
+            {
+                face.sprite = on ? onSprite : offSprite;
+                face.color = Color.white;
+            }
+            else
+            {
                 face.color = on ? onColor : offColor;
+            }
         }
 
         private void Refresh()
