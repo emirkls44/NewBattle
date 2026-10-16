@@ -18,8 +18,8 @@ Kaynaklar Tools/MenuArt/kaynak/*_tasarim.jpg (2000x1116), ciktilar Assets/GameAr
     resimleri (yazi ve ikon silinmis), secili kart (altin yaprakli), tikler, sekme tahtasi ve
     islem butonu (secili: resimdeki, sec: yesil, satin al: altin).
 
-  Mac sonu: arka plan (baslik, mesaj, karakter, kartlar, seviye yazilari, XP dolumu ve DEVAM
-    butonu silinmis), uc kart resmi (ikon ve alt yazi resimde, sayi canli), 2x yapragi ve DEVAM
+  Mac sonu: arka plan kullanicinin bos orman resmi (kaynak/macsonu_arkaplan.jpg) + tasarimdaki
+    seviye tahtasi (yazilari ve XP dolumu silinmis), uc kart resmi (ikon ve alt yazi resimde, sayi canli), 2x yapragi ve DEVAM
     ET butonu (oyunda ziplayarak gelirler).
 
 Calistir:   python Tools/MenuArt/ekranlar_hazirla.py   (opencv-python gerekir)
@@ -354,17 +354,52 @@ def erase_plank_text(img, rect, pad=9):
     return out
 
 
+def patch_fill(img, mask, patch=15, search=240):
+    """
+    Desenle doldurma: bosluk disaridan iceri, cevredeki en benzer parcalar kopyalanarak
+    kapatilir (bulaniklik yok, orman / zemin dokusu devam eder).
+    """
+    out = img.astype(np.float32).copy()
+    todo = mask.astype(bool).copy()
+    half = patch // 2
+    ys, xs = np.nonzero(todo)
+    bx0, by0 = max(0, xs.min() - search), max(0, ys.min() - search)
+    bx1, by1 = min(W, xs.max() + search), min(H, ys.max() + search)
+    kernel = np.ones((patch, patch), np.float32)
+    while todo.any():
+        known = (~todo).astype(np.float32)
+        area_known = known[by0:by1, bx0:bx1]
+        confidence = cv2.filter2D(area_known, -1, kernel / kernel.sum(), borderType=cv2.BORDER_CONSTANT)
+        front = todo[by0:by1, bx0:bx1] & (confidence > 0)
+        confidence[~front] = -1
+        fy, fx = np.unravel_index(np.argmax(confidence), confidence.shape)
+        y, x = fy + by0, fx + bx0
+        y = min(max(y, half), H - half - 1)
+        x = min(max(x, half), W - half - 1)
+        tpl = out[y - half:y + half + 1, x - half:x + half + 1]
+        tmask = known[y - half:y + half + 1, x - half:x + half + 1]
+        sx0, sy0 = max(0, x - search), max(0, y - search)
+        sx1, sy1 = min(W, x + search + 1), min(H, y + search + 1)
+        region = out[sy0:sy1, sx0:sx1]
+        cost = cv2.matchTemplate(region, tpl, cv2.TM_SQDIFF, mask=np.dstack([tmask] * 3))
+        holes = cv2.filter2D(todo[sy0:sy1, sx0:sx1].astype(np.float32), -1, kernel, borderType=cv2.BORDER_CONSTANT)
+        holes = holes[half:half + cost.shape[0], half:half + cost.shape[1]]
+        cost[holes > 0.5] = np.inf
+        cost[~np.isfinite(cost)] = np.inf
+        my, mx = np.unravel_index(np.argmin(cost), cost.shape)
+        src = out[sy0 + my:sy0 + my + patch, sx0 + mx:sx0 + mx + patch]
+        fill = todo[y - half:y + half + 1, x - half:x + half + 1]
+        tpl[fill] = src[fill]
+        todo[y - half:y + half + 1, x - half:x + half + 1] = False
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 def fill_person(img, rect):
-    """Karakterin yeri: cevreden yumusak doldurma (oyunda 3D karakter ustunde durur)."""
+    """Karakterin yeri cevredeki ormandan desenle doldurulur (oyunda 3D karakter ustunde)."""
     x0, y0, x1, y1 = rect
     mask = np.zeros((H, W), np.uint8)
-    cv2.rectangle(mask, (x0, y0), (x1, y1), 1, -1)
-    filled = cv2.inpaint(img, mask * 255, 25, cv2.INPAINT_NS)
-    soft = cv2.GaussianBlur(filled, (0, 0), 14)
-    inner = cv2.GaussianBlur(mask.astype(float), (0, 0), 18)[..., None]
-    edge = cv2.GaussianBlur(mask.astype(float), (0, 0), 4)[..., None]
-    out = img * (1 - edge) + (filled * (1 - inner) + soft * inner) * edge
-    return out.astype(np.uint8)
+    cv2.ellipse(mask, ((x0 + x1) // 2, (y0 + y1) // 2), ((x1 - x0) // 2, (y1 - y0) // 2), 0, 0, 360, 1, -1)
+    return patch_fill(img, mask)
 
 
 def leaf_alpha(img):
@@ -613,31 +648,14 @@ def match_end():
     x0, y0, x1, y1 = END_BUTTON
     save_rgba("macsonu_devam.png", img[y0:y1, x0:x1], cv2.GaussianBlur(button_fg[y0:y1, x0:x1].astype(float), (0, 0), 0.8))
 
-    # Arka plan
-    background = img.copy()
-    remove = (cards_mask | badge_full | button_fg).astype(np.uint8)
-    remove = cv2.dilate(remove, np.ones((9, 9), np.uint8))
-    filled = cv2.inpaint(background, remove * 255, 21, cv2.INPAINT_NS)
-    soft = cv2.GaussianBlur(filled, (0, 0), 6)
-    weight = cv2.GaussianBlur(remove.astype(float), (0, 0), 3)[..., None]
-    background = (background * (1 - weight) + soft * weight).astype(np.uint8)
-
-    # baslik (turuncu, koyu kenarli) ve mesaj (beyaz, koyu kenarli)
-    text = np.zeros((H, W), np.uint8)
-    title = hsv[10:165, 100:1335]
-    letters = ((title[..., 0] >= 5) & (title[..., 0] <= 25) & (title[..., 1] > 150) & (title[..., 2] > 160)).astype(np.uint8)
-    text[10:165, 100:1335] = cv2.dilate(letters, np.ones((27, 27), np.uint8))
-    message = hsv[315:392, 105:895]
-    text[315:392, 105:895] = (message[..., 1] < 70) & (message[..., 2] > 215)
-    text = cv2.dilate(text, np.ones((15, 15), np.uint8))
-    background = cv2.inpaint(background, text * 255, 9, cv2.INPAINT_NS)
-    background = fill_person(background, (1305, 290, 1690, 895))
-
-    # seviye tahtasi: yazilar, dolum ve sonraki seviye sayisi
-    background = erase_plank_text(background, (705, 935, 1215, 997))
-    background = erase_plank_text(background, (1248, 988, 1312, 1058))
-    track = np.median(background[1010:1040, 900:1100].reshape(-1, 3), axis=0)
-    background[1007:1042, 719:1203] = track.astype(np.uint8)
+    # Arka plan: kullanicinin bos orman resmi; ustune tasarimdaki seviye tahtasi (yazilari silinmis).
+    plank = erase_plank_text(img, (705, 935, 1215, 997))
+    plank = erase_plank_text(plank, (1248, 988, 1312, 1058))
+    track = np.median(plank[1010:1040, 900:1100].reshape(-1, 3), axis=0)
+    plank[1007:1042, 719:1203] = track.astype(np.uint8)
+    plank_alpha = cv2.GaussianBlur(cut_out(img, (690, 912, 1335, 1062), 32).astype(float), (0, 0), 1.0)[..., None]
+    background = cv2.resize(load("macsonu_arkaplan.jpg"), (W, H), interpolation=cv2.INTER_AREA)
+    background = (background * (1 - plank_alpha) + plank * plank_alpha).astype(np.uint8)
     cv2.imwrite(os.path.join(OUT, "macsonu_arkaplan.png"), background)
 
 

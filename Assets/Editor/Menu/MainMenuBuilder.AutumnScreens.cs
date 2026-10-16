@@ -59,7 +59,8 @@ namespace NewBattle.EditorTools
             LobbyAnimationScreen character = Object.FindFirstObjectByType<LobbyAnimationScreen>(FindObjectsInactive.Include);
             MatchEndScreen matchEnd = Object.FindFirstObjectByType<MatchEndScreen>(FindObjectsInactive.Include);
 
-            bool Needs(Component screen) => screen != null && (force || screen.transform.Find(AutumnLayerName) == null);
+            bool Needs(Component screen) => screen != null && (force || screen.transform.Find(AutumnLayerName) == null ||
+                                                                (screen is MatchEndScreen && screen.transform.Find(MatchEndMarker) == null));
             if (!Needs(settings) && !Needs(profile) && !Needs(levelRoad) && !Needs(shop) && !Needs(character) &&
                 !Needs(matchEnd))
                 return;
@@ -851,6 +852,9 @@ namespace NewBattle.EditorTools
         // Mac sonu
         // ------------------------------------------------------------------
 
+        /// <summary>Mac sonu 2. surum: kullanicinin bos orman arka plani, kare karakter alani.</summary>
+        private const string MatchEndMarker = "MacSonu_v2";
+
         private static bool ApplyMatchEndDesign(MatchEndScreen screen)
         {
             var root = (RectTransform)screen.transform;
@@ -924,7 +928,9 @@ namespace NewBattle.EditorTools
                 badge.SetAsLastSibling();
             }
 
-            ModeMap(ScreenRef(serialized, "characterImage"), background, new Vector4(1290, 280, 1710, 900));
+            // Karakter goruntusu kare doku (512x512) ve karakter dokunun ust yarisinda: alan kare ve
+            // buyuk tutulur ki karakter resimdeki yerde (ayaklar ~885) ve boyda dursun.
+            ModeMap(ScreenRef(serialized, "characterImage"), background, new Vector4(968, 326, 2023, 1381));
 
             // Seviye tahtasi: tahta resimde; yazilar ve dolum canli.
             ModeOverlay(ScreenRef(serialized, "levelText"), background, new Vector4(712, 938, 952, 996), Hex("#DCD3DA"),
@@ -983,6 +989,12 @@ namespace NewBattle.EditorTools
 
             serialized.ApplyModifiedProperties();
             AutumnMarker(root, null);
+            if (root.Find(MatchEndMarker) == null)
+            {
+                RectTransform marker = NewRect(MatchEndMarker, root);
+                Undo.RegisterCreatedObjectUndo(marker.gameObject, "Isaret");
+            }
+
             return true;
         }
     }
