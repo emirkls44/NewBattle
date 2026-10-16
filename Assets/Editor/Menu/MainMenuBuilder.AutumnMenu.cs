@@ -15,6 +15,9 @@ namespace NewBattle.EditorTools
     ///   - Degisen yazilar (para, seviye, XP, isim, mod, cift XP) resimden silindi;
     ///     yerine oyunun gercek degerleri ayni yere yazilir. Logonun altindaki gri cubuk ve
     ///     online sayaci yok.
+    ///   - Arka plan ayri: "ArkaPlan" nesnesi (kullanicinin orman resmi, Inspector'dan Source Image
+    ///     degistirilir). Tasarim katmani sadece butonlar / kartlar / logo (tasarim_sonbahar_ust.png,
+    ///     Tools/MenuArt/anamenu_katman.py).
     /// Koordinatlar tasarim resminin piksel olcusunde (2000x1120, tam resim).
     /// Unity derleyince bir kez kendiliginden uygulanir (resim olcusu degisince yeniden yerlesir). Geri: tag "safe-oncesi-sonbahar-menu".
     /// </summary>
@@ -22,6 +25,9 @@ namespace NewBattle.EditorTools
     {
         private const string DesignSprite = "tasarim_sonbahar";
         private const string DesignBackground = "bg_sonbahar";
+        private const string DesignOverlaySprite = "tasarim_sonbahar_ust";
+        private const string MenuBackgroundSprite = "anamenu_arkaplan";
+        private const string MenuBackgroundName = "ArkaPlan";
         private const float DesignLeft = 0f, DesignWidth = 2000f, DesignHeight = 1120f;
 
         private static readonly (string name, Vector4 rect)[] DesignHits =
@@ -65,8 +71,50 @@ namespace NewBattle.EditorTools
 
             Canvas canvas = FindGameCanvas();
             MainMenuScreen screen = canvas != null ? canvas.GetComponentInChildren<MainMenuScreen>(true) : null;
-            if (screen != null && !AutumnMenuCurrent(screen.transform))
+            if (screen == null)
+                return;
+
+            if (!AutumnMenuCurrent(screen.transform))
                 ApplyAutumnMenu(screen.transform);
+            else if (screen.transform.Find(MenuBackgroundName) == null)
+                ApplyMenuBackground(screen.transform);
+        }
+
+        /// <summary>
+        /// Arka plan ayri nesne olur ("ArkaPlan", en altta, tam ekran); tasarim katmani saydam
+        /// butonlar / kartlar resmine gecer. Varsa ArkaPlan'a dokunulmaz (Inspector'da secilen resim kalir).
+        /// </summary>
+        private static void ApplyMenuBackground(Transform root)
+        {
+            SetSharpDesign($"{ArtFolder}/{DesignOverlaySprite}.png");
+            SetSharpDesign($"{ArtFolder}/{MenuBackgroundSprite}.png");
+            Sprite overlay = Sprite(DesignOverlaySprite);
+            Sprite forest = Sprite(MenuBackgroundSprite);
+            if (overlay == null || forest == null || root.Find("Tasarim") is not RectTransform layer)
+                return;
+
+            Undo.SetCurrentGroupName("Ana menu arka plani");
+            Image layerImage = layer.GetComponent<Image>();
+            Undo.RecordObject(layerImage, "Resim");
+            layerImage.sprite = overlay;
+            layerImage.raycastTarget = false;
+
+            if (root.Find(MenuBackgroundName) is not RectTransform background)
+            {
+                background = NewRect(MenuBackgroundName, (RectTransform)root);
+                Undo.RegisterCreatedObjectUndo(background.gameObject, MenuBackgroundName);
+                Image image = AddImage(background, forest, Color.white);
+                image.type = Image.Type.Simple;
+                image.preserveAspect = false;
+                image.raycastTarget = false;
+                Stretch(background, 0f, 0f, 0f, 0f);
+            }
+
+            layer.SetAsFirstSibling();
+            background.SetAsFirstSibling();
+            EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
+            EditorSceneManager.SaveScene(root.gameObject.scene);
+            Debug.Log("Ana menu: arka plan ayri \"ArkaPlan\" nesnesi (Inspector > Image > Source Image ile degisir).");
         }
 
         /// <summary>Tasarim katmani var ve guncel resim olcusuyle tam ekran mi?</summary>
@@ -195,6 +243,7 @@ namespace NewBattle.EditorTools
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             EditorSceneManager.SaveScene(root.gameObject.scene);
             Debug.Log("Sonbahar ana menu: tasarim resmi birebir uygulandi (butonlar resmin ustunde, yazilar canli).");
+            ApplyMenuBackground(root);
         }
 
         /// <summary>Resim pikselindeki dikdortgene yerlestirir (tasarim katmanina gore).</summary>
