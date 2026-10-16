@@ -9,14 +9,16 @@ using NewBattle.UI;
 namespace NewBattle.EditorTools
 {
     /// <summary>
-    /// Oyun modu penceresi = kullanicinin tasarim resmi birebir (tasarim_oyunmodu.png, 2000x859).
-    /// Butonlar (Etkinlestir, modlar, OYNA, kapat) resmin ustunde gorunmez basma alanlari;
-    /// secili modun tiki, cift XP yazisi ve ipucu canli. Derleyince bir kez uygulanir.
+    /// Oyun modu penceresi = kullanicinin tasarim resmi birebir (tasarim_oyunmodu.png, 2000x1116,
+    /// tam ekran: ustte logo, oyuncu adi, para ve ayarlar da resimde).
+    /// Butonlar (Etkinlestir, modlar, OYNA, kapat, para, ayarlar) resmin ustunde gorunmez basma
+    /// alanlari; secili modun tiki, oyuncu adi, para, cift XP yazisi ve ipucu canli.
+    /// Derleyince kendiliginden uygulanir (resim degisince yeni koordinatlarla yeniden).
     /// </summary>
     public static partial class MainMenuBuilder
     {
         private const string ModeDesignSprite = "tasarim_oyunmodu";
-        private const float ModeDesignWidth = 2000f, ModeDesignHeight = 859f;
+        private const float ModeDesignWidth = 2000f, ModeDesignHeight = 1116f;
 
         [InitializeOnLoadMethod]
         private static void AutoApplyModeDesignLater()
@@ -37,13 +39,23 @@ namespace NewBattle.EditorTools
 
             ModeSelectPanel panel = Object.FindFirstObjectByType<ModeSelectPanel>(FindObjectsInactive.Include);
             Transform window = panel != null ? panel.transform.Find("Pencere") : null;
-            if (window != null && window.Find("Tasarim") == null)
+            if (window == null)
+                return;
+
+            AspectRatioFitter fitter = window.Find("Tasarim")?.GetComponent<AspectRatioFitter>();
+            bool current = fitter != null && Mathf.Abs(fitter.aspectRatio - ModeDesignWidth / ModeDesignHeight) < 0.001f;
+            if (!current)
+            {
+                if (!PrepareFont())
+                    return;
+                PrepareMaterials();
                 ApplyModeDesign(panel, (RectTransform)window);
+            }
         }
 
         private static void ApplyModeDesign(ModeSelectPanel panel, RectTransform window)
         {
-            AssetDatabase.ImportAsset($"{ArtFolder}/{ModeDesignSprite}.png");
+            AssetDatabase.ImportAsset($"{ArtFolder}/{ModeDesignSprite}.png", ImportAssetOptions.ForceUpdate);
             Sprite design = Sprite(ModeDesignSprite);
             if (design == null)
                 return;
@@ -51,22 +63,35 @@ namespace NewBattle.EditorTools
             Undo.SetCurrentGroupName("Oyun modu tasarimi");
             Color ink = Hex("#5A3418");
 
-            RectTransform layer = NewRect("Tasarim", window);
-            Undo.RegisterCreatedObjectUndo(layer.gameObject, "Tasarim");
-            Stretch(layer, 0f, 0f, 0f, 0f);
-            Image image = AddImage(layer, design, Color.white, raycast: true);
-            image.type = Image.Type.Simple;
-            AspectRatioFitter fitter = layer.gameObject.AddComponent<AspectRatioFitter>();
+            RectTransform layer = window.Find("Tasarim") as RectTransform;
+            if (layer == null)
+            {
+                layer = NewRect("Tasarim", window);
+                Undo.RegisterCreatedObjectUndo(layer.gameObject, "Tasarim");
+                Stretch(layer, 0f, 0f, 0f, 0f);
+                AddImage(layer, design, Color.white, raycast: true).type = Image.Type.Simple;
+                layer.gameObject.AddComponent<AspectRatioFitter>();
+            }
+
+            Image layerImage = layer.GetComponent<Image>();
+            Undo.RecordObject(layerImage, "Resim");
+            layerImage.sprite = design;
+            AspectRatioFitter fitter = layer.GetComponent<AspectRatioFitter>();
+            Undo.RecordObject(fitter, "Oran");
             fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
             fitter.aspectRatio = ModeDesignWidth / ModeDesignHeight;
             layer.SetAsFirstSibling();
 
             // Canli yazilar.
-            ModeOverlay(window.Find("SolPanel/Aciklama"), layer, new Vector4(150, 202, 580, 258), ink, false);
-            ModeOverlay(window.Find("SagPanel/Ipucu"), layer, new Vector4(1452, 312, 1890, 494), ink, true);
+            ModeOverlay(FindDeep(window, "Aciklama"), layer, new Vector4(146, 338, 590, 404), ink, false);
+            ModeOverlay(FindDeep(window, "Ipucu"), layer, new Vector4(1452, 440, 1898, 636), ink, true);
+            ModeOverlay(EnsureLabel(layer, "OyuncuAdi", ProgressLabel.Value.PlayerName), layer,
+                new Vector4(846, 20, 1210, 72), ink, false, TextAlignmentOptions.Left);
+            ModeOverlay(EnsureLabel(layer, "ParaMiktari", ProgressLabel.Value.Coins), layer,
+                new Vector4(1612, 60, 1732, 110), Hex("#FFE9C7"), false);
 
             // Mod satirlari: dikey duzen kapanir, her satir resimdeki tahtanin ustune.
-            if (window.Find("OrtaPanel/Secenekler")?.GetComponent<VerticalLayoutGroup>() is VerticalLayoutGroup list)
+            if (FindDeep(window, "Secenekler")?.GetComponent<VerticalLayoutGroup>() is VerticalLayoutGroup list)
             {
                 Undo.RecordObject(list, "Duzen");
                 list.enabled = false;
@@ -74,9 +99,9 @@ namespace NewBattle.EditorTools
 
             (string name, Vector4 row, Vector4 box)[] rows =
             {
-                ("Secenek_solo", new Vector4(795, 318, 1198, 410), new Vector4(1118, 336, 1178, 394)),
-                ("Secenek_rastgele_ikili", new Vector4(795, 428, 1198, 522), new Vector4(1116, 440, 1182, 500)),
-                ("Secenek_arkadas_ikilisi", new Vector4(795, 535, 1198, 630), new Vector4(1118, 548, 1178, 606)),
+                ("Secenek_solo", new Vector4(800, 448, 1200, 540), new Vector4(1122, 466, 1180, 522)),
+                ("Secenek_rastgele_ikili", new Vector4(800, 558, 1200, 648), new Vector4(1120, 574, 1182, 630)),
+                ("Secenek_arkadas_ikilisi", new Vector4(800, 666, 1200, 756), new Vector4(1120, 684, 1180, 738)),
             };
 
             foreach ((string name, Vector4 row, Vector4 box) in rows)
@@ -117,19 +142,23 @@ namespace NewBattle.EditorTools
                 }
             }
 
-            foreach ((string path, Vector4 rect) in new[]
+            foreach ((string name, Vector4 rect) in new[]
                      {
-                         ("SolPanel/EtkinlestirButonu", new Vector4(150, 568, 592, 730)),
-                         ("SagPanel/KapatButonu", new Vector4(1795, 80, 1905, 170)),
-                         ("CevrimiciOynaButonu", new Vector4(785, 640, 1205, 800)),
+                         ("EtkinlestirButonu", new Vector4(150, 700, 580, 852)),
+                         ("KapatButonu", new Vector4(1826, 204, 1922, 296)),
+                         ("CevrimiciOynaButonu", new Vector4(785, 768, 1210, 945)),
                      })
             {
-                if (window.Find(path) is RectTransform hit)
+                if (FindDeep(window, name) is RectTransform hit)
                 {
                     ModeMap(hit, layer, rect);
                     MakeInvisible(hit);
                 }
             }
+
+            // Resimdeki para ve ayarlar: ana menudekiyle ayni islevler.
+            ModeMap(EnsureActionHit(layer, "ParaButonu", "para_paneli"), layer, new Vector4(1450, 20, 1812, 132));
+            ModeMap(EnsureActionHit(layer, "AyarlarButonuTasarim", "ayarlar"), layer, new Vector4(1818, 22, 1938, 142));
 
             // Eski pencerenin kendi gorunumu (paneller, basliklar, manzara) resimde var.
             foreach (Graphic graphic in window.GetComponentsInChildren<Graphic>(true))
@@ -158,8 +187,46 @@ namespace NewBattle.EditorTools
             Debug.Log("Oyun modu penceresi: tasarim resmi birebir uygulandi.");
         }
 
-        private static void ModeMap(RectTransform rect, RectTransform layer, Vector4 pixels)
+        private static Transform EnsureLabel(RectTransform layer, string name, ProgressLabel.Value value)
         {
+            if (layer.Find(name) is Transform existing)
+                return existing;
+
+            TextMeshProUGUI text = AddText(layer, name, string.Empty, 48f, Color.white, TextAlignmentOptions.Center, shadow: false);
+            Undo.RegisterCreatedObjectUndo(text.gameObject, name);
+            text.raycastTarget = false;
+            ProgressLabel label = text.gameObject.AddComponent<ProgressLabel>();
+            var serialized = new SerializedObject(label);
+            serialized.FindProperty("value").enumValueIndex = (int)value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return text.transform;
+        }
+
+        /// <summary>Gorunmez buton; basinca MenuButton islevini calistirir.</summary>
+        private static RectTransform EnsureActionHit(RectTransform layer, string name, string action)
+        {
+            if (layer.Find(name) is RectTransform existing)
+                return existing;
+
+            RectTransform rect = NewRect(name, layer);
+            Undo.RegisterCreatedObjectUndo(rect.gameObject, name);
+            Image image = AddImage(rect, null, new Color(1f, 1f, 1f, 0f), raycast: true);
+            Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.transition = Selectable.Transition.None;
+            MenuButton menuButton = rect.gameObject.AddComponent<MenuButton>();
+            var serialized = new SerializedObject(menuButton);
+            serialized.FindProperty("actionId").stringValue = action;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            rect.gameObject.AddComponent<UIPressScale>();
+            return rect;
+        }
+
+        private static void ModeMap(Transform target, RectTransform layer, Vector4 pixels)
+        {
+            if (target is not RectTransform rect)
+                return;
+
             Undo.SetTransformParent(rect, layer, "Tasi");
             Undo.RecordObject(rect, "Yerlestir");
             rect.anchorMin = new Vector2(pixels.x / ModeDesignWidth, 1f - pixels.w / ModeDesignHeight);
@@ -172,7 +239,8 @@ namespace NewBattle.EditorTools
                 rect.gameObject.SetActive(true);
         }
 
-        private static void ModeOverlay(Transform target, RectTransform layer, Vector4 pixels, Color color, bool wrap)
+        private static void ModeOverlay(Transform target, RectTransform layer, Vector4 pixels, Color color, bool wrap,
+            TextAlignmentOptions alignment = TextAlignmentOptions.Center)
         {
             if (target is not RectTransform rect)
                 return;
@@ -183,7 +251,7 @@ namespace NewBattle.EditorTools
                 Undo.RecordObject(text, "Yazi");
                 text.enabled = true;
                 text.color = color;
-                text.alignment = TextAlignmentOptions.Center;
+                text.alignment = alignment;
                 text.enableAutoSizing = true;
                 text.fontSizeMin = 10f;
                 text.fontSizeMax = wrap ? 54f : 64f;

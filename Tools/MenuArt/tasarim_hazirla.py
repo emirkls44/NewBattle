@@ -40,15 +40,21 @@ if __name__ == "__main__":
     design = cv2.inpaint(design, mask, 9, cv2.INPAINT_TELEA)[:, LEFT:RIGHT]
     cv2.imwrite(os.path.join(OUT, "tasarim_sonbahar.png"), design)
 
-    # Oyun modu penceresi: sabit tik bos kutuyla degisir (secim canli), cift XP ve ipucu
-    # yazilari silinir (oyun yazar).
+    # Oyun modu penceresi (tam ekran, 2000x1116): sabit tik bos kutuyla degisir (secim canli);
+    # isim, para, cift XP ve ipucu yazilari silinir (oyun yazar).
     mode = cv2.imread(os.path.join(HERE, "kaynak", "oyunmodu_tasarim.jpg"))
-    empty = mode[336:394, 1118:1178]
-    mode[440:500, 1116:1182] = cv2.resize(empty, (66, 60), interpolation=cv2.INTER_AREA)
-    # Yazi bolgelerine ayni panelin temiz parsomen seridi yumusak kenarla kopyalanir.
+    empty = mode[466:522, 1122:1180]
+    mode[684:738, 1120:1180] = cv2.resize(empty, (60, 54), interpolation=cv2.INTER_AREA)
+
+    mask = np.zeros(mode.shape[:2], np.uint8)
+    for x0, y0, x1, y1 in ((842, 20, 1200, 72), (1612, 58, 1732, 112)):
+        mask[y0:y1, x0:x1] = 255
+    mode = cv2.inpaint(mode, mask, 9, cv2.INPAINT_TELEA)
+
+    # Parsomen uzerindeki yazilar: ayni panelin temiz seridi yumusak kenarla kopyalanir.
     for (sx0, sy0, sx1, sy1), (x0, y0, x1, y1) in (
-            ((150, 262, 580, 300), (146, 198, 584, 260)),
-            ((1445, 506, 1895, 546), (1440, 304, 1900, 502))):
+            ((160, 404, 580, 436), (146, 334, 590, 406)),
+            ((1455, 636, 1895, 674), (1440, 434, 1905, 642))):
         patch = cv2.resize(mode[sy0:sy1, sx0:sx1], (x1 - x0, y1 - y0), interpolation=cv2.INTER_CUBIC).astype(float)
         alpha = np.zeros((y1 - y0, x1 - x0), float)
         alpha[8:-8, 8:-8] = 1.0
