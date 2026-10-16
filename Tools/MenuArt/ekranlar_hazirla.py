@@ -18,6 +18,10 @@ Kaynaklar Tools/MenuArt/kaynak/*_tasarim.jpg (2000x1116), ciktilar Assets/GameAr
     resimleri (yazi ve ikon silinmis), secili kart (altin yaprakli), tikler, sekme tahtasi ve
     islem butonu (secili: resimdeki, sec: yesil, satin al: altin).
 
+  Mac sonu: arka plan (baslik, mesaj, karakter, kartlar, seviye yazilari, XP dolumu ve DEVAM
+    butonu silinmis), uc kart resmi (ikon ve alt yazi resimde, sayi canli), 2x yapragi ve DEVAM
+    ET butonu (oyunda ziplayarak gelirler).
+
 Calistir:   python Tools/MenuArt/ekranlar_hazirla.py   (opencv-python gerekir)
 Koordinatlar Unity tarafinda: Assets/Editor/Menu/MainMenuBuilder.AutumnScreens.cs.
 """
@@ -519,6 +523,123 @@ def character():
     frame_alpha[outside_panel] = 0.0
     save_rgba("karakter_cerceve.png", background, cv2.GaussianBlur(frame_alpha, (0, 0), 1.0))
 
+def cut_out(img, core, margin):
+    """Dikdortgen cekirdekteki nesneyi (kart, buton) ormandan GrabCut ile ayirir."""
+    x0, y0, x1, y1 = core
+    mask = np.full(img.shape[:2], cv2.GC_BGD, np.uint8)
+    mask[max(0, y0 - margin):y1 + margin, max(0, x0 - margin):x1 + margin] = cv2.GC_PR_BGD
+    leaves = leaf_alpha(img) > 0
+    near = np.zeros(img.shape[:2], bool)
+    near[max(0, y0 - margin):y1 + margin, max(0, x0 - margin):x1 + margin] = True
+    mask[near & leaves] = cv2.GC_PR_FGD
+    mask[y0:y1, x0:x1] = cv2.GC_FGD
+    cv2.grabCut(img, mask, None, np.zeros((1, 65)), np.zeros((1, 65)), 5, cv2.GC_INIT_WITH_MASK)
+    fg = ((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)).astype(np.uint8)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(fg)
+    biggest = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
+    fg = (labels == biggest).astype(np.uint8)
+    fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    contours, _ = cv2.findContours(fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    fg = np.zeros_like(fg)
+    cv2.drawContours(fg, contours, -1, 1, thickness=-1)
+    return fg
+
+
+END_CARDS = [(40, 545, 205, 785), (340, 545, 505, 785), (640, 545, 805, 785)]
+END_CARD_CROP = (-28, -27, 192, 261)   # cekirdege gore kirpma (sol, ust, sag, alt)
+END_BADGE = (440, 518, 552, 606)
+END_BUTTON = (1470, 900, 1940, 1095)
+
+
+def match_end():
+    img = load("macsonu_tasarim.jpg")
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(int)
+
+    # 2x yapragi (yesil yaprak + icindeki yazi)
+    bx0, by0, bx1, by1 = END_BADGE
+    sub = hsv[by0:by1, bx0:bx1]
+    leaf = ((sub[..., 0] > 30) & (sub[..., 0] < 90) & (sub[..., 1] > 70)).astype(np.uint8)
+    leaf = cv2.morphologyEx(leaf, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    contours, _ = cv2.findContours(leaf, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    leaf = np.zeros_like(leaf)
+    cv2.drawContours(leaf, [max(contours, key=cv2.contourArea)], -1, 1, thickness=-1)
+    leaf = cv2.dilate(leaf, np.ones((3, 3), np.uint8))
+    save_rgba("macsonu_2x.png", img[by0:by1, bx0:bx1], cv2.GaussianBlur(leaf.astype(float), (0, 0), 0.8))
+    badge_full = np.zeros((H, W), np.uint8)
+    badge_full[by0:by1, bx0:bx1] = leaf
+
+    # Kartlar: sayi silinir; ikinci kartin 2x yapragi altindaki kose ucuncu karttan.
+    clean = img.copy()
+    left, top, right, bottom = END_CARD_CROP
+    cards_mask = np.zeros((H, W), np.uint8)
+    for index, core in enumerate(END_CARDS):
+        x0, y0, x1, y1 = core
+        number = np.zeros((H, W), np.uint8)
+        area = img[y0 + 108:y0 + 180, x0 + 10:x1 - 10].astype(float)
+        body = np.median(img[y0 + 200:y0 + 215, x0 + 20:x1 - 20].reshape(-1, 3).astype(float), axis=0)
+        number[y0 + 108:y0 + 180, x0 + 10:x1 - 10] = np.abs(area - body).max(axis=2) > 28
+        number = cv2.dilate(number, np.ones((5, 5), np.uint8))
+        clean = cv2.inpaint(clean, number * 255, 5, cv2.INPAINT_TELEA)
+    third = cut_out(img, END_CARDS[2], 30)
+    for index, core in enumerate(END_CARDS):
+        x0, y0, x1, y1 = core
+        source = clean.copy()
+        fg = cut_out(img, core, 30)
+        if index == 1:
+            # 2x yapraginin kapattigi sag ust kose ucuncu kartin ayni kosesinden
+            fg[badge_full > 0] = 0
+            dx = END_CARDS[2][0] - x0
+            rows = slice(y0 + top, y0 + 62)
+            cols, cols3 = slice(x1 - 35, x0 + right), slice(x1 - 35 + dx, x0 + right + dx)
+            source[rows, cols] = clean[rows, cols3]
+            fg[rows, cols] = third[rows, cols3]
+            # ust kenar yapragin soluna kadar; kartin icindeki kalan bosluk kart rengiyle
+            top_rows = slice(y0 + top, y0 + 18)
+            source[top_rows, x1 - 62:x1 - 35] = clean[top_rows, x1 - 62 + dx:x1 - 35 + dx]
+            fg[top_rows, x1 - 62:x1 - 35] = third[top_rows, x1 - 62 + dx:x1 - 35 + dx]
+            gap = np.zeros((H, W), np.uint8)
+            gap[y0 + 18:y0 + 62, x1 - 62:x1 - 35] = 1
+            star = (hsv[..., 1] < 60) & (hsv[..., 2] > 200)
+            gap[star] = 0
+            source = cv2.inpaint(source, gap * 255, 5, cv2.INPAINT_TELEA)
+            fg[y0 + 18:y0 + 62, x1 - 62:x1 - 35] = 1
+        cards_mask |= fg
+        cx0, cy0, cx1, cy1 = x0 + left, y0 + top, x0 + right, y0 + bottom
+        save_rgba(f"macsonu_kart{index + 1}.png", source[cy0:cy1, cx0:cx1],
+                  cv2.GaussianBlur(fg[cy0:cy1, cx0:cx1].astype(float), (0, 0), 0.8))
+
+    # DEVAM ET butonu (yazisi resimde)
+    button_fg = cut_out(img, (1520, 935, 1905, 1065), 34)
+    x0, y0, x1, y1 = END_BUTTON
+    save_rgba("macsonu_devam.png", img[y0:y1, x0:x1], cv2.GaussianBlur(button_fg[y0:y1, x0:x1].astype(float), (0, 0), 0.8))
+
+    # Arka plan
+    background = img.copy()
+    remove = (cards_mask | badge_full | button_fg).astype(np.uint8)
+    remove = cv2.dilate(remove, np.ones((9, 9), np.uint8))
+    filled = cv2.inpaint(background, remove * 255, 21, cv2.INPAINT_NS)
+    soft = cv2.GaussianBlur(filled, (0, 0), 6)
+    weight = cv2.GaussianBlur(remove.astype(float), (0, 0), 3)[..., None]
+    background = (background * (1 - weight) + soft * weight).astype(np.uint8)
+
+    # baslik (turuncu, koyu kenarli) ve mesaj (beyaz, koyu kenarli)
+    text = np.zeros((H, W), np.uint8)
+    title = hsv[10:165, 100:1335]
+    letters = ((title[..., 0] >= 5) & (title[..., 0] <= 25) & (title[..., 1] > 150) & (title[..., 2] > 160)).astype(np.uint8)
+    text[10:165, 100:1335] = cv2.dilate(letters, np.ones((27, 27), np.uint8))
+    message = hsv[315:392, 105:895]
+    text[315:392, 105:895] = (message[..., 1] < 70) & (message[..., 2] > 215)
+    text = cv2.dilate(text, np.ones((15, 15), np.uint8))
+    background = cv2.inpaint(background, text * 255, 9, cv2.INPAINT_NS)
+    background = fill_person(background, (1305, 290, 1690, 895))
+
+    # seviye tahtasi: yazilar, dolum ve sonraki seviye sayisi
+    background = erase_plank_text(background, (705, 935, 1215, 997))
+    background = erase_plank_text(background, (1248, 988, 1312, 1058))
+    track = np.median(background[1010:1040, 900:1100].reshape(-1, 3), axis=0)
+    background[1007:1042, 719:1203] = track.astype(np.uint8)
+    cv2.imwrite(os.path.join(OUT, "macsonu_arkaplan.png"), background)
+
 
 if __name__ == "__main__":
     profile()
@@ -526,4 +647,5 @@ if __name__ == "__main__":
     level_road()
     shop()
     character()
+    match_end()
     print("ok")

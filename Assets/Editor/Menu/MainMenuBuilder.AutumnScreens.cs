@@ -16,6 +16,8 @@ namespace NewBattle.EditorTools
     ///     siradaki / gelecek), en ustte cerceve (kartlar dal kenarlarin altindan kayar).
     ///   - Magaza ve Karakter: arka plan resmi, kartlar resimdeki kart resimleri, sagda 3D karakter
     ///     resimdeki yerde, islem butonu durumuna gore resim degistirir (sec / satin al / secili).
+    ///   - Mac sonu: orman arka plani, uc kart ve DEVAM ET resimdeki parcalar (ziplayarak gelir),
+    ///     baslik / mesaj / sayilar / seviye canli, 3D karakter resimdeki yerde.
     /// Resimler: Tools/MenuArt/ekranlar_hazirla.py. Derleyince kendiliginden uygulanir;
     /// surum (AutumnScreensVersion) artinca yeniden yerlesir.
     /// </summary>
@@ -55,9 +57,11 @@ namespace NewBattle.EditorTools
             LevelRoadScreen levelRoad = Object.FindFirstObjectByType<LevelRoadScreen>(FindObjectsInactive.Include);
             ShopScreen shop = Object.FindFirstObjectByType<ShopScreen>(FindObjectsInactive.Include);
             LobbyAnimationScreen character = Object.FindFirstObjectByType<LobbyAnimationScreen>(FindObjectsInactive.Include);
+            MatchEndScreen matchEnd = Object.FindFirstObjectByType<MatchEndScreen>(FindObjectsInactive.Include);
 
             bool Needs(Component screen) => screen != null && (force || screen.transform.Find(AutumnLayerName) == null);
-            if (!Needs(settings) && !Needs(profile) && !Needs(levelRoad) && !Needs(shop) && !Needs(character))
+            if (!Needs(settings) && !Needs(profile) && !Needs(levelRoad) && !Needs(shop) && !Needs(character) &&
+                !Needs(matchEnd))
                 return;
 
             if (!PrepareFont())
@@ -74,11 +78,13 @@ namespace NewBattle.EditorTools
                 changed |= ApplyShopDesign(shop);
             if (Needs(character))
                 changed |= ApplyCharacterDesign(character);
+            if (Needs(matchEnd))
+                changed |= ApplyMatchEndDesign(matchEnd);
 
             if (changed)
             {
                 Component any = settings != null ? settings : profile != null ? profile : levelRoad != null ? levelRoad
-                    : shop != null ? shop : character;
+                    : shop != null ? shop : character != null ? character : matchEnd;
                 EditorSceneManager.MarkSceneDirty(any.gameObject.scene);
                 EditorSceneManager.SaveScene(any.gameObject.scene);
                 Debug.Log("Sonbahar ekranlari: tasarim resimleri uygulandi.");
@@ -840,6 +846,144 @@ namespace NewBattle.EditorTools
             serialized.FindProperty("unlockedColor").colorValue = Color.white;
             serialized.FindProperty("lockedColor").colorValue = new Color(0.82f, 0.78f, 0.72f, 1f);
             serialized.ApplyModifiedProperties();
+        }
+        // ------------------------------------------------------------------
+        // Mac sonu
+        // ------------------------------------------------------------------
+
+        private static bool ApplyMatchEndDesign(MatchEndScreen screen)
+        {
+            var root = (RectTransform)screen.transform;
+            RectTransform background = AutumnBackground(root, "macsonu_arkaplan");
+            if (background == null)
+                return false;
+
+            Undo.SetCurrentGroupName("Sonbahar mac sonu");
+            var serialized = new SerializedObject(screen);
+
+            ModeOverlay(ScreenRef(serialized, "titleText"), background, new Vector4(110, 12, 1340, 160), Hex("#F7941D"),
+                false, TextAlignmentOptions.Left);
+            serialized.FindProperty("defeatTitleColor").colorValue = Hex("#F7941D");
+            serialized.FindProperty("victoryTitleColor").colorValue = Hex("#FFC928");
+            ModeOverlay(ScreenRef(serialized, "messageText"), background, new Vector4(112, 316, 1000, 392), Color.white,
+                false, TextAlignmentOptions.Left);
+
+            // Kartlar: resimdeki kart (ikon ve alt yazi resimde), sayi canli; ziplayarak gelir.
+            (string value, string sprite, Vector4 rect)[] cards =
+            {
+                ("killsText", "macsonu_kart1", new Vector4(12, 518, 232, 806)),
+                ("xpText", "macsonu_kart2", new Vector4(312, 518, 532, 806)),
+                ("coinsText", "macsonu_kart3", new Vector4(612, 518, 832, 806)),
+            };
+            foreach ((string value, string sprite, Vector4 rect) in cards)
+            {
+                Transform number = ScreenRef(serialized, value);
+                if (number == null || number.parent is not RectTransform card)
+                    continue;
+
+                ModeMap(card, background, rect);
+                if (card.GetComponent<Image>() is not Image face)
+                    face = Undo.AddComponent<Image>(card.gameObject);
+                Undo.RecordObject(face, "Kart");
+                face.sprite = Sprite(sprite);
+                face.type = Image.Type.Simple;
+                face.color = Color.white;
+                face.preserveAspect = false;
+
+                foreach (Graphic graphic in card.GetComponentsInChildren<Graphic>(true))
+                {
+                    if (graphic == face || graphic.transform == number)
+                        continue;
+
+                    Undo.RecordObject(graphic, "Gizle");
+                    graphic.enabled = false; // ikon ve alt yazi resimde
+                }
+
+                CardText(number, new Vector2(220, 288), new Vector4(18, 128, 202, 214), Hex("#F7941D"), 96f,
+                    TextAlignmentOptions.Center, shadow: true);
+            }
+
+            if (ScreenRef(serialized, "doubleXpBadge") is RectTransform badge)
+            {
+                ModeMap(badge, background, new Vector4(440, 518, 552, 606));
+                if (badge.GetComponent<Image>() is not Image leaf)
+                    leaf = Undo.AddComponent<Image>(badge.gameObject);
+                Undo.RecordObject(leaf, "2x");
+                leaf.sprite = Sprite("macsonu_2x");
+                leaf.type = Image.Type.Simple;
+                leaf.color = Color.white;
+                foreach (Graphic graphic in badge.GetComponentsInChildren<Graphic>(true))
+                {
+                    if (graphic == leaf)
+                        continue;
+
+                    Undo.RecordObject(graphic, "Gizle");
+                    graphic.enabled = false; // "2x" resimde
+                }
+
+                badge.SetAsLastSibling();
+            }
+
+            ModeMap(ScreenRef(serialized, "characterImage"), background, new Vector4(1290, 280, 1710, 900));
+
+            // Seviye tahtasi: tahta resimde; yazilar ve dolum canli.
+            ModeOverlay(ScreenRef(serialized, "levelText"), background, new Vector4(712, 938, 952, 996), Hex("#DCD3DA"),
+                false, TextAlignmentOptions.Left);
+            ModeOverlay(ScreenRef(serialized, "xpNumbersText"), background, new Vector4(960, 938, 1212, 996), Color.white,
+                false, TextAlignmentOptions.Left);
+            ModeOverlay(ScreenRef(serialized, "nextLevelText"), background, new Vector4(1248, 986, 1316, 1058), Hex("#DCD3DA"),
+                false);
+            if (ScreenRef(serialized, "xpFill") is RectTransform fill && fill.parent is RectTransform track)
+            {
+                ModeMap(track, background, new Vector4(716, 1004, 1205, 1044));
+                if (track.GetComponent<Image>() is Image trackImage)
+                {
+                    Undo.RecordObject(trackImage, "Gizle");
+                    trackImage.enabled = false;
+                }
+
+                Undo.RecordObject(fill, "Dolum");
+                fill.offsetMin = new Vector2(3f, 3f);
+                fill.offsetMax = new Vector2(0f, -3f);
+                if (fill.GetComponent<Image>() is Image fillImage)
+                {
+                    Undo.RecordObject(fillImage, "Dolum");
+                    fillImage.sprite = Sprite("ui_round");
+                    fillImage.type = Image.Type.Sliced;
+                    fillImage.pixelsPerUnitMultiplier = 2.6f;
+                    fillImage.color = Hex("#F6BE27");
+                    fillImage.enabled = true;
+                }
+            }
+
+            ModeOverlay(ScreenRef(serialized, "levelUpBanner"), background, new Vector4(650, 805, 1370, 885), Hex("#FFC928"), false);
+
+            foreach (string name in new[] { "Ok", "BattlePassKarti" })
+            {
+                if (root.Find(name) is not Transform old)
+                    continue;
+
+                foreach (Graphic graphic in old.GetComponentsInChildren<Graphic>(true))
+                {
+                    Undo.RecordObject(graphic, "Gizle");
+                    graphic.enabled = false; // resimde ok var, battle pass karti yok
+                }
+            }
+
+            // DEVAM ET: resimdeki buton (ziplayarak gelir).
+            if (ScreenRef(serialized, "continueButton") is RectTransform continueButton)
+            {
+                DesignHit(continueButton, background, new Vector4(1470, 900, 1940, 1095));
+                Image own = continueButton.GetComponent<Image>();
+                Undo.RecordObject(own, "Devam");
+                own.sprite = Sprite("macsonu_devam");
+                own.type = Image.Type.Simple;
+                own.color = Color.white;
+            }
+
+            serialized.ApplyModifiedProperties();
+            AutumnMarker(root, null);
+            return true;
         }
     }
 }
