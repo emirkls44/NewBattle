@@ -15,7 +15,8 @@ namespace NewBattle.UI
         {
             Reached,
             Next,
-            Future
+            Future,
+            Current
         }
 
         [SerializeField] private Image background;
@@ -30,6 +31,12 @@ namespace NewBattle.UI
         [SerializeField] private Color reachedColor = new(0.55f, 0.50f, 0.62f, 1f);
         [SerializeField] private Color nextColor = new(1f, 0.95f, 0.82f, 1f);
         [SerializeField] private Color futureColor = new(0.86f, 0.80f, 0.68f, 1f);
+
+        [Header("Resimler (doluysa renk yerine)")]
+        [SerializeField] private Sprite reachedSprite;
+        [SerializeField] private Sprite currentSprite;
+        [SerializeField] private Sprite nextSprite;
+        [SerializeField] private Sprite futureSprite;
 
         public int Level { get; private set; }
         public Button Button => GetComponent<Button>();
@@ -47,16 +54,31 @@ namespace NewBattle.UI
             if (rewardIcon != null && icon != null)
                 rewardIcon.sprite = icon;
 
-            if (background != null)
+            Sprite sprite = state switch
+            {
+                State.Reached => reachedSprite,
+                State.Current => currentSprite != null ? currentSprite : reachedSprite,
+                State.Next => nextSprite,
+                _ => futureSprite
+            };
+
+            if (background != null && sprite != null)
+            {
+                background.sprite = sprite;
+                background.color = Color.white;
+            }
+            else if (background != null)
+            {
                 background.color = state switch
                 {
-                    State.Reached => reachedColor,
+                    State.Reached or State.Current => reachedColor,
                     State.Next => nextColor,
                     _ => futureColor
                 };
+            }
 
             if (reachedMark != null)
-                reachedMark.SetActive(state == State.Reached);
+                reachedMark.SetActive(state is State.Reached or State.Current);
             if (nextOutline != null)
                 nextOutline.SetActive(state == State.Next);
         }

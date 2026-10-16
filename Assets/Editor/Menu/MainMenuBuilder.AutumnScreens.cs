@@ -12,6 +12,8 @@ namespace NewBattle.EditorTools
     /// Sonbahar ekranlari = kullanicinin tasarim resimleri birebir (2000x1116, tam ekran).
     ///   - Profil ve Ayarlar: resim ana menunun ustunde duran pencere (disi saydam, ici yari
     ///     saydam mor); butonlar resmin ustunde gorunmez basma alanlari, degisen yazilar canli.
+    ///   - Seviye yolu: arka plan resmi, kartlar resimdeki kart resimleri (alinan / simdiki /
+    ///     siradaki / gelecek), en ustte cerceve (kartlar dal kenarlarin altindan kayar).
     /// Resimler: Tools/MenuArt/ekranlar_hazirla.py. Derleyince kendiliginden uygulanir;
     /// surum (AutumnScreensVersion) artinca yeniden yerlesir.
     /// </summary>
@@ -48,9 +50,10 @@ namespace NewBattle.EditorTools
             bool changed = false;
             SettingsScreen settings = Object.FindFirstObjectByType<SettingsScreen>(FindObjectsInactive.Include);
             ProfileScreen profile = Object.FindFirstObjectByType<ProfileScreen>(FindObjectsInactive.Include);
+            LevelRoadScreen levelRoad = Object.FindFirstObjectByType<LevelRoadScreen>(FindObjectsInactive.Include);
 
             bool Needs(Component screen) => screen != null && (force || screen.transform.Find(AutumnLayerName) == null);
-            if (!Needs(settings) && !Needs(profile))
+            if (!Needs(settings) && !Needs(profile) && !Needs(levelRoad))
                 return;
 
             if (!PrepareFont())
@@ -61,13 +64,15 @@ namespace NewBattle.EditorTools
                 changed |= ApplySettingsDesign(settings);
             if (Needs(profile))
                 changed |= ApplyProfileDesign(profile);
+            if (Needs(levelRoad))
+                changed |= ApplyLevelRoadDesign(levelRoad);
 
             if (changed)
             {
                 Component any = settings != null ? settings : profile;
                 EditorSceneManager.MarkSceneDirty(any.gameObject.scene);
                 EditorSceneManager.SaveScene(any.gameObject.scene);
-                Debug.Log("Sonbahar ekranlari: tasarim resimleri uygulandi (Profil, Ayarlar).");
+                Debug.Log("Sonbahar ekranlari: tasarim resimleri uygulandi.");
             }
         }
 
@@ -258,6 +263,214 @@ namespace NewBattle.EditorTools
             HideOldWindow(window, layer);
             return true;
         }
+
+        // ------------------------------------------------------------------
+        // Seviye yolu
+        // ------------------------------------------------------------------
+
+        /// <summary>Tasarim pikselini tuval birimine cevirir (tuval yuksekligi 1080 sabit).</summary>
+        private const float DesignToCanvas = 1080f / 1116f;
+
+        private static bool ApplyLevelRoadDesign(LevelRoadScreen screen)
+        {
+            var root = (RectTransform)screen.transform;
+            if (root.Find("Arkaplan") is not RectTransform background)
+                return false;
+
+            SetSharpDesign($"{ArtFolder}/seviyeyolu_arkaplan.png");
+            SetSharpDesign($"{ArtFolder}/seviyeyolu_cerceve.png");
+            Undo.SetCurrentGroupName("Sonbahar seviye yolu");
+            var serialized = new SerializedObject(screen);
+
+            // Arka plan: resim; yerlesim bunun piksellerine gore.
+            Image backgroundImage = background.GetComponent<Image>();
+            Undo.RecordObject(backgroundImage, "Arka plan");
+            backgroundImage.sprite = Sprite("seviyeyolu_arkaplan");
+            backgroundImage.type = Image.Type.Simple;
+            backgroundImage.color = Color.white;
+            Undo.RecordObject(background, "Arka plan");
+            Stretch(background, 0f, 0f, 0f, 0f);
+            background.SetAsFirstSibling();
+
+            if (root.Find("Baslik")?.GetComponent<Graphic>() is Graphic title)
+            {
+                Undo.RecordObject(title, "Gizle");
+                title.enabled = false; // basligi resim yaziyor
+            }
+
+            DesignHit(ScreenRef(serialized, "closeButton"), background, new Vector4(1855, 40, 1962, 152));
+            ModeOverlay(ScreenRef(serialized, "levelText"), background, new Vector4(58, 148, 430, 222), Hex("#FFC928"),
+                false, TextAlignmentOptions.Left);
+            ModeOverlay(ScreenRef(serialized, "rankText"), background, new Vector4(58, 222, 430, 276), Color.white,
+                false, TextAlignmentOptions.Left);
+
+            // XP cubugu: zemin resimde, dolum sari, yazi ustte.
+            if (ScreenRef(serialized, "xpFill") is RectTransform fill && fill.parent is RectTransform track)
+            {
+                ModeMap(track, background, new Vector4(514, 174, 1311, 226));
+                if (track.GetComponent<Image>() is Image trackImage)
+                {
+                    Undo.RecordObject(trackImage, "Gizle");
+                    trackImage.enabled = false;
+                }
+
+                Undo.RecordObject(fill, "Dolum");
+                fill.offsetMin = new Vector2(5f, 5f);
+                fill.offsetMax = new Vector2(0f, -5f);
+                if (fill.GetComponent<Image>() is Image fillImage)
+                {
+                    Undo.RecordObject(fillImage, "Dolum");
+                    fillImage.sprite = Sprite("ui_round");
+                    fillImage.type = Image.Type.Sliced;
+                    fillImage.pixelsPerUnitMultiplier = 2.6f;
+                    fillImage.color = Hex("#F6BE27");
+                    fillImage.enabled = true;
+                }
+            }
+
+            // Liste: resimdeki mor alan; kartlar resimdeki aralikla.
+            Transform list = ScreenRef(serialized, "scroll");
+            if (list is RectTransform panel)
+            {
+                ModeMap(panel, background, new Vector4(60, 350, 1940, 1036));
+                Undo.SetTransformParent(panel, root, "Liste");
+                if (panel.GetComponent<Image>() is Image panelImage)
+                {
+                    Undo.RecordObject(panelImage, "Gizle");
+                    panelImage.color = new Color(1f, 1f, 1f, 0f);
+                }
+
+                if (panel.GetComponent<ScrollRect>()?.viewport is RectTransform viewport)
+                {
+                    Undo.RecordObject(viewport, "Gorunum");
+                    Stretch(viewport, 0f, 0f, 0f, 0f);
+                }
+            }
+
+            if (ScreenRef(serialized, "listContent") is RectTransform content &&
+                content.GetComponent<GridLayoutGroup>() is GridLayoutGroup grid)
+            {
+                Undo.RecordObject(content, "Icerik");
+                content.anchorMin = new Vector2(0f, 0f);
+                content.anchorMax = new Vector2(0f, 1f);
+                content.pivot = new Vector2(0f, 0.5f);
+                content.offsetMin = new Vector2(content.offsetMin.x, 0f);
+                content.offsetMax = new Vector2(content.offsetMax.x, 0f);
+
+                Undo.RecordObject(grid, "Kartlar");
+                grid.cellSize = new Vector2(338f, 634f) * DesignToCanvas;
+                grid.spacing = Vector2.zero;
+                int side = Mathf.RoundToInt(38 * DesignToCanvas);
+                grid.padding = new RectOffset(side, side, Mathf.RoundToInt(26 * DesignToCanvas), 0);
+                grid.childAlignment = TextAnchor.UpperLeft;
+            }
+
+            if (serialized.FindProperty("cardTemplate").objectReferenceValue is LevelRoadCard card)
+                StyleLevelRoadCard(card);
+
+            // Cerceve en ustte: kartlar dal kenarlarin ve yapraklarin altindan kayar.
+            RectTransform frame = root.Find(AutumnLayerName) as RectTransform;
+            if (frame == null)
+            {
+                frame = NewRect(AutumnLayerName, root);
+                Undo.RegisterCreatedObjectUndo(frame.gameObject, "Cerceve");
+                AddImage(frame, null, Color.white);
+            }
+
+            Undo.RecordObject(frame, "Cerceve");
+            Stretch(frame, 0f, 0f, 0f, 0f);
+            frame.localScale = Vector3.one;
+            Image frameImage = frame.GetComponent<Image>();
+            Undo.RecordObject(frameImage, "Cerceve");
+            frameImage.sprite = Sprite("seviyeyolu_cerceve");
+            frameImage.type = Image.Type.Simple;
+            frameImage.color = Color.white;
+            frameImage.raycastTarget = false;
+            if (list != null)
+                frame.SetSiblingIndex(list.GetSiblingIndex() + 1);
+            else
+                frame.SetAsLastSibling();
+
+            return true;
+        }
+
+        /// <summary>Kart sablonu: resim kart (duruma gore degisir), yazilar ve ikon resimdeki yerlerde.</summary>
+        private static void StyleLevelRoadCard(LevelRoadCard card)
+        {
+            var serialized = new SerializedObject(card);
+            serialized.FindProperty("reachedSprite").objectReferenceValue = Sprite("yol_kart_alinan");
+            serialized.FindProperty("currentSprite").objectReferenceValue = Sprite("yol_kart_simdiki");
+            serialized.FindProperty("nextSprite").objectReferenceValue = Sprite("yol_kart_siradaki");
+            serialized.FindProperty("futureSprite").objectReferenceValue = Sprite("yol_kart_gelecek");
+            serialized.ApplyModifiedProperties();
+
+            const float w = 338f, h = 634f;
+            void Local(Transform target, Vector4 px)
+            {
+                if (target is not RectTransform rect)
+                    return;
+
+                Undo.RecordObject(rect, "Kart");
+                rect.anchorMin = new Vector2(px.x / w, 1f - px.w / h);
+                rect.anchorMax = new Vector2(px.z / w, 1f - px.y / h);
+                rect.offsetMin = rect.offsetMax = Vector2.zero;
+                rect.localScale = Vector3.one;
+            }
+
+            void Text(string field, Vector4 px, Color color, bool wrap)
+            {
+                Transform target = ScreenRef(serialized, field);
+                Local(target, px);
+                if (target != null && target.TryGetComponent(out TextMeshProUGUI text))
+                {
+                    Undo.RecordObject(text, "Kart");
+                    text.color = color;
+                    text.fontSharedMaterial = _plainMaterial;
+                    text.enableAutoSizing = true;
+                    text.fontSizeMin = 10f;
+                    text.fontSizeMax = wrap ? 44f : 56f;
+                    text.textWrappingMode = wrap ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
+                    text.alignment = TextAlignmentOptions.Center;
+                }
+            }
+
+            if (ScreenRef(serialized, "background")?.GetComponent<Image>() is Image back)
+            {
+                Undo.RecordObject(back, "Kart");
+                back.sprite = Sprite("yol_kart_gelecek");
+                back.type = Image.Type.Simple;
+                back.color = Color.white;
+            }
+
+            Color ink = Hex("#4A2A12");
+            Text("levelText", new Vector4(28, 46, 310, 106), ink, false);
+            Text("rankText", new Vector4(40, 108, 298, 150), Hex("#5B3A1A"), false);
+            Text("rewardText", new Vector4(26, 428, 312, 598), ink, true);
+            Local(ScreenRef(serialized, "rewardIcon"), new Vector4(89, 209, 249, 369));
+
+            if (ScreenRef(serialized, "reachedMark") is Transform mark)
+            {
+                Local(mark, new Vector4(258, 34, 322, 84));
+                if (mark.TryGetComponent(out Image tick))
+                {
+                    Undo.RecordObject(tick, "Tik");
+                    tick.sprite = Sprite("yol_tik");
+                    tick.color = Color.white;
+                    tick.preserveAspect = true;
+                    tick.enabled = true;
+                }
+            }
+
+            if (ScreenRef(serialized, "nextOutline") is Transform outline)
+            {
+                foreach (Graphic graphic in outline.GetComponentsInChildren<Graphic>(true))
+                {
+                    Undo.RecordObject(graphic, "Gizle");
+                    graphic.enabled = false; // altin cerceve kart resminde
+                }
+            }
+        }
     }
 }
+
 #endif

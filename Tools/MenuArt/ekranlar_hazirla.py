@@ -9,6 +9,11 @@ Kaynaklar Tools/MenuArt/kaynak/*_tasarim.jpg (2000x1116), ciktilar Assets/GameAr
       ustundeki dal / yaprak / yazilar kalir.
     - degisen yazilar (isim, seviye, sayilar, AÇIK/KAPALI, FPS, surum) silinir; oyun canli yazar.
 
+  Seviye yolu: arka plan (kartlar, seviye yazilari ve XP dolumu silinmis), ustte cerceve
+    (dal kenarlar, kutuk, yapraklar; kartlar altindan kayar) ve dort kart resmi:
+    alinan (gri), simdiki (krem), siradaki (altin yaprakli), gelecek (ahsap). Kart yazilari,
+    para ikonu ve tik silinir; oyun yazar. Yesil tik ayri resim.
+
 Calistir:   python Tools/MenuArt/ekranlar_hazirla.py   (opencv-python gerekir)
 Koordinatlar Unity tarafinda: Assets/Editor/Menu/MainMenuBuilder.AutumnScreens.cs.
 """
@@ -208,7 +213,118 @@ def settings():
     return buttons, (bx0, by0, bx1, by1)
 
 
+def smooth_fill(img, mask, scale=0.25, blur=4):
+    """Buyuk alanlari yumusak renkle doldurur (kucuk olcekte inpaint)."""
+    small = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    small_mask = cv2.resize(mask, (small.shape[1], small.shape[0]), interpolation=cv2.INTER_NEAREST)
+    filled = cv2.inpaint(small, small_mask, 9, cv2.INPAINT_TELEA)
+    filled = cv2.GaussianBlur(cv2.resize(filled, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_CUBIC),
+                              (0, 0), blur)
+    out = img.copy()
+    out[mask > 0] = filled[mask > 0]
+    return out
+
+
+def is_purple(img):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(int)
+    return (hsv[..., 0] > 118) & (hsv[..., 0] < 152) & (hsv[..., 1] > 60) & (hsv[..., 2] < 160)
+
+
+ROAD_CARDS = [(-229, 85), (110, 424), (449, 763), (788, 1102), (1128, 1442), (1467, 1782), (1806, 2120)]
+ROAD_TOP, ROAD_BOTTOM, ROAD_MARGIN = 388, 998, 12
+ROAD_VIEW = (60, 350, 1940, 1036)  # kartlarin kaydigi alan
+
+
+def road_card_sprite(img, x0, x1, name, check=False, patch_from=None):
+    m = ROAD_MARGIN
+    cx0, cy0, cx1, cy1 = x0 - m, ROAD_TOP - m, x1 + m, ROAD_BOTTOM + m
+    card = img[cy0:cy1, cx0:cx1].copy()
+    alpha = (~is_purple(card)).astype(float)
+    alpha = cv2.morphologyEx(alpha, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    h, w = card.shape[:2]
+    hsv = cv2.cvtColor(card, cv2.COLOR_BGR2HSV).astype(int)
+    erase = np.zeros((h, w), np.uint8)
+    inner = np.zeros((h, w), bool)
+    inner[m + 20:h - m - 30, m + 18:w - m - 18] = True
+    dark = (hsv[..., 2] < 120) & inner
+    text_rows = np.zeros((h, w), bool)
+    text_rows[m + 25:m + 150] = True     # SEVIYE / rutbe
+    text_rows[m + 410:m + 590] = True    # odul
+    erase[dark & text_rows] = 1
+    green = (hsv[..., 0] > 40) & (hsv[..., 0] < 85) & (hsv[..., 1] > 90) & (hsv[..., 2] > 120)
+    erase[(green & text_rows)] = 1
+    cv2.circle(erase, (w // 2, m + 277), 84, 1, -1)   # para / yildiz
+    erase = cv2.dilate(erase, np.ones((7, 7), np.uint8))
+    erase[~inner] = 0
+    if check:  # yesil tik
+        tick = np.zeros((h, w), np.uint8)
+        area = hsv[m + 4:m + 84, w - m - 80:w - m - 2]
+        tick[m + 4:m + 84, w - m - 80:w - m - 2] = ((area[..., 0] > 38) & (area[..., 0] < 90) & (area[..., 1] > 50))
+        erase |= cv2.dilate(tick, np.ones((9, 9), np.uint8))
+    card = cv2.inpaint(card, erase * 255, 9, cv2.INPAINT_TELEA)
+    if patch_from is not None:
+        # cercevenin buyuk yapraklari bu kartin sol alt kosesini kapatiyordu: komsu kartin
+        # ayni kosesi bu kartin rengine boyanip konur.
+        px0, py0 = 0, h - 130
+        donor = patch_from[py0:, px0:px0 + 130].astype(float)
+        dh = cv2.cvtColor(patch_from[py0:, px0:px0 + 130], cv2.COLOR_BGR2HSV).astype(int)
+        surface = (dh[..., 2] > 170) & (dh[..., 1] < 90)
+        own = np.median(card[h - 260:h - 140, m + 40:m + 140].reshape(-1, 3), axis=0)
+        cream = np.median(donor[surface], axis=0)
+        donor[surface] = own + (donor[surface] - cream) * 0.5
+        card[py0:, px0:px0 + 130] = np.clip(donor, 0, 255).astype(np.uint8)
+        alpha[py0:, px0:px0 + 130] = (~is_purple(patch_from[py0:, px0:px0 + 130])).astype(float)
+    # komsu kartin bosluga tasan yaprak parcalari alinmaz
+    alpha[:, :m - 3] = 0.0
+    alpha[:, w - m + 3:] = 0.0
+    save_rgba(name, card, cv2.GaussianBlur(alpha, (0, 0), 0.8))
+    return card
+
+
+def level_road():
+    img = load("seviyeyolu_tasarim.jpg")
+    current = road_card_sprite(img, 449, 763, "yol_kart_simdiki.png", check=True)
+    road_card_sprite(img, 110, 424, "yol_kart_alinan.png", check=True, patch_from=current)
+    check = img[400:456, 690:762].copy()
+    road_card_sprite(img, 788, 1102, "yol_kart_siradaki.png")
+    road_card_sprite(img, 1128, 1442, "yol_kart_gelecek.png")
+    hsv = cv2.cvtColor(check, cv2.COLOR_BGR2HSV).astype(int)
+    check_alpha = ((hsv[..., 0] > 40) & (hsv[..., 0] < 85) & (hsv[..., 1] > 80)).astype(float)
+    save_rgba("yol_tik.png", check, cv2.GaussianBlur(check_alpha, (0, 0), 0.7))
+
+    # Kartlarin yeri mor zeminle doldurulur.
+    cards = np.zeros((H, W), np.uint8)
+    for x0, x1 in ROAD_CARDS:
+        cards[ROAD_TOP - 30:ROAD_BOTTOM + 14, max(0, x0 - 24):min(W, x1 + 26)] = 1
+    view = np.zeros((H, W), np.uint8)
+    vx0, vy0, vx1, vy1 = ROAD_VIEW
+    view[vy0:vy1, vx0:vx1] = 1
+    leaves = np.zeros((H, W), bool)  # sol alttaki buyuk yaprak kumesi kartin onunde kalir
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(int)
+    box = hsv[915:1080, 20:205]
+    leaves[915:1080, 20:205] = (box[..., 0] < 35) & (box[..., 1] > 90) & (box[..., 2] > 120)
+    leaves = cv2.dilate(leaves.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    hole = ((cards > 0) | is_purple(img)) & (view > 0) & ~leaves
+    hole = cv2.morphologyEx(hole.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+
+    background = smooth_fill(img, (((cards > 0) | ~is_purple(img)) & (view > 0) & ~leaves).astype(np.uint8) * 255)
+
+    # Seviye / rutbe yazilari (orman uzerinde) ve XP dolumu + yazisi silinir.
+    words = np.zeros((H, W), np.uint8)
+    words[150:285, 50:360] = 1
+    background = smooth_fill(background, words * 255, scale=0.5, blur=2)
+    track_color = np.median(background[205:222, 700:1000].reshape(-1, 3), axis=0)
+    background[181:221, 519:1307] = track_color.astype(np.uint8)
+    cv2.imwrite(os.path.join(OUT, "seviyeyolu_arkaplan.png"), background)
+
+    frame_alpha = 1.0 - cv2.GaussianBlur(hole.astype(float), (0, 0), 1.0)
+    frame_alpha[:300] = 0.0  # ust kisim (baslik, XP) yalniz arka planda
+    frame_alpha[:360, :1400] = 0.0
+    save_rgba("seviyeyolu_cerceve.png", background, frame_alpha)
+
+
 if __name__ == "__main__":
     profile()
     settings()
+    level_road()
     print("ok")

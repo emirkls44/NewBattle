@@ -113,7 +113,8 @@ namespace NewBattle.UI
                 card.name = $"Seviye_{target}";
                 card.gameObject.SetActive(true);
 
-                LevelRoadCard.State state = target <= level ? LevelRoadCard.State.Reached
+                LevelRoadCard.State state = target == level ? LevelRoadCard.State.Current
+                    : target < level ? LevelRoadCard.State.Reached
                     : target == level + 1 ? LevelRoadCard.State.Next
                     : LevelRoadCard.State.Future;
 
