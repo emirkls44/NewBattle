@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec1b1e17f78d3a948a379c13a04fdc3b, type: 3}
   m_Name: ArkaPlanKutuphanesi
   m_EditorClassIdentifier: Assembly-CSharp::NewBattle.Progression.MenuBackgroundLibrary
-  defaultName: "Sar\u0131 (Varsay\u0131lan)"
-  defaultImage: {fileID: 21300000, guid: de301723ba6b8104da89614593509ff4, type: 3}
+  defaultName: "Sonbahar (Varsay\u0131lan)"
+  defaultImage: {fileID: 21300000, guid: 86edfdcaf4b393b458f9527fd1193c37, type: 3}
   backgrounds:
   - id: gun_batimi
     displayName: "G\xFCn Bat\u0131m\u0131"
