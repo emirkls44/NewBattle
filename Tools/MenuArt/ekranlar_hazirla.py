@@ -14,6 +14,10 @@ Kaynaklar Tools/MenuArt/kaynak/*_tasarim.jpg (2000x1116), ciktilar Assets/GameAr
     alinan (gri), simdiki (krem), siradaki (altin yaprakli), gelecek (ahsap). Kart yazilari,
     para ikonu ve tik silinir; oyun yazar. Yesil tik ayri resim.
 
+  Magaza / Karakter: arka plan (kartlar, karakter, para, isim yazilari silinmis), kart
+    resimleri (yazi ve ikon silinmis), secili kart (altin yaprakli), tikler, sekme tahtasi ve
+    islem butonu (secili: resimdeki, sec: yesil, satin al: altin).
+
 Calistir:   python Tools/MenuArt/ekranlar_hazirla.py   (opencv-python gerekir)
 Koordinatlar Unity tarafinda: Assets/Editor/Menu/MainMenuBuilder.AutumnScreens.cs.
 """
@@ -322,9 +326,204 @@ def level_road():
     frame_alpha[:360, :1400] = 0.0
     save_rgba("seviyeyolu_cerceve.png", background, frame_alpha)
 
+def erase_text(img, rect, dark=True, threshold=125, pad=6, radius=7):
+    """Dikdortgendeki koyu (ya da acik) yaziyi silip komsulardan tamamlar."""
+    x0, y0, x1, y1 = rect
+    v = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)[..., 2]
+    mask = np.zeros(img.shape[:2], np.uint8)
+    region = v[y0:y1, x0:x1]
+    mask[y0:y1, x0:x1] = (region < threshold) if dark else (region > threshold)
+    mask = cv2.dilate(mask, np.ones((pad, pad), np.uint8))
+    return cv2.inpaint(img, mask * 255, radius, cv2.INPAINT_TELEA)
+
+
+def erase_plank_text(img, rect, pad=9):
+    """Tahta / dugme uzerindeki acik yaziyi (ve koyu kenarini) satir satir doldurarak siler."""
+    x0, y0, x1, y1 = rect
+    hsv = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2HSV).astype(int)
+    light = ((hsv[..., 1] < 95) & (hsv[..., 2] > 150)).astype(np.uint8)
+    light = cv2.dilate(light, np.ones((pad, pad), np.uint8))
+    ys, xs = np.nonzero(light)
+    out = img.copy()
+    if len(xs):
+        fill_rows(out, x0 + xs.min(), y0 + ys.min(), x0 + xs.max() + 1, y0 + ys.max() + 1, edge=5)
+    return out
+
+
+def fill_person(img, rect):
+    """Karakterin yeri: cevreden yumusak doldurma (oyunda 3D karakter ustunde durur)."""
+    x0, y0, x1, y1 = rect
+    mask = np.zeros((H, W), np.uint8)
+    cv2.rectangle(mask, (x0, y0), (x1, y1), 1, -1)
+    filled = cv2.inpaint(img, mask * 255, 25, cv2.INPAINT_NS)
+    soft = cv2.GaussianBlur(filled, (0, 0), 14)
+    inner = cv2.GaussianBlur(mask.astype(float), (0, 0), 18)[..., None]
+    edge = cv2.GaussianBlur(mask.astype(float), (0, 0), 4)[..., None]
+    out = img * (1 - edge) + (filled * (1 - inner) + soft * inner) * edge
+    return out.astype(np.uint8)
+
+
+def leaf_alpha(img):
+    """Doygun yaprak / altin renkleri (turuncu, sari, kirmizi, yesil)."""
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(int)
+    warm = ((hsv[..., 0] < 32) | (hsv[..., 0] > 170)) & (hsv[..., 1] > 110) & (hsv[..., 2] > 100)
+    green = (hsv[..., 0] > 30) & (hsv[..., 0] < 85) & (hsv[..., 1] > 90) & (hsv[..., 2] > 70)
+    leaves = (warm | green).astype(np.uint8)
+    leaves = cv2.morphologyEx(leaves, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    return cv2.dilate(leaves, np.ones((5, 5), np.uint8)).astype(float)
+
+
+def recolor(img, hue_shift, sat_gain, val_gain, select):
+    """select maskesindeki pikselleri yeni renge cevirir (buton cesitleri)."""
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(float)
+    shifted = hsv.copy()
+    shifted[..., 0] = (shifted[..., 0] + hue_shift) % 180
+    shifted[..., 1] = np.clip(shifted[..., 1] * sat_gain, 0, 255)
+    shifted[..., 2] = np.clip(shifted[..., 2] * val_gain, 0, 255)
+    out = cv2.cvtColor(shifted.astype(np.uint8), cv2.COLOR_HSV2BGR)
+    return np.where(select[..., None], out, img)
+
+
+def colorize(img, color, select, strength=0.85):
+    """Gri yuzeyi verilen renge boyar (parlaklik korunur)."""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(float)[..., None] / 255.0
+    tinted = np.clip(np.array(color, float) * (0.35 + gray * 0.95), 0, 255)
+    mixed = img.astype(float) * (1 - strength) + tinted * strength
+    return np.where(select[..., None], mixed, img.astype(float)).astype(np.uint8)
+
+
+def button_variants(prefix, plank, alpha, face_select):
+    """Islem butonu: resimdeki (kapali) + yesil (sec) + altin (satin al)."""
+    save_rgba(f"{prefix}_kapali.png", plank, alpha)
+    save_rgba(f"{prefix}_sec.png", colorize(plank, (60, 190, 95), face_select), alpha)
+    save_rgba(f"{prefix}_al.png", colorize(plank, (40, 185, 245), face_select), alpha)
+
+
+SHOP_CARD = (487, 197, 878, 655)          # normal kart (Rahat Durus)
+SHOP_PREVIEW = (52, 180, 490, 680)        # altin yaprakli secili kart (Bekleme)
+SHOP_VIEW = (60, 195, 1295, 1065)
+
+
+def shop():
+    img = load("magaza_tasarim.jpg")
+    x0, y0, x1, y1 = SHOP_CARD
+
+    def clean_card(src, ox, oy):
+        """Kart icindeki ad, tik, yildiz, not ve tahta yazisi silinir (ox, oy: kartin sol ustu)."""
+        out = src.copy()
+        out = erase_text(out, (ox + 20, oy + 38, ox + 380, oy + 98), threshold=120)    # ad + tik
+        tick = np.zeros(out.shape[:2], np.uint8)
+        tick[oy + 26:oy + 80, ox + 312:ox + 376] = 1
+        out = cv2.inpaint(out, tick * 255, 7, cv2.INPAINT_TELEA)
+        out = erase_text(out, (ox + 40, oy + 292, ox + 350, oy + 340), threshold=120)  # not
+        star = np.zeros(out.shape[:2], np.uint8)
+        cv2.circle(star, (ox + 196, oy + 196), 100, 1, -1)
+        out = cv2.inpaint(out, star * 255, 11, cv2.INPAINT_TELEA)
+        # tahta yazisi (acik renk) tahtanin rengiyle
+        out = erase_plank_text(out, (ox + 60, oy + 356, ox + 340, oy + 432))
+        return out
+
+    clean = clean_card(img, x0, y0)
+    card = clean[y0:y1, x0:x1]
+    save_rgba("magaza_kart.png", card, np.ones(card.shape[:2]))
+
+    # Secili kart: Bekleme (ayni kart + altin yaprakli cerceve), disari tasan yerde yalniz yapraklar.
+    px0, py0, px1, py1 = SHOP_PREVIEW
+    bx0, by0 = 97, 197  # Bekleme kartinin normal kart esdegeri sol ustu
+    preview_src = clean_card(img, bx0, by0)
+    preview = preview_src[py0:py1, px0:px1]
+    alpha = leaf_alpha(preview)
+    alpha[by0 - py0:by0 - py0 + (y1 - y0), bx0 - px0:bx0 - px0 + (x1 - x0)] = 1.0
+    save_rgba("magaza_kart_secili.png", preview, cv2.GaussianBlur(alpha, (0, 0), 1.0))
+
+    tick = img[226:272, 803:852].copy()
+    hsv = cv2.cvtColor(tick, cv2.COLOR_BGR2HSV).astype(int)
+    save_rgba("magaza_tik.png", tick, cv2.GaussianBlur(((hsv[..., 2] < 150) & (hsv[..., 1] > 60)).astype(float), (0, 0), 0.7))
+
+    # Islem butonu (kahverengi tahta, sarmasikli); yesil / altin cesitleri gri yuzden.
+    bx0, by0, bx1, by1 = 1395, 925, 1905, 1092
+    plank = erase_plank_text(img, (1500, 955, 1810, 1055))[by0:by1, bx0:bx1]
+    hsv = cv2.cvtColor(plank, cv2.COLOR_BGR2HSV).astype(int)
+    wood = (hsv[..., 0] >= 3) & (hsv[..., 0] <= 28) & (hsv[..., 1] > 50) & (hsv[..., 2] > 50)
+    inner = np.zeros(wood.shape, bool)
+    inner[22:150, 55:455] = True
+    button_variants("magaza_buton", plank, np.ones(plank.shape[:2]), wood & inner)
+
+    # Arka plan: kartlar, para, karakter ve isim silinir.
+    background = img.copy()
+    vx0, vy0, vx1, vy1 = SHOP_VIEW
+    panel_color = np.median(img[1062:1072, 300:900].reshape(-1, 3), axis=0)
+    background[vy0:vy1, vx0:vx1] = panel_color.astype(np.uint8)
+    edge = np.zeros((H, W), np.uint8)
+    edge[vy0 - 6:vy1 + 6, vx0 - 6:vx1 + 6] = 1
+    edge[vy0 + 6:vy1 - 6, vx0 + 6:vx1 - 6] = 0
+    background = cv2.inpaint(background, edge * 255, 5, cv2.INPAINT_TELEA)
+    fill_rows(background, 1552, 50, 1750, 102, edge=5)  # para yazisi
+    background = fill_person(background, (1478, 240, 1830, 815))
+    background = erase_text(background, (1530, 890, 1785, 945), dark=False, threshold=190, pad=9, radius=9)
+    cv2.imwrite(os.path.join(OUT, "magaza_arkaplan.png"), background)
+
+
+CHAR_CARD = (452, 190, 828, 350)
+CHAR_VIEW = (70, 190, 830, 1068)
+
+
+def character():
+    img = load("karakter_tasarim.jpg")
+    x0, y0, x1, y1 = CHAR_CARD
+    card = img.copy()
+    card = erase_text(card, (x0 + 20, y0 + 35, x0 + 365, y0 + 140), threshold=120, pad=7, radius=9)
+    star = np.zeros(card.shape[:2], np.uint8)
+    cv2.circle(star, (x0 + 66, y0 + 78), 42, 1, -1)
+    card = cv2.inpaint(card, star * 255, 9, cv2.INPAINT_TELEA)
+    card = card[y0:y1, x0:x1]
+    save_rgba("karakter_kart.png", card, np.ones(card.shape[:2]))
+
+    tick = img[218:260, 384:432].copy()
+    hsv = cv2.cvtColor(tick, cv2.COLOR_BGR2HSV).astype(int)
+    save_rgba("karakter_tik.png", tick, cv2.GaussianBlur(((hsv[..., 0] > 40) & (hsv[..., 0] < 90) & (hsv[..., 1] > 70)).astype(float), (0, 0), 0.7))
+
+    # Sekme tahtasi (turuncu; kapali sekme oyunda koyulastirilir), yazisi silinir.
+    tab = erase_plank_text(img, (548, 34, 844, 84), pad=5)[22:92, 534:852]
+    save_rgba("karakter_sekme.png", tab, np.ones(tab.shape[:2]))
+
+    # Islem butonu (gri tahta, sarmasikli): kapali; yesil / altin cesitleri.
+    bx0, by0, bx1, by1 = 1462, 928, 1960, 1092
+    plank = erase_plank_text(img, (1580, 970, 1840, 1050), pad=7)[by0:by1, bx0:bx1]
+    hsv = cv2.cvtColor(plank, cv2.COLOR_BGR2HSV).astype(int)
+    face = (hsv[..., 1] < 45) & (hsv[..., 2] > 90)
+    alpha = np.ones(plank.shape[:2])
+    button_variants("karakter_buton", plank, alpha, face)
+
+    # Arka plan
+    background = img.copy()
+    # kartlarin yeri: hemen altindaki bos tahtadan kopya (damarlar dikey)
+    band = img[360:526, 72:832].astype(float)
+    background[188:354, 72:832] = band.astype(np.uint8)
+    seam = np.linspace(0, 1, 14)[:, None, None]
+    background[354:368, 72:832] = (band[-14:] * (1 - seam) + img[354:368, 72:832] * seam).astype(np.uint8)
+    background = erase_text(background, (55, 112, 520, 172), threshold=120, pad=7)     # alt baslik
+    background = erase_text(background, (1555, 40, 1748, 100), dark=False, threshold=200, pad=7)  # para
+    background = fill_person(background, (1138, 150, 1585, 892))
+    background = erase_text(background, (1262, 905, 1460, 965), threshold=120, pad=9, radius=9)  # isim
+    cv2.imwrite(os.path.join(OUT, "karakter_arkaplan.png"), background)
+
+    # Panel cercevesi ustte: alttaki yapraklar kartlarin onunde kalir.
+    vx0, vy0, vx1, vy1 = CHAR_VIEW
+    frame_alpha = np.ones((H, W))
+    inside = np.zeros((H, W), bool)
+    inside[vy0:vy1, vx0:vx1] = True
+    frame_alpha[inside] = leaf_alpha(background)[inside]
+    outside_panel = np.ones((H, W), bool)
+    outside_panel[150:1116, 0:900] = False
+    frame_alpha[outside_panel] = 0.0
+    save_rgba("karakter_cerceve.png", background, cv2.GaussianBlur(frame_alpha, (0, 0), 1.0))
+
 
 if __name__ == "__main__":
     profile()
     settings()
     level_road()
+    shop()
+    character()
     print("ok")

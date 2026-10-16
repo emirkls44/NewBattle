@@ -14,6 +14,8 @@ namespace NewBattle.EditorTools
     ///     saydam mor); butonlar resmin ustunde gorunmez basma alanlari, degisen yazilar canli.
     ///   - Seviye yolu: arka plan resmi, kartlar resimdeki kart resimleri (alinan / simdiki /
     ///     siradaki / gelecek), en ustte cerceve (kartlar dal kenarlarin altindan kayar).
+    ///   - Magaza ve Karakter: arka plan resmi, kartlar resimdeki kart resimleri, sagda 3D karakter
+    ///     resimdeki yerde, islem butonu durumuna gore resim degistirir (sec / satin al / secili).
     /// Resimler: Tools/MenuArt/ekranlar_hazirla.py. Derleyince kendiliginden uygulanir;
     /// surum (AutumnScreensVersion) artinca yeniden yerlesir.
     /// </summary>
@@ -51,9 +53,11 @@ namespace NewBattle.EditorTools
             SettingsScreen settings = Object.FindFirstObjectByType<SettingsScreen>(FindObjectsInactive.Include);
             ProfileScreen profile = Object.FindFirstObjectByType<ProfileScreen>(FindObjectsInactive.Include);
             LevelRoadScreen levelRoad = Object.FindFirstObjectByType<LevelRoadScreen>(FindObjectsInactive.Include);
+            ShopScreen shop = Object.FindFirstObjectByType<ShopScreen>(FindObjectsInactive.Include);
+            LobbyAnimationScreen character = Object.FindFirstObjectByType<LobbyAnimationScreen>(FindObjectsInactive.Include);
 
             bool Needs(Component screen) => screen != null && (force || screen.transform.Find(AutumnLayerName) == null);
-            if (!Needs(settings) && !Needs(profile) && !Needs(levelRoad))
+            if (!Needs(settings) && !Needs(profile) && !Needs(levelRoad) && !Needs(shop) && !Needs(character))
                 return;
 
             if (!PrepareFont())
@@ -66,10 +70,15 @@ namespace NewBattle.EditorTools
                 changed |= ApplyProfileDesign(profile);
             if (Needs(levelRoad))
                 changed |= ApplyLevelRoadDesign(levelRoad);
+            if (Needs(shop))
+                changed |= ApplyShopDesign(shop);
+            if (Needs(character))
+                changed |= ApplyCharacterDesign(character);
 
             if (changed)
             {
-                Component any = settings != null ? settings : profile;
+                Component any = settings != null ? settings : profile != null ? profile : levelRoad != null ? levelRoad
+                    : shop != null ? shop : character;
                 EditorSceneManager.MarkSceneDirty(any.gameObject.scene);
                 EditorSceneManager.SaveScene(any.gameObject.scene);
                 Debug.Log("Sonbahar ekranlari: tasarim resimleri uygulandi.");
@@ -470,7 +479,368 @@ namespace NewBattle.EditorTools
                 }
             }
         }
+        // ------------------------------------------------------------------
+        // Magaza ve Karakter (tam ekran, solda kart listesi, sagda 3D karakter)
+        // ------------------------------------------------------------------
+
+        /// <summary>Arka plan resmini koyar; yerlesimin katmani budur.</summary>
+        private static RectTransform AutumnBackground(RectTransform root, string sprite)
+        {
+            if (root.Find("Arkaplan") is not RectTransform background)
+                return null;
+
+            SetSharpDesign($"{ArtFolder}/{sprite}.png");
+            Image image = background.GetComponent<Image>();
+            Undo.RecordObject(image, "Arka plan");
+            image.sprite = Sprite(sprite);
+            image.type = Image.Type.Simple;
+            image.color = Color.white;
+            image.preserveAspect = false;
+            Undo.RecordObject(background, "Arka plan");
+            Stretch(background, 0f, 0f, 0f, 0f);
+            background.localScale = Vector3.one;
+            background.SetAsFirstSibling();
+
+            foreach (string name in new[] { "Baslik", "Para" })
+            {
+                if (root.Find(name) is not Transform old)
+                    continue;
+
+                foreach (Graphic graphic in old.GetComponentsInChildren<Graphic>(true))
+                {
+                    Undo.RecordObject(graphic, "Gizle");
+                    graphic.enabled = false; // resimde var
+                }
+            }
+
+            return background;
+        }
+
+        /// <summary>Isaret: ekran bu surumle uygulandi (gorunmez).</summary>
+        private static RectTransform AutumnMarker(RectTransform root, Sprite overlay)
+        {
+            RectTransform marker = root.Find(AutumnLayerName) as RectTransform;
+            if (marker == null)
+            {
+                marker = NewRect(AutumnLayerName, root);
+                Undo.RegisterCreatedObjectUndo(marker.gameObject, "Tasarim");
+            }
+
+            Undo.RecordObject(marker, "Tasarim");
+            Stretch(marker, 0f, 0f, 0f, 0f);
+            marker.localScale = Vector3.one;
+            Image image = marker.GetComponent<Image>();
+            if (overlay != null)
+            {
+                if (image == null)
+                    image = Undo.AddComponent<Image>(marker.gameObject);
+                Undo.RecordObject(image, "Cerceve");
+                image.sprite = overlay;
+                image.type = Image.Type.Simple;
+                image.color = Color.white;
+                image.raycastTarget = false;
+            }
+
+            return marker;
+        }
+
+        /// <summary>Kaydirilan liste resimdeki alana; panelin kendi resimleri saydam.</summary>
+        private static void AutumnList(SerializedObject screen, RectTransform background, Vector4 view,
+            Vector2 cell, Vector2 spacing, Vector2 padding, int columns)
+        {
+            Transform list = ScreenRef(screen, "scroll");
+            RectTransform content = ScreenRef(screen, "listContent") as RectTransform;
+            if (list == null && content != null)
+                list = content.GetComponentInParent<ScrollRect>(true)?.transform;
+            if (list is not RectTransform panel)
+                return;
+
+            ModeMap(panel, background, view);
+            Undo.SetTransformParent(panel, background.parent, "Liste");
+            panel.SetSiblingIndex(background.GetSiblingIndex() + 1);
+            foreach (Image image in panel.GetComponentsInChildren<Image>(true))
+            {
+                if (content != null && image.transform.IsChildOf(content))
+                    continue;
+
+                Undo.RecordObject(image, "Saydam");
+                image.color = new Color(1f, 1f, 1f, 0f);
+            }
+
+            if (panel.GetComponent<ScrollRect>()?.viewport is RectTransform viewport)
+            {
+                Undo.RecordObject(viewport, "Gorunum");
+                Stretch(viewport, 0f, 0f, 0f, 0f);
+            }
+
+            if (content != null && content.GetComponent<GridLayoutGroup>() is GridLayoutGroup grid)
+            {
+                Undo.RecordObject(grid, "Kartlar");
+                grid.cellSize = cell * DesignToCanvas;
+                grid.spacing = spacing * DesignToCanvas;
+                grid.padding = new RectOffset(Mathf.RoundToInt(padding.x * DesignToCanvas), 0,
+                    Mathf.RoundToInt(padding.y * DesignToCanvas), Mathf.RoundToInt(20 * DesignToCanvas));
+                grid.childAlignment = TextAnchor.UpperLeft;
+                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                grid.constraintCount = columns;
+            }
+        }
+
+        /// <summary>Kart icindeki nesneyi kart resminin piksellerine gore yerlestirir.</summary>
+        private static void CardPlace(Transform target, Vector2 size, Vector4 px)
+        {
+            if (target is not RectTransform rect)
+                return;
+
+            Undo.RecordObject(rect, "Kart");
+            rect.anchorMin = new Vector2(px.x / size.x, 1f - px.w / size.y);
+            rect.anchorMax = new Vector2(px.z / size.x, 1f - px.y / size.y);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            rect.localScale = Vector3.one;
+            rect.localRotation = Quaternion.identity;
+        }
+
+        private static void CardText(Transform target, Vector2 size, Vector4 px, Color color, float max,
+            TextAlignmentOptions alignment, bool shadow = false)
+        {
+            CardPlace(target, size, px);
+            if (target == null || !target.TryGetComponent(out TextMeshProUGUI text))
+                return;
+
+            Undo.RecordObject(text, "Kart");
+            text.enabled = true;
+            text.color = color;
+            text.fontSharedMaterial = shadow ? _shadowMaterial : _plainMaterial;
+            text.alignment = alignment;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 10f;
+            text.fontSizeMax = max;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+        }
+
+        private static void CardImage(Transform target, Sprite sprite, Color color)
+        {
+            if (target == null || !target.TryGetComponent(out Image image))
+                return;
+
+            Undo.RecordObject(image, "Kart");
+            if (sprite != null)
+                image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.color = color;
+            image.preserveAspect = true;
+            image.enabled = true;
+        }
+
+        /// <summary>Islem butonu: resimdeki tahta; durumuna gore resim degisir, yazi canli.</summary>
+        private static void AutumnAction(SerializedObject screen, RectTransform background, Vector4 rect, Vector4 label,
+            string prefix, Color labelColor)
+        {
+            if (ScreenRef(screen, "actionButton") is not RectTransform action)
+                return;
+
+            Transform caption = ScreenRef(screen, "actionLabel");
+            DesignHit(action, background, rect);
+            Image own = action.GetComponent<Image>();
+            Undo.RecordObject(own, "Buton");
+            own.sprite = Sprite($"{prefix}_kapali");
+            own.type = Image.Type.Simple;
+            own.color = Color.white;
+            screen.FindProperty("actionFace").objectReferenceValue = own;
+            screen.FindProperty("actionLip").objectReferenceValue = null;
+            screen.FindProperty("selectSprite").objectReferenceValue = Sprite($"{prefix}_sec");
+            screen.FindProperty("buySprite").objectReferenceValue = Sprite($"{prefix}_al");
+            screen.FindProperty("disabledSprite").objectReferenceValue = Sprite($"{prefix}_kapali");
+            ModeOverlay(caption, background, label, labelColor, false);
+            if (caption != null && caption.TryGetComponent(out TextMeshProUGUI text))
+                text.fontSharedMaterial = _shadowMaterial;
+        }
+
+        private static bool ApplyShopDesign(ShopScreen screen)
+        {
+            var root = (RectTransform)screen.transform;
+            RectTransform background = AutumnBackground(root, "magaza_arkaplan");
+            if (background == null)
+                return false;
+
+            Undo.SetCurrentGroupName("Sonbahar magaza");
+            var serialized = new SerializedObject(screen);
+            if (root.Find("AltBaslik")?.GetComponent<Graphic>() is Graphic subtitle)
+            {
+                Undo.RecordObject(subtitle, "Gizle");
+                subtitle.enabled = false; // resimde var
+            }
+
+            DesignHit(ScreenRef(serialized, "closeButton"), background, new Vector4(1855, 35, 1962, 132));
+            ModeOverlay(ScreenRef(serialized, "coinText"), background, new Vector4(1552, 48, 1750, 102), Hex("#F6E6C8"), false);
+
+            AutumnList(serialized, background, new Vector4(60, 195, 1295, 1065),
+                new Vector2(391, 458), new Vector2(3, 12), new Vector2(37, 2), 3);
+            if (serialized.FindProperty("cardTemplate").objectReferenceValue is ShopItemCard card)
+                StyleShopCard(card);
+
+            ModeMap(root.Find("KarakterGolgesi"), background, new Vector4(1540, 762, 1770, 812));
+            ModeMap(ScreenRef(serialized, "characterView"), background, new Vector4(1490, 234, 1815, 816));
+            ModeOverlay(ScreenRef(serialized, "previewNameText"), background, new Vector4(1525, 888, 1790, 945),
+                Hex("#F3DEC0"), false);
+            AutumnAction(serialized, background, new Vector4(1395, 925, 1905, 1092), new Vector4(1500, 955, 1800, 1055),
+                "magaza_buton", Hex("#F6E6C8"));
+            serialized.ApplyModifiedProperties();
+
+            AutumnMarker(root, null);
+            return true;
+        }
+
+        private static void StyleShopCard(ShopItemCard card)
+        {
+            var serialized = new SerializedObject(card);
+            var size = new Vector2(391, 458);
+            Color ink = Hex("#4A2A12");
+
+            CardImage(ScreenRef(serialized, "background"), Sprite("magaza_kart"), Color.white);
+            if (card.GetComponent<Image>() is Image own)
+                own.preserveAspect = false;
+
+            if (ScreenRef(serialized, "previewOutline") is Transform outline)
+            {
+                CardPlace(outline, size, new Vector4(-45, -17, 393, 483));
+                CardImage(outline, Sprite("magaza_kart_secili"), Color.white);
+                if (outline.TryGetComponent(out Image outlineImage))
+                    outlineImage.preserveAspect = false;
+                outline.SetAsFirstSibling();
+            }
+
+            CardText(ScreenRef(serialized, "nameText"), size, new Vector4(23, 43, 316, 93), ink, 46f, TextAlignmentOptions.Center);
+            CardText(ScreenRef(serialized, "noteText"), size, new Vector4(40, 296, 351, 336), Hex("#5B3A1A"), 30f,
+                TextAlignmentOptions.Center);
+            CardPlace(ScreenRef(serialized, "icon"), size, new Vector4(110, 111, 280, 281));
+            CardImage(ScreenRef(serialized, "ownedMark"), Sprite("magaza_tik"), Color.white);
+            CardPlace(ScreenRef(serialized, "ownedMark"), size, new Vector4(316, 30, 368, 76));
+
+            if (ScreenRef(serialized, "priceBackground") is Transform price)
+            {
+                CardPlace(price, size, new Vector4(38, 348, 358, 433));
+                if (price.TryGetComponent(out Image plank))
+                {
+                    Undo.RecordObject(plank, "Gizle");
+                    plank.enabled = false; // tahta kart resminde
+                }
+
+                foreach (Transform child in price)
+                {
+                    if (child.TryGetComponent(out Image lip) && child != ScreenRef(serialized, "priceCoin"))
+                    {
+                        Undo.RecordObject(lip, "Gizle");
+                        lip.enabled = false;
+                    }
+                }
+            }
+
+            CardText(ScreenRef(serialized, "priceText"), new Vector2(320, 85), new Vector4(70, 6, 300, 78), Hex("#F6E6C8"), 50f,
+                TextAlignmentOptions.Center, shadow: true);
+            CardPlace(ScreenRef(serialized, "priceCoin"), new Vector2(320, 85), new Vector4(14, 10, 78, 74));
+
+            serialized.FindProperty("symbolColor").colorValue = new Color(0.85f, 0.75f, 0.62f, 1f);
+            foreach (string field in new[] { "buyColor", "adColor", "doneColor", "lockedColor", "comingSoonColor" })
+                serialized.FindProperty(field).colorValue = Color.white;
+            serialized.ApplyModifiedProperties();
+        }
+
+        private static bool ApplyCharacterDesign(LobbyAnimationScreen screen)
+        {
+            var root = (RectTransform)screen.transform;
+            RectTransform background = AutumnBackground(root, "karakter_arkaplan");
+            if (background == null)
+                return false;
+
+            SetSharpDesign($"{ArtFolder}/karakter_cerceve.png");
+            Undo.SetCurrentGroupName("Sonbahar karakter");
+            var serialized = new SerializedObject(screen);
+            Color ink = Hex("#5A3214");
+
+            DesignHit(ScreenRef(serialized, "closeButton"), background, new Vector4(1858, 25, 1962, 128));
+            ModeOverlay(ScreenRef(serialized, "coinText"), background, new Vector4(1556, 40, 1748, 100), Color.white, false);
+            ModeOverlay(ScreenRef(serialized, "subtitleText"), background, new Vector4(55, 112, 560, 172), ink, false,
+                TextAlignmentOptions.Left);
+
+            // Sekmeler: turuncu tahta; secili olmayan koyulasir.
+            foreach ((string field, Vector4 rect) in new[]
+                     {
+                         ("charactersTab", new Vector4(534, 22, 852, 92)),
+                         ("animationsTab", new Vector4(866, 22, 1184, 92)),
+                     })
+            {
+                if (ScreenRef(serialized, field) is not RectTransform tab)
+                    continue;
+
+                TextMeshProUGUI label = tab.GetComponentInChildren<TextMeshProUGUI>(true);
+                DesignHit(tab, background, rect);
+                Image own = tab.GetComponent<Image>();
+                Undo.RecordObject(own, "Sekme");
+                own.sprite = Sprite("karakter_sekme");
+                own.type = Image.Type.Simple;
+                own.color = Color.white;
+                if (label != null)
+                {
+                    Undo.RecordObject(label.rectTransform, "Sekme");
+                    Undo.SetTransformParent(label.rectTransform, tab, "Sekme");
+                    Stretch(label.rectTransform, 16f, 16f, 6f, 10f);
+                    label.rectTransform.localScale = Vector3.one;
+                    Undo.RecordObject(label, "Sekme");
+                    label.enabled = true;
+                    label.color = Color.white;
+                    label.fontSharedMaterial = _shadowMaterial;
+                    label.enableAutoSizing = true;
+                    label.fontSizeMin = 10f;
+                    label.fontSizeMax = 44f;
+                }
+            }
+
+            serialized.FindProperty("tabOnColor").colorValue = Color.white;
+            serialized.FindProperty("tabOffColor").colorValue = new Color(0.8f, 0.5f, 0.4f, 1f);
+
+            AutumnList(serialized, background, new Vector4(70, 190, 830, 1068),
+                new Vector2(376, 160), new Vector2(4, 6), new Vector2(0, 0), 2);
+            if (serialized.FindProperty("cardTemplate").objectReferenceValue is LobbyAnimationCard card)
+                StyleCharacterCard(card);
+
+            ModeMap(root.Find("KarakterGolgesi"), background, new Vector4(1250, 838, 1470, 892));
+            ModeMap(ScreenRef(serialized, "characterView"), background, new Vector4(1180, 135, 1540, 913));
+            ModeOverlay(ScreenRef(serialized, "previewNameText"), background, new Vector4(1262, 902, 1460, 965), ink, false);
+            AutumnAction(serialized, background, new Vector4(1462, 928, 1960, 1092), new Vector4(1560, 965, 1860, 1055),
+                "karakter_buton", Color.white);
+            serialized.ApplyModifiedProperties();
+
+            // Panel cercevesi ve yapraklari kartlarin onunde.
+            RectTransform frame = AutumnMarker(root, Sprite("karakter_cerceve"));
+            if (ScreenRef(serialized, "listContent")?.GetComponentInParent<ScrollRect>(true) is ScrollRect list)
+                frame.SetSiblingIndex(list.transform.GetSiblingIndex() + 1);
+            return true;
+        }
+
+        private static void StyleCharacterCard(LobbyAnimationCard card)
+        {
+            var serialized = new SerializedObject(card);
+            var size = new Vector2(376, 160);
+
+            CardImage(ScreenRef(serialized, "background"), Sprite("karakter_kart"), Color.white);
+            if (card.GetComponent<Image>() is Image own)
+                own.preserveAspect = false;
+
+            CardText(ScreenRef(serialized, "nameText"), size, new Vector4(113, 50, 348, 95), Hex("#4A2A12"), 44f,
+                TextAlignmentOptions.Left);
+            CardText(ScreenRef(serialized, "statusText"), size, new Vector4(113, 100, 308, 132), Hex("#5B3A1A"), 30f,
+                TextAlignmentOptions.Left);
+            CardPlace(ScreenRef(serialized, "icon"), size, new Vector4(33, 45, 98, 110));
+            CardImage(ScreenRef(serialized, "selectedMark"), Sprite("karakter_tik"), Color.white);
+            CardPlace(ScreenRef(serialized, "selectedMark"), size, new Vector4(316, 30, 358, 68));
+            CardPlace(ScreenRef(serialized, "lockMark"), size, new Vector4(318, 30, 356, 68));
+
+            serialized.FindProperty("unlockedColor").colorValue = Color.white;
+            serialized.FindProperty("lockedColor").colorValue = new Color(0.82f, 0.78f, 0.72f, 1f);
+            serialized.ApplyModifiedProperties();
+        }
     }
 }
-
 #endif

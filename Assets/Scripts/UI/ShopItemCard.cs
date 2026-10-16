@@ -45,6 +45,8 @@ namespace NewBattle.UI
         [SerializeField] private Color doneColor = new(0.6f, 0.6f, 0.62f, 1f);
         [SerializeField] private Color lockedColor = new(0.45f, 0.40f, 0.36f, 1f);
         [SerializeField] private Color comingSoonColor = new(0.98f, 0.65f, 0.11f, 1f);
+        [Tooltip("Lobi animasyonu ikonunun rengi (diger urunler kendi renginde).")]
+        [SerializeField] private Color symbolColor = Color.white;
 
         public ShopItem Item { get; private set; }
         public Button Button => GetComponent<Button>();
@@ -72,6 +74,7 @@ namespace NewBattle.UI
                 Sprite sprite = Item.icon != null ? Item.icon : fallbackIcon;
                 if (sprite != null)
                     icon.sprite = sprite;
+                icon.color = Item.kind == ShopItemKind.LobbyAnimation ? symbolColor : Color.white;
             }
 
             if (priceText != null)

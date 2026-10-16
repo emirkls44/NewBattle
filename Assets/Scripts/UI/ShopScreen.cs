@@ -49,6 +49,11 @@ namespace NewBattle.UI
         [SerializeField] private Color buyColor = new(1f, 0.78f, 0.1f, 1f);
         [SerializeField] private Color disabledColor = new(0.6f, 0.6f, 0.62f, 1f);
 
+        [Tooltip("Doluysa buton renk yerine bu resimlerle gosterilir (sec / satin al / kapali).")]
+        [SerializeField] private Sprite selectSprite;
+        [SerializeField] private Sprite buySprite;
+        [SerializeField] private Sprite disabledSprite;
+
         [Header("Onay Penceresi")]
         [SerializeField] private GameObject confirmRoot;
         [SerializeField] private TextMeshProUGUI confirmText;
@@ -409,8 +414,17 @@ namespace NewBattle.UI
         {
             if (actionLabel != null)
                 actionLabel.text = label;
-            if (actionFace != null)
+            Sprite sprite = color == selectColor ? selectSprite : color == buyColor ? buySprite : disabledSprite;
+            if (actionFace != null && sprite != null)
+            {
+                actionFace.sprite = sprite;
+                actionFace.color = Color.white;
+            }
+            else if (actionFace != null)
+            {
                 actionFace.color = color;
+            }
+
             if (actionLip != null)
                 actionLip.color = Color.Lerp(color, Color.black, 0.28f);
 
