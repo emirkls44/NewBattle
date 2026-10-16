@@ -79,7 +79,7 @@ namespace NewBattle.EditorTools
 
         private static void ApplyAutumnMenu(Transform root)
         {
-            AssetDatabase.ImportAsset($"{ArtFolder}/{DesignSprite}.png");
+            SetSharpDesign($"{ArtFolder}/{DesignSprite}.png");
             AssetDatabase.ImportAsset($"{ArtFolder}/{DesignBackground}.png");
             Sprite design = Sprite(DesignSprite);
             Sprite background = Sprite(DesignBackground);

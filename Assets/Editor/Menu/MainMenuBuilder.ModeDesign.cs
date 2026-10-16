@@ -37,13 +37,18 @@ namespace NewBattle.EditorTools
                 return;
             }
 
+            // Iki tasarim resmi de net (sikistirmasiz) alinsin.
+            SetSharpDesign($"{ArtFolder}/{ModeDesignSprite}.png");
+            SetSharpDesign($"{ArtFolder}/{DesignSprite}.png");
+
             ModeSelectPanel panel = Object.FindFirstObjectByType<ModeSelectPanel>(FindObjectsInactive.Include);
             Transform window = panel != null ? panel.transform.Find("Pencere") : null;
             if (window == null)
                 return;
 
             AspectRatioFitter fitter = window.Find("Tasarim")?.GetComponent<AspectRatioFitter>();
-            bool current = fitter != null && Mathf.Abs(fitter.aspectRatio - ModeDesignWidth / ModeDesignHeight) < 0.001f;
+            bool current = fitter != null && fitter.aspectMode == AspectRatioFitter.AspectMode.None &&
+                           Mathf.Abs(fitter.aspectRatio - ModeDesignWidth / ModeDesignHeight) < 0.001f;
             if (!current)
             {
                 if (!PrepareFont())
@@ -55,7 +60,7 @@ namespace NewBattle.EditorTools
 
         private static void ApplyModeDesign(ModeSelectPanel panel, RectTransform window)
         {
-            AssetDatabase.ImportAsset($"{ArtFolder}/{ModeDesignSprite}.png", ImportAssetOptions.ForceUpdate);
+            SetSharpDesign($"{ArtFolder}/{ModeDesignSprite}.png");
             Sprite design = Sprite(ModeDesignSprite);
             if (design == null)
                 return;
@@ -78,9 +83,20 @@ namespace NewBattle.EditorTools
             layerImage.sprite = design;
             AspectRatioFitter fitter = layer.GetComponent<AspectRatioFitter>();
             Undo.RecordObject(fitter, "Oran");
-            fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            // Tam ekran: resim ekrani kaplar (oran farki kucuk; basma alanlari resimle birlikte uzar).
+            fitter.aspectMode = AspectRatioFitter.AspectMode.None;
             fitter.aspectRatio = ModeDesignWidth / ModeDesignHeight;
+            Undo.RecordObject(layer, "Tam ekran");
+            Stretch(layer, 0f, 0f, 0f, 0f);
             layer.SetAsFirstSibling();
+
+            // Pencere ve ust nesnesi de tam ekran olsun (kenarlarda menu gorunmesin).
+            foreach (RectTransform full in new[] { window, (RectTransform)panel.transform })
+            {
+                Undo.RecordObject(full, "Tam ekran");
+                Stretch(full, 0f, 0f, 0f, 0f);
+                full.localScale = Vector3.one;
+            }
 
             // Canli yazilar.
             ModeOverlay(FindDeep(window, "Aciklama"), layer, new Vector4(146, 338, 590, 404), ink, false);
@@ -185,6 +201,22 @@ namespace NewBattle.EditorTools
             EditorSceneManager.MarkSceneDirty(window.gameObject.scene);
             EditorSceneManager.SaveScene(window.gameObject.scene);
             Debug.Log("Oyun modu penceresi: tasarim resmi birebir uygulandi.");
+        }
+
+        /// <summary>Tasarim resmi net kalsin: sikistirma yok, kucultme yok, mipmap yok.</summary>
+        private static void SetSharpDesign(string path)
+        {
+            if (AssetImporter.GetAtPath(path) is TextureImporter importer)
+            {
+                bool changed = importer.textureCompression != TextureImporterCompression.Uncompressed ||
+                               importer.maxTextureSize < 2048 || importer.mipmapEnabled;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.maxTextureSize = 2048;
+                importer.mipmapEnabled = false;
+                importer.filterMode = FilterMode.Bilinear;
+                if (changed)
+                    importer.SaveAndReimport();
+            }
         }
 
         private static Transform EnsureLabel(RectTransform layer, string name, ProgressLabel.Value value)
